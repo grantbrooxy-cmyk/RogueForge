@@ -3,6 +3,7 @@ plugins {
 }
 
 import org.gradle.api.file.DuplicatesStrategy
+import org.gradle.internal.os.OperatingSystem
 
 dependencies {
     implementation project(':core')
@@ -26,4 +27,62 @@ jar {
         attributes 'Main-Class': 'com.rogueforge.game.lwjgl3.Lwjgl3Launcher'
     }
     from configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+}
+
+def os = OperatingSystem.current()
+def packageOutputDir = layout.buildDirectory.dir('package')
+def jpackageExecutable = new File(System.getProperty('java.home'), "bin/jpackage${os.isWindows() ? '.exe' : ''}")
+def jpackageCommand = jpackageExecutable.exists() ? jpackageExecutable.absolutePath : 'jpackage'
+def mainJarName = 'rogue-forge.jar'
+def launcherClass = 'com.rogueforge.game.lwjgl3.Lwjgl3Launcher'
+
+tasks.register('packageDmg', Exec) {
+    group = 'distribution'
+    description = 'Builds a macOS .dmg installer with jpackage.'
+    dependsOn jar
+    outputs.dir(packageOutputDir)
+
+    doFirst {
+        if (!os.isMacOsX()) {
+            throw new GradleException('packageDmg must be run on macOS.')
+        }
+        if (!new File(jpackageCommand).exists() && jpackageCommand == 'jpackage') {
+            logger.lifecycle('Using jpackage from PATH.')
+        }
+    }
+
+    workingDir projectDir
+    commandLine jpackageCommand,
+        '--type', 'dmg',
+        '--name', 'RogueForge',
+        '--input', file("$buildDir/libs").absolutePath,
+        '--dest', packageOutputDir.get().asFile.absolutePath,
+        '--main-jar', mainJarName,
+        '--main-class', launcherClass,
+        '--java-options', '-XstartOnFirstThread'
+}
+
+tasks.register('packageExe', Exec) {
+    group = 'distribution'
+    description = 'Builds a Windows .exe installer with jpackage.'
+    dependsOn jar
+    outputs.dir(packageOutputDir)
+
+    doFirst {
+        if (!os.isWindows()) {
+            throw new GradleException('packageExe must be run on Windows.')
+        }
+        if (!new File(jpackageCommand).exists() && jpackageCommand == 'jpackage') {
+            logger.lifecycle('Using jpackage from PATH.')
+        }
+    }
+
+    workingDir projectDir
+    commandLine jpackageCommand,
+        '--type', 'exe',
+        '--name', 'RogueForge',
+        '--input', file("$buildDir/libs").absolutePath,
+        '--dest', packageOutputDir.get().asFile.absolutePath,
+        '--main-jar', mainJarName,
+        '--main-class', launcherClass
 }
