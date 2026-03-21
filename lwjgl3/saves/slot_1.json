@@ -1,26 +1,66 @@
 {
 playerName: Player
-playerHp: 106
+playerHp: 112
 playerMaxHp: 100
-playerX: 1324.6846
-playerY: 580
-currentZoneId: verdant_fields
-currencyBalance: 85
-healingPotions: 4
-playerLevel: 2
+playerX: 762.31824
+playerY: 540.8111
+currentZoneId: shadow_caves
+currencyBalance: 80
+healingPotions: 3
+playerLevel: 3
+playerExperience: 55
+playerEquipment: {
+	class: java.util.HashMap
+	WEAPON: bronze_edge
+	LEGS: swift_boots
+}
 ownedEquipmentIds: [
 	bronze_edge
 	swift_boots
 ]
 questFlags: {
 	class: java.util.HashMap
-	quest_shard_found: true
 	quest_shard_started: true
 }
 keyItems: [
 	workshop_pass
-	luminous_shard
 ]
+robotEquipment: {
+	class: java.util.HashMap
+	bot_1: {
+		class: java.util.HashMap
+		WEAPON: {
+			class: java.lang.String
+			value: bronze_edge
+		}
+		LEGS: {
+			class: java.lang.String
+			value: swift_boots
+		}
+	}
+	bot_0: {
+		class: java.util.HashMap
+		WEAPON: {
+			class: java.lang.String
+			value: bronze_edge
+		}
+		LEGS: {
+			class: java.lang.String
+			value: swift_boots
+		}
+	}
+	bot_2: {
+		class: java.util.HashMap
+		WEAPON: {
+			class: java.lang.String
+			value: bronze_edge
+		}
+		LEGS: {
+			class: java.lang.String
+			value: swift_boots
+		}
+	}
+}
 collectedRobotIds: [
 	scout_mk1
 	guardian_mk1
@@ -31,24 +71,162 @@ activeRobotIds: [
 	guardian_mk1
 	striker_mk1
 ]
-robotHealth: [ 21, 75, 75 ]
-robotMaxHealth: [ 75, 75, 75 ]
+robotHealth: [ 0, 56, 75 ]
+robotMaxHealth: [ 87, 87, 87 ]
 robotBaseMaxHealth: [ 75, 75, 75 ]
-robotX: [ 1376.486, 1424.9199, 1460.7139 ]
-robotY: [ 575.4592, 556.5343, 518.81433 ]
-robotAngleDeg: [ 174.98811, 158.65924, 133.49901 ]
+robotX: [ 437.27853, 720.6839, 672.3314 ]
+robotY: [ 420.12073, 509.65692, 490.52487 ]
+robotAngleDeg: [ 12.552445, 36.807606, 21.587816 ]
 robotAttackTimers: [ 0, 0, 0 ]
-totalEnemiesKilled: 1
-enemies: []
-chests: [
+robotProgressionStates: {
+	class: java.util.HashMap
+	striker_mk1: {
+		robotId: striker_mk1
+		displayName: Striker MK-I
+		level: 3
+		experience: 36
+		knownAbilityIds: [
+			power_strike
+			rapid_fire
+		]
+		abilityProgression: {
+			class: java.util.HashMap
+			rapid_fire: {
+				abilityId: rapid_fire
+			}
+			power_strike: {
+				abilityId: power_strike
+				proficiencyXp: 12
+			}
+		}
+		weaponProficiencies: {
+			class: java.util.HashMap
+			SWORD: {
+				weaponType: SWORD
+				xp: 10
+			}
+		}
+	}
+	guardian_mk1: {
+		robotId: guardian_mk1
+		displayName: Guardian MK-I
+		level: 3
+		experience: 36
+		knownAbilityIds: [
+			shield_wall
+			taunt
+		]
+		abilityProgression: {
+			class: java.util.HashMap
+			shield_wall: {
+				abilityId: shield_wall
+				proficiencyXp: 12
+			}
+			taunt: {
+				abilityId: taunt
+				proficiencyXp: 12
+			}
+		}
+	}
+	scout_mk1: {
+		robotId: scout_mk1
+		displayName: Scout MK-I
+		level: 3
+		experience: 36
+		knownAbilityIds: [
+			dash
+			scan
+		]
+		abilityProgression: {
+			class: java.util.HashMap
+			scan: {
+				abilityId: scan
+				proficiencyXp: 12
+			}
+			dash: {
+				abilityId: dash
+				proficiencyXp: 12
+			}
+		}
+	}
+}
+totalEnemiesKilled: 4
+enemies: [
 	{
-		zoneId: shadow_caves
-		houseId: -1
-		chestId: luminous_shard_cache
-		opened: true
+		monsterId: skeleton_e
+		x: 517.8091
+		y: 441.55298
+		maxHp: 80
+		speed: 50
+		size: 48
+		defense: 15
+		agility: 35
+		strength: 25
+		intelligence: 17.5
+		stamina: 16.5
+		rewardGold: 20
+		name: Skeleton Warrior
+		patrolTargetX: 637.33075
+		patrolTargetY: 353.8516
+	}
+	{
+		monsterId: skeleton_e
+		x: 1127.2338
+		y: 654.05457
+		maxHp: 80
+		speed: 50
+		size: 48
+		defense: 15
+		agility: 35
+		strength: 25
+		intelligence: 17.5
+		stamina: 16.5
+		rewardGold: 20
+		name: Skeleton Warrior
+		patrolTargetX: 1092.694
+		patrolTargetY: 795.6509
+	}
+	{
+		monsterId: mage_d
+		x: 1414.2568
+		y: 605.8403
+		hp: 60
+		maxHp: 60
+		speed: 50
+		size: 48
+		defense: 8
+		agility: 25
+		strength: 40
+		intelligence: 28
+		stamina: 8.8
+		rewardGold: 40
+		name: Dark Mage
+		alive: true
+		patrolTargetX: 1453.7747
+		patrolTargetY: 493.85657
+	}
+	{
+		monsterId: mage_d
+		x: 1792.8345
+		y: 660.0964
+		hp: 60
+		maxHp: 60
+		speed: 50
+		size: 48
+		defense: 8
+		agility: 25
+		strength: 40
+		intelligence: 28
+		stamina: 8.8
+		rewardGold: 40
+		name: Dark Mage
+		alive: true
+		patrolTargetX: 1774.2723
+		patrolTargetY: 621.93713
 	}
 ]
-playTimeSeconds: 48
-saveTimestamp: 2026-03-21 19:13
+chests: []
+playTimeSeconds: 38
+saveTimestamp: 2026-03-21 21:51
 saveSlot: 1
 }

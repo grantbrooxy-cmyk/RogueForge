@@ -3,6 +3,7 @@ package com.rogueforge.game.core;
 import com.badlogic.gdx.math.Vector2;
 import com.rogueforge.game.data.EquipmentItem;
 import com.rogueforge.game.data.SaveFile;
+import com.rogueforge.game.progression.RobotProgressionState;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -10,6 +11,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.IntUnaryOperator;
 
 /**
  * Central game state container. Holds all mutable player, robot, equipment,
@@ -47,6 +49,8 @@ public class GameState {
     private final List<String> ownedEquipmentIds = new ArrayList<>();
     private final Map<String, Boolean> questFlags = new HashMap<>();
     private final List<String> keyItems = new ArrayList<>();
+    private final Map<String, Integer> bestiaryScanLevels = new HashMap<>();
+    private final Map<String, RobotProgressionState> robotProgressionStates = new HashMap<>();
 
     // Robot roster tracking
     private final List<String> collectedRobotIds = new ArrayList<>();
@@ -97,10 +101,17 @@ public class GameState {
     }
 
     public void addExperience(int amount) {
+        addExperience(amount, level -> 40 + (level * 20));
+    }
+
+    public void addExperience(int amount, IntUnaryOperator experienceRequirementProvider) {
         int adjustedAmount = Math.max(0, applyUniqueExperienceBoost(amount));
         playerExperience += adjustedAmount;
-        while (playerExperience >= getExperienceForNextLevel()) {
-            playerExperience -= getExperienceForNextLevel();
+        IntUnaryOperator provider = experienceRequirementProvider != null
+            ? experienceRequirementProvider
+            : level -> 40 + (level * 20);
+        while (playerExperience >= provider.applyAsInt(playerLevel)) {
+            playerExperience -= provider.applyAsInt(playerLevel);
             playerLevel++;
             // Heal a bit on level up
             StatBlock stats = getPlayerStats();
@@ -245,6 +256,33 @@ public class GameState {
         if (ids != null) activeRobotIds.addAll(ids);
     }
 
+    public Map<String, RobotProgressionState> getRobotProgressionStates() {
+        return new HashMap<>(robotProgressionStates);
+    }
+
+    public void setRobotProgressionStates(Map<String, RobotProgressionState> states) {
+        robotProgressionStates.clear();
+        if (states != null) {
+            robotProgressionStates.putAll(states);
+        }
+    }
+
+    public RobotProgressionState getRobotProgressionState(String robotId) {
+        return robotProgressionStates.get(robotId);
+    }
+
+    public void putRobotProgressionState(RobotProgressionState state) {
+        if (state != null && state.getRobotId() != null) {
+            robotProgressionStates.put(state.getRobotId(), state);
+        }
+    }
+
+    public void removeRobotProgressionState(String robotId) {
+        if (robotId != null) {
+            robotProgressionStates.remove(robotId);
+        }
+    }
+
     public Map<String, Boolean> getQuestFlags() {
         return new HashMap<>(questFlags);
     }
@@ -282,6 +320,27 @@ public class GameState {
     public void addKeyItem(String keyItem) {
         if (keyItem != null && !keyItem.isEmpty() && !keyItems.contains(keyItem)) {
             keyItems.add(keyItem);
+        }
+    }
+
+    public Map<String, Integer> getBestiaryScanLevels() {
+        return new HashMap<>(bestiaryScanLevels);
+    }
+
+    public void setBestiaryScanLevels(Map<String, Integer> scanLevels) {
+        bestiaryScanLevels.clear();
+        if (scanLevels != null) {
+            bestiaryScanLevels.putAll(scanLevels);
+        }
+    }
+
+    public int getBestiaryScanLevel(String monsterId) {
+        return bestiaryScanLevels.getOrDefault(monsterId, 0);
+    }
+
+    public void setBestiaryScanLevel(String monsterId, int scanLevel) {
+        if (monsterId != null && !monsterId.isEmpty()) {
+            bestiaryScanLevels.put(monsterId, Math.max(0, Math.min(3, scanLevel)));
         }
     }
 

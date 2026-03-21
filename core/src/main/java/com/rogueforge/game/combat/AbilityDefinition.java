@@ -36,6 +36,13 @@ public class AbilityDefinition {
     private float power;              // strength of effect (damage, healing, buff amount)
     private float duration;           // for buffs/debuffs, 0 for instant
     private String description;
+    private Element element = Element.NONE;
+    private int speedCost = 80;
+    private StatusEffectType appliedStatus;
+    private int statusTurns;
+    private WeaponType weaponType = WeaponType.NONE;
+    private String masteryUpgradeId;
+    private String uniqueSkillId;
 
     /**
      * No-arg constructor for JSON serialization
@@ -91,6 +98,34 @@ public class AbilityDefinition {
         return description;
     }
 
+    public Element getElement() {
+        return element != null ? element : Element.NONE;
+    }
+
+    public int getSpeedCost() {
+        return speedCost > 0 ? speedCost : 80;
+    }
+
+    public StatusEffectType getAppliedStatus() {
+        return appliedStatus;
+    }
+
+    public int getStatusTurns() {
+        return statusTurns;
+    }
+
+    public WeaponType getWeaponType() {
+        return weaponType != null ? weaponType : WeaponType.NONE;
+    }
+
+    public String getMasteryUpgradeId() {
+        return masteryUpgradeId != null ? masteryUpgradeId : "";
+    }
+
+    public String getUniqueSkillId() {
+        return uniqueSkillId != null ? uniqueSkillId : "";
+    }
+
     // Setters (for JSON deserialization)
     public void setId(String id) {
         this.id = id;
@@ -124,6 +159,34 @@ public class AbilityDefinition {
         this.description = description;
     }
 
+    public void setElement(Element element) {
+        this.element = element;
+    }
+
+    public void setSpeedCost(int speedCost) {
+        this.speedCost = speedCost;
+    }
+
+    public void setAppliedStatus(StatusEffectType appliedStatus) {
+        this.appliedStatus = appliedStatus;
+    }
+
+    public void setStatusTurns(int statusTurns) {
+        this.statusTurns = statusTurns;
+    }
+
+    public void setWeaponType(WeaponType weaponType) {
+        this.weaponType = weaponType;
+    }
+
+    public void setMasteryUpgradeId(String masteryUpgradeId) {
+        this.masteryUpgradeId = masteryUpgradeId;
+    }
+
+    public void setUniqueSkillId(String uniqueSkillId) {
+        this.uniqueSkillId = uniqueSkillId;
+    }
+
     @Override
     public String toString() {
         return "AbilityDefinition{" +
@@ -134,6 +197,9 @@ public class AbilityDefinition {
                 ", cooldown=" + cooldown +
                 ", power=" + power +
                 ", duration=" + duration +
+                ", element=" + element +
+                ", speedCost=" + speedCost +
+                ", weaponType=" + weaponType +
                 ", description='" + description + '\'' +
                 '}';
     }

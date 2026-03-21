@@ -6,29 +6,41 @@ import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
-import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.Texture.TextureFilter;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
-import com.badlogic.gdx.math.Vector2;
 import com.rogueforge.game.combat.AbilityDefinition;
 import com.rogueforge.game.combat.AbilityInstance;
-import com.rogueforge.game.combat.AbilityRegistry;
+import com.rogueforge.game.combat.BattleCombatant;
+import com.rogueforge.game.combat.BattleResultSummary;
+import com.rogueforge.game.combat.BattleState;
+import com.rogueforge.game.combat.BestiaryManager;
+import com.rogueforge.game.combat.CombatResolver;
+import com.rogueforge.game.combat.Element;
+import com.rogueforge.game.combat.ElementalSystem;
+import com.rogueforge.game.combat.StatusEffectType;
+import com.rogueforge.game.combat.WeaponType;
 import com.rogueforge.game.core.RogueForgeGame;
 import com.rogueforge.game.core.ScreenManager;
+import com.rogueforge.game.data.EquipmentItem;
+import com.rogueforge.game.progression.ProficiencyTracker;
+import java.util.LinkedHashMap;
 import java.util.ArrayList;
-import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
- * Turn-based encounter screen with multi-target encounters, abilities, and results flow.
+ * Turn-based battle screen that delegates rules to the combat package.
  */
 public class BattleScreen implements Screen {
-    private static final String[] ROOT_ACTIONS = {"Attack", "Ability", "Item", "Defend", "Run"};
-    private static final String[] ATTACK_ACTIONS = {"Quick Slash", "Power Crush", "Arc Pulse"};
+    private static final String[] ROOT_ACTIONS = {"Attack", "Ability", "Item", "Defend", "Analyze", "Flee"};
+    private static final AttackMove[] ATTACK_MOVES = {
+        new AttackMove("Quick Slash", 80, 1.0f, Element.NONE),
+        new AttackMove("Power Crush", 120, 1.45f, Element.EARTH),
+        new AttackMove("Arc Pulse", 95, 1.15f, Element.LIGHTNING)
+    };
 
     private final RogueForgeGame game;
     private final ScreenManager screenManager;
@@ -38,38 +50,26 @@ public class BattleScreen implements Screen {
     private final ShapeRenderer shapeRenderer;
     private final BitmapFont titleFont;
     private final BitmapFont bodyFont;
-    private final BitmapFont buttonFont;
+    private final BitmapFont smallFont;
     private final GlyphLayout layout;
     private final OrthographicCamera camera;
+    private final CombatResolver combatResolver;
+    private final BestiaryManager bestiaryManager = new BestiaryManager();
+    private final BattleState battleState;
     private final List<String> battleLog = new ArrayList<>();
-    private final List<Combatant> combatants = new ArrayList<>();
-    private final List<Combatant> turnOrder = new ArrayList<>();
-    private final List<Combatant> enemyCombatants = new ArrayList<>();
-    private final Texture backgroundTexture;
-    private final Texture shadowTexture;
-    private final Texture buttonTexture;
-    private final AnimationSet playerAnimation;
-    private final AnimationSet[] robotAnimations;
-    private final AnimationSet[] enemyAnimations;
+    private final Map<String, Integer> abilityXpGains = new LinkedHashMap<>();
+    private final Map<String, Integer> weaponXpGains = new LinkedHashMap<>();
+    private final List<String> masteryUnlocks = new ArrayList<>();
 
-    private boolean battleResolved = false;
-    private boolean showingAttackMenu = false;
-    private boolean showingAbilityMenu = false;
-    private boolean selectingTarget = false;
-    private boolean selectingAllyTarget = false;
-    private boolean selectingAbilityTarget = false;
-    private boolean resultsVisible = false;
-    private boolean pendingTurnAdvance = false;
-    private int hoveredOption = -1;
-    private int turnIndex = 0;
+    private Mode mode = Mode.ROOT;
+    private int selectedIndex;
+    private int selectedAttackIndex = -1;
+    private int selectedAbilityIndex = -1;
+    private BattleCombatant activeActor;
+    private boolean turnInitialized;
+    private boolean closingToResults;
+    private float actionDelay;
     private int healingPotions;
-    private int selectedActionIndex = 0;
-    private float actionLockTimer = 0f;
-    private float battleAnimationTime = 0f;
-    private BattleResult pendingResult;
-    private int previewLevelUps;
-    private int previewGoldEarned;
-    private int previewExperienceEarned;
 
     public BattleScreen(RogueForgeGame game, ScreenManager screenManager, GameScreen gameScreen, Encounter encounter) {
         this.game = game;
@@ -80,84 +80,106 @@ public class BattleScreen implements Screen {
         this.shapeRenderer = new ShapeRenderer();
         this.titleFont = new BitmapFont();
         this.bodyFont = new BitmapFont();
-        this.buttonFont = new BitmapFont();
+        this.smallFont = new BitmapFont();
         this.layout = new GlyphLayout();
         this.camera = new OrthographicCamera();
         this.camera.setToOrtho(false, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-        this.backgroundTexture = loadTexture("Backgrounds/background 4/orig_big.png");
-        this.shadowTexture = loadTexture("1 Characters/Other/Shadow.png");
-        this.buttonTexture = loadTexture("4 GUI/6 Buttons/ButtonMap3.png");
-        this.playerAnimation = loadAnimationSet("1 Characters/1");
-        this.robotAnimations = new AnimationSet[] {
-            loadAnimationSet("1 Characters/2"),
-            loadAnimationSet("1 Characters/3"),
-            loadSingleFrameSet("sprites/Tank_Robot.png", 32, 32)
-        };
-        this.enemyAnimations = new AnimationSet[] {
-            loadAnimationSet("3 Dungeon Enemies/1"),
-            loadAnimationSet("3 Dungeon Enemies/2"),
-            loadAnimationSet("3 Dungeon Enemies/3"),
-            loadAnimationSet("3 Dungeon Enemies/4")
-        };
-        this.titleFont.getData().setScale(2.8f);
-        this.bodyFont.getData().setScale(1.15f);
-        this.buttonFont.getData().setScale(1.2f);
+        this.titleFont.getData().setScale(2.2f);
+        this.bodyFont.getData().setScale(1.1f);
+        this.smallFont.getData().setScale(0.95f);
+        this.combatResolver = new CombatResolver(RogueForgeGame.getEventBus());
         this.healingPotions = encounter.healingPotions;
-
-        buildCombatants();
-        rebuildTurnOrder();
-        battleLog.add("Encounter! " + joinEnemyNames(encounter.enemyNames));
+        this.bestiaryManager.importData(gameScreen.getBestiaryScanLevels());
+        this.battleState = new BattleState(buildCombatants());
+        battleLog.add("Encounter! " + join(encounter.enemyNames));
     }
 
-    private Texture loadTexture(String relativePath) {
-        Texture texture = new Texture(Gdx.files.internal(relativePath));
-        texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
-        return texture;
-    }
-
-    private TextureRegion loadStripFrame(String relativePath, int frameWidth, int frameHeight) {
-        Texture texture = loadTexture(relativePath);
-        return new TextureRegion(texture, 0, 0, Math.min(frameWidth, texture.getWidth()), Math.min(frameHeight, texture.getHeight()));
-    }
-
-    private TextureRegion[] loadStripFrames(String relativePath, int frameWidth, int frameHeight) {
-        Texture texture = loadTexture(relativePath);
-        int frameCount = Math.max(1, texture.getWidth() / frameWidth);
-        TextureRegion[] frames = new TextureRegion[frameCount];
-        for (int i = 0; i < frameCount; i++) {
-            frames[i] = new TextureRegion(texture, i * frameWidth, 0,
-                Math.min(frameWidth, texture.getWidth() - (i * frameWidth)),
-                Math.min(frameHeight, texture.getHeight()));
+    private List<BattleCombatant> buildCombatants() {
+        List<BattleCombatant> combatants = new ArrayList<>();
+        combatants.add(new BattleCombatant(
+            "player",
+            encounter.playerName,
+            true,
+            -1,
+            "PLAYER",
+            "PLAYER",
+            encounter.playerHealth,
+            encounter.playerMaxHealth,
+            encounter.playerAgility,
+            encounter.playerStrength,
+            encounter.playerIntelligence,
+            encounter.playerStamina,
+            gameScreen.getPartyAbilityInstances(-1),
+            new ArrayList<>(),
+            new ArrayList<>(),
+            new ArrayList<>(),
+            0,
+            0,
+            null
+        ));
+        if (encounter.robotHealth != null) {
+            for (int i = 0; i < encounter.robotHealth.length; i++) {
+                combatants.add(new BattleCombatant(
+                    "ally_" + i,
+                    encounter.robotNames[i],
+                    true,
+                    i,
+                    "ALLY",
+                    "ALLY",
+                    encounter.robotHealth[i],
+                    encounter.robotMaxHealth[i],
+                    encounter.robotAgility[i],
+                    encounter.robotStrength[i],
+                    encounter.robotIntelligence[i],
+                    encounter.robotStamina[i],
+                    gameScreen.getPartyAbilityInstances(i),
+                    new ArrayList<>(),
+                    new ArrayList<>(),
+                    new ArrayList<>(),
+                    0,
+                    0,
+                    null
+                ));
+            }
         }
-        return frames;
+        for (int i = 0; i < encounter.enemyNames.length; i++) {
+            combatants.add(new BattleCombatant(
+                encounter.enemyIds != null && i < encounter.enemyIds.length ? encounter.enemyIds[i] : "enemy_" + i,
+                encounter.enemyNames[i],
+                false,
+                i,
+                encounter.enemyRanks != null && i < encounter.enemyRanks.length ? encounter.enemyRanks[i] : "G",
+                encounter.enemyAiProfiles != null && i < encounter.enemyAiProfiles.length ? encounter.enemyAiProfiles[i] : "PATROL",
+                encounter.enemyHealth[i],
+                encounter.enemyMaxHealth[i],
+                encounter.enemyAgility[i],
+                encounter.enemyStrength[i],
+                encounter.enemyIntelligence[i],
+                encounter.enemyStamina[i],
+                new ArrayList<>(),
+                toElements(encounter.enemyWeaknesses != null && i < encounter.enemyWeaknesses.length ? encounter.enemyWeaknesses[i] : null),
+                toElements(encounter.enemyResistances != null && i < encounter.enemyResistances.length ? encounter.enemyResistances[i] : null),
+                toElements(encounter.enemyAbsorbs != null && i < encounter.enemyAbsorbs.length ? encounter.enemyAbsorbs[i] : null),
+                encounter.enemyRewardGold[i],
+                encounter.enemyExperienceReward[i],
+                encounter.enemyReferences[i]
+            ));
+        }
+        return combatants;
     }
 
-    private AnimationSet loadAnimationSet(String basePath) {
-        return new AnimationSet(
-            loadStripFrames(basePath + "/D_Idle.png", 32, 32),
-            loadStripFrames(basePath + "/D_Walk.png", 32, 32),
-            loadStripFrames(basePath + "/S_Idle.png", 32, 32),
-            loadStripFrames(basePath + "/S_Walk.png", 32, 32),
-            loadStripFrames(basePath + "/U_Idle.png", 32, 32),
-            loadStripFrames(basePath + "/U_Walk.png", 32, 32),
-            loadStripFrames(basePath + "/D_Attack.png", 32, 32),
-            loadStripFrames(basePath + "/S_Attack.png", 32, 32),
-            loadStripFrames(basePath + "/U_Attack.png", 32, 32),
-            loadStripFrames(basePath + "/D_Hurt.png", 32, 32),
-            loadStripFrames(basePath + "/S_Hurt.png", 32, 32),
-            loadStripFrames(basePath + "/U_Hurt.png", 32, 32)
-        );
-    }
-
-    private AnimationSet loadSingleFrameSet(String path, int frameWidth, int frameHeight) {
-        TextureRegion frame = loadStripFrame(path, frameWidth, frameHeight);
-        return new AnimationSet(
-            new TextureRegion[] {frame}, new TextureRegion[] {frame},
-            new TextureRegion[] {frame}, new TextureRegion[] {frame},
-            new TextureRegion[] {frame}, new TextureRegion[] {frame},
-            new TextureRegion[] {frame}, new TextureRegion[] {frame}, new TextureRegion[] {frame},
-            new TextureRegion[] {frame}, new TextureRegion[] {frame}, new TextureRegion[] {frame}
-        );
+    private List<Element> toElements(String[] values) {
+        List<Element> elements = new ArrayList<>();
+        if (values == null) {
+            return elements;
+        }
+        for (String value : values) {
+            Element element = Element.fromString(value);
+            if (element != Element.NONE) {
+                elements.add(element);
+            }
+        }
+        return elements;
     }
 
     @Override
@@ -166,1034 +188,898 @@ public class BattleScreen implements Screen {
 
     @Override
     public void render(float delta) {
-        float w = Gdx.graphics.getWidth();
-        float h = Gdx.graphics.getHeight();
-        camera.setToOrtho(false, w, h);
-        battleAnimationTime += delta;
-        updateAnimationStates(delta);
-        updateCooldowns(delta);
-        updateActionLock(delta);
-        processAutoTurns();
-
-        if (battleResolved && !resultsVisible) {
-            return;
+        actionDelay = Math.max(0f, actionDelay - delta);
+        camera.setToOrtho(false, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        if (!closingToResults) {
+            tickBattleFlow();
         }
 
-        handleInput(w, h);
-
-        Gdx.gl.glClearColor(0.07f, 0.06f, 0.12f, 1f);
+        Gdx.gl.glClearColor(0.07f, 0.08f, 0.11f, 1f);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
-        drawBackdrop(w, h);
-        drawEnemyPanel(w, h);
-        drawPartyPanel(h);
-        drawTurnOrderPanel(w, h);
-        drawLogPanel(w, h);
-        drawActions(w, h);
-        if (resultsVisible) {
-            drawResultsOverlay(w, h);
-        }
+        float w = Gdx.graphics.getWidth();
+        float h = Gdx.graphics.getHeight();
+        drawPanels(w, h);
+        drawCombatants(w, h);
+        drawTimeline(w, h);
+        drawActionPanel(w, h);
+        drawBattleLog(w, h);
+        handleInput();
     }
 
-    private void updateAnimationStates(float delta) {
-        for (Combatant combatant : combatants) {
-            if (combatant.animTimer > 0f) {
-                combatant.animTimer = Math.max(0f, combatant.animTimer - delta);
-                if (combatant.animTimer == 0f) {
-                    combatant.animState = "idle";
-                }
-            }
-        }
-    }
-
-    private void updateCooldowns(float delta) {
-        for (Combatant combatant : combatants) {
-            for (AbilityInstance ability : combatant.abilities) {
-                ability.update(delta);
-            }
-        }
-    }
-
-    private void updateActionLock(float delta) {
-        if (actionLockTimer <= 0f) {
+    private void tickBattleFlow() {
+        if (!battleState.hasLivingEnemies()) {
+            finishBattle(true, false);
             return;
         }
-        actionLockTimer = Math.max(0f, actionLockTimer - delta);
-        if (actionLockTimer == 0f && pendingTurnAdvance) {
-            pendingTurnAdvance = false;
-            endActorTurn();
-        }
-    }
-
-    private void buildCombatants() {
-        combatants.clear();
-        enemyCombatants.clear();
-
-        Combatant player = new Combatant();
-        player.name = encounter.playerName;
-        player.ally = true;
-        player.facing = new Vector2(1f, 0f);
-        player.health = encounter.playerHealth;
-        player.maxHealth = encounter.playerMaxHealth;
-        player.agility = encounter.playerAgility;
-        player.strength = encounter.playerStrength;
-        player.intelligence = encounter.playerIntelligence;
-        player.stamina = encounter.playerStamina;
-        player.partyIndex = -1;
-        player.abilities = AbilityRegistry.createInstances(gameScreen.getPartyAbilityIds(-1));
-        combatants.add(player);
-
-        if (encounter.robotHealth != null) {
-            for (int i = 0; i < encounter.robotHealth.length; i++) {
-                Combatant robot = new Combatant();
-                robot.name = encounter.robotNames != null && i < encounter.robotNames.length
-                    ? encounter.robotNames[i]
-                    : "Bot " + (i + 1);
-                robot.ally = true;
-                robot.facing = new Vector2(1f, 0f);
-                robot.health = encounter.robotHealth[i];
-                robot.maxHealth = encounter.robotMaxHealth[i];
-                robot.agility = encounter.robotAgility[i];
-                robot.strength = encounter.robotStrength[i];
-                robot.intelligence = encounter.robotIntelligence[i];
-                robot.stamina = encounter.robotStamina[i];
-                robot.partyIndex = i;
-                robot.abilities = AbilityRegistry.createInstances(gameScreen.getPartyAbilityIds(i));
-                combatants.add(robot);
-            }
-        }
-
-        for (int i = 0; i < encounter.enemyHealth.length; i++) {
-            Combatant enemy = new Combatant();
-            enemy.name = encounter.enemyNames[i];
-            enemy.ally = false;
-            enemy.facing = new Vector2(-1f, 0f);
-            enemy.health = encounter.enemyHealth[i];
-            enemy.maxHealth = encounter.enemyMaxHealth[i];
-            enemy.agility = encounter.enemyAgility[i];
-            enemy.strength = encounter.enemyStrength[i];
-            enemy.intelligence = encounter.enemyIntelligence[i];
-            enemy.stamina = encounter.enemyStamina[i];
-            enemy.partyIndex = i;
-            combatants.add(enemy);
-            enemyCombatants.add(enemy);
-        }
-    }
-
-    private void rebuildTurnOrder() {
-        turnOrder.clear();
-        for (Combatant combatant : combatants) {
-            if (combatant.health > 0f) {
-                turnOrder.add(combatant);
-            }
-        }
-
-        turnOrder.sort(Comparator
-            .comparingDouble((Combatant c) -> getEffectiveAgility(c)).reversed()
-            .thenComparing(c -> c.ally ? 0 : 1)
-            .thenComparing(c -> c.name));
-
-        if (!turnOrder.isEmpty() && turnIndex >= turnOrder.size()) {
-            turnIndex = 0;
-        }
-    }
-
-    private float getEffectiveAgility(Combatant combatant) {
-        return combatant.agility + combatant.agilityBoost;
-    }
-
-    private void processAutoTurns() {
-        if (battleResolved || actionLockTimer > 0f || resultsVisible) {
+        if (!battleState.hasLivingAllies()) {
+            finishBattle(false, false);
             return;
         }
-
-        Combatant actor = getCurrentActor();
-        if (actor == null || actor.ally) {
+        BattleCombatant current = battleState.getTurnTimeline().getCurrentActor(battleState.getCombatants());
+        if (current == null) {
             return;
         }
-        enemyAction(actor);
+        if (activeActor == null || !activeActor.getId().equals(current.getId())) {
+            activeActor = current;
+            turnInitialized = false;
+            mode = Mode.ROOT;
+            selectedIndex = 0;
+            selectedAttackIndex = -1;
+            selectedAbilityIndex = -1;
+        }
+        if (!turnInitialized) {
+            beginTurn(activeActor);
+            turnInitialized = true;
+        }
+        if (actionDelay > 0f || activeActor == null || !activeActor.isAlive()) {
+            return;
+        }
+        if (!activeActor.isAlly()) {
+            executeEnemyTurn(activeActor);
+        }
     }
 
-    private void handleInput(float w, float h) {
-        if (resultsVisible) {
-            if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER) || Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) || Gdx.input.justTouched()) {
-                resultsVisible = false;
-                battleResolved = true;
-                gameScreen.resolveBattle(pendingResult);
-            }
+    private void beginTurn(BattleCombatant actor) {
+        appendLogs(actor.getStatusEffectManager().beginTurn(actor));
+        if (!actor.isAlive()) {
+            endTurn(actor, 40);
             return;
         }
+        if (actor.getStatusEffectManager().shouldSkipTurn()) {
+            battleLog.add(actor.getName() + " is stunned and loses the turn.");
+            endTurn(actor, 100);
+        }
+    }
 
-        Combatant actor = getCurrentActor();
-        if (actor == null || !actor.ally || actionLockTimer > 0f) {
+    private void handleInput() {
+        if (actionDelay > 0f || activeActor == null || !activeActor.isAlive() || !activeActor.isAlly()) {
             return;
         }
-
-        String[] options = getCurrentOptions(actor);
-        float buttonW = 200f;
-        float buttonH = 46f;
-        float buttonGap = 16f;
-        float startX = 60f;
-        float buttonY = 70f;
-
-        hoveredOption = -1;
-        float mx = Gdx.input.getX();
-        float my = h - Gdx.input.getY();
-
-        for (int i = 0; i < options.length; i++) {
-            float bx = startX + i * (buttonW + buttonGap);
-            if (mx >= bx && mx <= bx + buttonW && my >= buttonY && my <= buttonY + buttonH) {
-                hoveredOption = i;
-            }
-        }
-
-        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
-            if (selectingTarget) {
-                selectingTarget = false;
-                selectingAllyTarget = false;
-                if (selectingAbilityTarget) {
-                    showingAbilityMenu = true;
-                } else {
-                    showingAttackMenu = true;
-                }
-                selectingAbilityTarget = false;
-                return;
-            }
-            if (showingAbilityMenu) {
-                showingAbilityMenu = false;
-                return;
-            }
-            if (showingAttackMenu) {
-                showingAttackMenu = false;
-                return;
-            }
-        }
-
-        if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_1)) {
-            chooseOption(0);
+        if (Gdx.input.isKeyJustPressed(Input.Keys.UP)) {
+            selectedIndex = Math.max(0, selectedIndex - 1);
+        } else if (Gdx.input.isKeyJustPressed(Input.Keys.DOWN)) {
+            selectedIndex = Math.min(getCurrentOptions().length - 1, selectedIndex + 1);
+        } else if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+            goBack();
+        } else if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER) || Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
+            confirmSelection();
+        } else if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_1)) {
+            chooseDirect(0);
         } else if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_2)) {
-            chooseOption(1);
+            chooseDirect(1);
         } else if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_3)) {
-            chooseOption(2);
+            chooseDirect(2);
         } else if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_4)) {
-            chooseOption(3);
+            chooseDirect(3);
         } else if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_5)) {
-            chooseOption(4);
-        }
-
-        if (Gdx.input.justTouched() && hoveredOption >= 0) {
-            chooseOption(hoveredOption);
+            chooseDirect(4);
+        } else if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_6)) {
+            chooseDirect(5);
         }
     }
 
-    private void chooseOption(int index) {
-        Combatant actor = getCurrentActor();
-        if (actor == null || !actor.ally || battleResolved) {
-            return;
+    private void chooseDirect(int index) {
+        if (index < getCurrentOptions().length) {
+            selectedIndex = index;
+            confirmSelection();
         }
+    }
 
-        if (selectingTarget) {
-            chooseTargetAndResolve(actor, index);
-            return;
+    private void confirmSelection() {
+        switch (mode) {
+            case ROOT:
+                handleRootSelection();
+                break;
+            case ATTACK:
+                selectedAttackIndex = selectedIndex;
+                if (livingEnemies().size() > 1) {
+                    mode = Mode.TARGET_ENEMY;
+                    selectedIndex = 0;
+                } else {
+                    performAttack(activeActor, livingEnemies().get(0), ATTACK_MOVES[selectedAttackIndex]);
+                }
+                break;
+            case ABILITY:
+                selectedAbilityIndex = selectedIndex;
+                AbilityInstance ability = readyAbilityAt(activeActor, selectedAbilityIndex);
+                if (ability == null) {
+                    battleLog.add("That ability is not ready.");
+                    return;
+                }
+                AbilityDefinition.TargetType targetType = ability.getDefinition().getTargetType();
+                if (targetType == AbilityDefinition.TargetType.SINGLE_ENEMY) {
+                    mode = Mode.TARGET_ENEMY;
+                    selectedIndex = 0;
+                } else if (targetType == AbilityDefinition.TargetType.SINGLE_ALLY) {
+                    mode = Mode.TARGET_ALLY;
+                    selectedIndex = 0;
+                } else {
+                    useAbility(activeActor, ability, null);
+                }
+                break;
+            case TARGET_ENEMY:
+                BattleCombatant enemy = livingEnemies().get(selectedIndex);
+                if (selectedAbilityIndex >= 0 && modeBeforeTargetWasAbility()) {
+                    useAbility(activeActor, readyAbilityAt(activeActor, selectedAbilityIndex), enemy);
+                } else if (modeBeforeTargetWasAnalyze()) {
+                    analyzeEnemy(activeActor, enemy);
+                } else {
+                    performAttack(activeActor, enemy, ATTACK_MOVES[selectedAttackIndex]);
+                }
+                break;
+            case TARGET_ALLY:
+                useAbility(activeActor, readyAbilityAt(activeActor, selectedAbilityIndex), livingAllies().get(selectedIndex));
+                break;
+            case ANALYZE_TARGET:
+                analyzeEnemy(activeActor, livingEnemies().get(selectedIndex));
+                break;
+            default:
+                break;
         }
+    }
 
-        if (showingAbilityMenu) {
-            chooseAbility(actor, index);
-            return;
-        }
+    private boolean modeBeforeTargetWasAbility() {
+        return selectedAbilityIndex >= 0 && selectedAttackIndex < 0;
+    }
 
-        if (showingAttackMenu) {
-            if (index < 0 || index >= ATTACK_ACTIONS.length) {
-                return;
-            }
-            selectedActionIndex = index;
-            showingAttackMenu = false;
-            if (countLivingEnemies() > 1) {
-                selectingTarget = true;
-                selectingAllyTarget = false;
-                selectingAbilityTarget = false;
-            } else {
-                performAttack(actor, selectedActionIndex, getSelectedEnemy(0));
-            }
-            return;
-        }
+    private boolean modeBeforeTargetWasAnalyze() {
+        return selectedAbilityIndex < 0 && selectedAttackIndex < 0;
+    }
 
-        switch (index) {
+    private void handleRootSelection() {
+        selectedAttackIndex = -1;
+        selectedAbilityIndex = -1;
+        switch (selectedIndex) {
             case 0:
-                showingAttackMenu = true;
+                mode = Mode.ATTACK;
+                selectedIndex = 0;
                 break;
             case 1:
-                showingAbilityMenu = true;
+                mode = Mode.ABILITY;
+                selectedIndex = 0;
                 break;
             case 2:
-                useItem(actor);
+                useItem(activeActor);
                 break;
             case 3:
-                defend(actor);
+                defend(activeActor);
                 break;
             case 4:
-                attemptRun(actor);
+                if (livingEnemies().size() > 1) {
+                    mode = Mode.ANALYZE_TARGET;
+                    selectedIndex = 0;
+                } else {
+                    analyzeEnemy(activeActor, livingEnemies().get(0));
+                }
+                break;
+            case 5:
+                attemptFlee(activeActor);
                 break;
             default:
                 break;
         }
     }
 
-    private String[] getCurrentOptions(Combatant actor) {
-        if (selectingTarget) {
-            return selectingAllyTarget ? getLivingAllyNames() : getLivingEnemyNames();
-        }
-        if (showingAbilityMenu) {
-            return getAbilityOptions(actor);
-        }
-        return showingAttackMenu ? ATTACK_ACTIONS : ROOT_ACTIONS;
-    }
-
-    private String[] getAbilityOptions(Combatant actor) {
-        List<String> labels = new ArrayList<>();
-        for (AbilityInstance ability : actor.abilities) {
-            String label = ability.getDefinition().getName();
-            if (!ability.isReady()) {
-                label += " [" + Math.max(1, Math.round(ability.getCurrentCooldown())) + "]";
-            }
-            labels.add(label);
-        }
-        return labels.toArray(new String[0]);
-    }
-
-    private String[] getLivingEnemyNames() {
-        List<String> names = new ArrayList<>();
-        for (Combatant enemy : enemyCombatants) {
-            if (enemy.health > 0f) {
-                names.add(enemy.name + " HP " + (int) enemy.health);
-            }
-        }
-        return names.toArray(new String[0]);
-    }
-
-    private String[] getLivingAllyNames() {
-        List<String> names = new ArrayList<>();
-        for (Combatant combatant : combatants) {
-            if (combatant.ally && combatant.health > 0f) {
-                names.add(combatant.name + " HP " + (int) combatant.health);
-            }
-        }
-        return names.toArray(new String[0]);
-    }
-
-    private Combatant getSelectedEnemy(int livingIndex) {
-        int seen = 0;
-        for (Combatant enemy : enemyCombatants) {
-            if (enemy.health <= 0f) {
-                continue;
-            }
-            if (seen == livingIndex) {
-                return enemy;
-            }
-            seen++;
-        }
-        return null;
-    }
-
-    private Combatant getSelectedAlly(int livingIndex) {
-        int seen = 0;
-        for (Combatant combatant : combatants) {
-            if (!combatant.ally || combatant.health <= 0f) {
-                continue;
-            }
-            if (seen == livingIndex) {
-                return combatant;
-            }
-            seen++;
-        }
-        return null;
-    }
-
-    private int countLivingEnemies() {
-        int count = 0;
-        for (Combatant enemy : enemyCombatants) {
-            if (enemy.health > 0f) {
-                count++;
-            }
-        }
-        return count;
-    }
-
-    private void chooseAbility(Combatant actor, int index) {
-        if (index < 0 || index >= actor.abilities.size()) {
-            return;
-        }
-        AbilityInstance ability = actor.abilities.get(index);
-        if (!ability.isReady()) {
-            battleLog.add(ability.getDefinition().getName() + " is still cooling down.");
-            return;
-        }
-
-        selectedActionIndex = index;
-        AbilityDefinition.TargetType targetType = ability.getDefinition().getTargetType();
-        if (targetType == AbilityDefinition.TargetType.SINGLE_ENEMY) {
-            if (countLivingEnemies() > 1) {
-                selectingTarget = true;
-                selectingAllyTarget = false;
-                selectingAbilityTarget = true;
-                showingAbilityMenu = false;
-            } else {
-                useAbility(actor, ability, getSelectedEnemy(0));
-                showingAbilityMenu = false;
-            }
-            return;
-        }
-        if (targetType == AbilityDefinition.TargetType.SINGLE_ALLY) {
-            selectingTarget = true;
-            selectingAllyTarget = true;
-            selectingAbilityTarget = true;
-            showingAbilityMenu = false;
-            return;
-        }
-
-        useAbility(actor, ability, null);
-        showingAbilityMenu = false;
-    }
-
-    private void chooseTargetAndResolve(Combatant actor, int targetIndex) {
-        if (selectingAbilityTarget && selectingAllyTarget) {
-            AbilityInstance ability = actor.abilities.get(selectedActionIndex);
-            Combatant target = getSelectedAlly(targetIndex);
-            if (target != null) {
-                useAbility(actor, ability, target);
-            }
-        } else if (selectingAbilityTarget) {
-            AbilityInstance ability = actor.abilities.get(selectedActionIndex);
-            Combatant target = getSelectedEnemy(targetIndex);
-            if (target != null) {
-                useAbility(actor, ability, target);
-            }
-        } else {
-            Combatant target = getSelectedEnemy(targetIndex);
-            if (target != null) {
-                performAttack(actor, selectedActionIndex, target);
-            }
-        }
-
-        selectingTarget = false;
-        selectingAllyTarget = false;
-        selectingAbilityTarget = false;
-    }
-
-    private void performAttack(Combatant actor, int attackIndex, Combatant target) {
-        if (target == null || target.health <= 0f) {
-            return;
-        }
-        float damage;
-        String attackName;
-
-        switch (attackIndex) {
-            case 0:
-                attackName = "Quick Slash";
-                damage = actor.strength * 1.15f + getEffectiveAgility(actor) * 0.35f - target.stamina * 0.45f;
-                break;
-            case 1:
-                attackName = "Power Crush";
-                damage = actor.strength * 1.75f + actor.stamina * 0.25f - target.stamina * 0.25f;
-                break;
-            case 2:
-                attackName = "Arc Pulse";
-                damage = actor.intelligence * 1.6f + getEffectiveAgility(actor) * 0.2f - target.stamina * 0.2f;
+    private void goBack() {
+        switch (mode) {
+            case ATTACK:
+            case ABILITY:
+            case TARGET_ENEMY:
+            case TARGET_ALLY:
+            case ANALYZE_TARGET:
+                mode = Mode.ROOT;
+                selectedIndex = 0;
+                selectedAttackIndex = -1;
+                selectedAbilityIndex = -1;
                 break;
             default:
-                return;
+                break;
         }
-
-        int appliedDamage = Math.max(3, Math.round(damage));
-        applyDamage(target, appliedDamage);
-        actor.animState = "attack";
-        actor.animTimer = 0.42f;
-        target.animState = "hurt";
-        target.animTimer = 0.32f;
-        battleLog.add(actor.name + " uses " + attackName + " on " + target.name + " for " + appliedDamage + " damage.");
-        lockTurnAdvance(0.42f);
     }
 
-    private void useAbility(Combatant actor, AbilityInstance ability, Combatant target) {
+    private void performAttack(BattleCombatant actor, BattleCombatant target, AttackMove move) {
+        if (actor == null || target == null || move == null) {
+            return;
+        }
+        if (Math.random() > actor.getStatusEffectManager().getPhysicalHitChanceMultiplier()) {
+            battleLog.add(actor.getName() + " misses " + target.getName() + ".");
+            endTurn(actor, move.speedCost);
+            return;
+        }
+        float weaponMultiplier = actor.getPartyIndex() >= 0
+            ? gameScreen.getWeaponDamageMultiplier(actor.getPartyIndex(), gameScreen.getEquippedWeaponType(actor.getPartyIndex()))
+            : 1f;
+        int damage = combatResolver.resolvePhysicalDamage(actor, target, move.multiplier, weaponMultiplier);
+        combatResolver.applyDamage(target, damage);
+        battleLog.add(actor.getName() + " uses " + move.name + " on " + target.getName() + " for " + damage + " damage.");
+        float multiplier = ElementalSystem.getMultiplier(move.element, target);
+        if (move.element != Element.NONE && multiplier != 1f) {
+            battleLog.add("Elemental hit: " + ElementalSystem.describeHit(multiplier) + ".");
+        }
+        awardWeaponProgress(actor, gameScreen.getEquippedWeaponType(actor.getPartyIndex()), move.name);
+        endTurn(actor, move.speedCost);
+    }
+
+    private void useAbility(BattleCombatant actor, AbilityInstance ability, BattleCombatant explicitTarget) {
+        if (actor == null || ability == null || !ability.isReady()) {
+            battleLog.add("That ability is unavailable.");
+            return;
+        }
+        if (!actor.getStatusEffectManager().canUseAbilities()) {
+            battleLog.add(actor.getName() + " is silenced and cannot use abilities.");
+            return;
+        }
         AbilityDefinition definition = ability.getDefinition();
-        switch (definition.getId()) {
-            case "power_strike":
-                if (target == null) {
-                    target = getSelectedEnemy(0);
-                }
-                if (target != null) {
-                    int damage = Math.max(6, Math.round(actor.strength * 1.4f + definition.getPower() - target.stamina * 0.25f));
-                    applyDamage(target, damage);
-                    battleLog.add(actor.name + " unleashes Power Strike on " + target.name + " for " + damage + " damage.");
-                    animateAction(actor, target);
-                }
+        switch (definition.getTargetType()) {
+            case SELF:
+                applyAbilityToTarget(actor, actor, ability);
                 break;
-            case "rapid_fire":
-                for (Combatant enemy : enemyCombatants) {
-                    if (enemy.health <= 0f) {
-                        continue;
-                    }
-                    int damage = Math.max(4, Math.round(actor.strength * 0.65f + definition.getPower() - enemy.stamina * 0.15f));
-                    applyDamage(enemy, damage);
-                    enemy.animState = "hurt";
-                    enemy.animTimer = 0.32f;
-                }
-                actor.animState = "attack";
-                actor.animTimer = 0.42f;
-                battleLog.add(actor.name + " sprays Rapid Fire across the enemy line.");
+            case SINGLE_ENEMY:
+            case SINGLE_ALLY:
+                applyAbilityToTarget(actor, explicitTarget, ability);
                 break;
-            case "heal_pulse":
-                for (Combatant ally : combatants) {
-                    if (!ally.ally || ally.health <= 0f) {
-                        continue;
-                    }
-                    int healAmount = Math.round(definition.getPower() + actor.intelligence * 0.35f);
-                    ally.health = Math.min(ally.maxHealth, ally.health + healAmount);
-                }
-                actor.animState = "attack";
-                actor.animTimer = 0.3f;
-                battleLog.add(actor.name + " releases a Heal Pulse across the party.");
-                break;
-            case "repair_aura":
-                for (Combatant ally : combatants) {
-                    if (!ally.ally || ally.health <= 0f) {
-                        continue;
-                    }
-                    int healAmount = Math.round(ability.getDefinition().getPower() * 3f + actor.intelligence * 0.25f);
-                    ally.health = Math.min(ally.maxHealth, ally.health + healAmount);
-                }
-                actor.animState = "attack";
-                actor.animTimer = 0.3f;
-                battleLog.add(actor.name + " coats the team in a Repair Aura.");
-                break;
-            case "dash":
-                actor.agilityBoost = Math.max(actor.agilityBoost, 10f);
-                actor.defending = true;
-                actor.animState = "attack";
-                actor.animTimer = 0.3f;
-                battleLog.add(actor.name + " dashes into position and sharpens their timing.");
-                break;
-            case "scan":
-                if (target == null) {
-                    target = getSelectedEnemy(0);
-                }
-                if (target != null) {
-                    target.stamina = Math.max(1f, target.stamina - 4f);
-                    battleLog.add(actor.name + " scans " + target.name + ": STR " + (int) target.strength
-                        + "  INT " + (int) target.intelligence + ". Armor weakened.");
-                    animateAction(actor, target);
+            case ALL_ENEMIES:
+                for (BattleCombatant target : livingEnemies()) {
+                    applyAbilityToTarget(actor, target, ability);
                 }
                 break;
-            case "shield_wall":
-                actor.defending = true;
-                actor.staminaBoost = Math.max(actor.staminaBoost, 8f);
-                actor.animState = "attack";
-                actor.animTimer = 0.3f;
-                battleLog.add(actor.name + " braces behind a Shield Wall.");
-                break;
-            case "taunt":
-                actor.tauntTurns = 2;
-                actor.animState = "attack";
-                actor.animTimer = 0.3f;
-                battleLog.add(actor.name + " taunts the enemy group and draws their focus.");
+            case ALL_ALLIES:
+                for (BattleCombatant target : livingAllies()) {
+                    applyAbilityToTarget(actor, target, ability);
+                }
                 break;
             default:
-                if (definition.getType() == AbilityDefinition.AbilityType.HEAL && target != null) {
-                    int healAmount = Math.round(definition.getPower() + actor.intelligence * 0.25f);
-                    target.health = Math.min(target.maxHealth, target.health + healAmount);
-                    battleLog.add(actor.name + " restores " + healAmount + " HP to " + target.name + ".");
-                    animateAction(actor, target);
-                }
                 break;
         }
-
         ability.use();
-        lockTurnAdvance(0.4f);
+        recordAbilityGain(actor, ability, ProficiencyTracker.xpForAbilityUse());
+        awardWeaponProgress(actor, definition.getWeaponType(), definition.getName());
+        endTurn(actor, definition.getSpeedCost());
     }
 
-    private void animateAction(Combatant actor, Combatant target) {
-        actor.animState = "attack";
-        actor.animTimer = 0.42f;
-        if (target != null) {
-            target.animState = "hurt";
-            target.animTimer = 0.32f;
+    private void applyAbilityToTarget(BattleCombatant actor, BattleCombatant target, AbilityInstance ability) {
+        AbilityDefinition definition = ability.getDefinition();
+        if (target == null) {
+            return;
+        }
+        switch (definition.getType()) {
+            case DAMAGE:
+                int damage = combatResolver.resolveAbilityDamage(actor, target, definition, ability.getPowerMultiplier());
+                combatResolver.applyDamage(target, damage);
+                if (damage < 0) {
+                    battleLog.add(target.getName() + " absorbs " + definition.getName() + " and restores " + Math.abs(damage) + " HP.");
+                } else {
+                    battleLog.add(actor.getName() + " casts " + definition.getName() + " on " + target.getName() + " for " + damage + " damage.");
+                    if (definition.getAppliedStatus() != null) {
+                        target.getStatusEffectManager().apply(definition.getAppliedStatus(), Math.max(1, definition.getStatusTurns()));
+                    }
+                }
+                if (definition.getElement() != Element.NONE) {
+                    float multiplier = ElementalSystem.getMultiplier(definition.getElement(), target);
+                    if (multiplier != 1f) {
+                        battleLog.add("Elemental hit: " + ElementalSystem.describeHit(multiplier) + ".");
+                    }
+                }
+                break;
+            case HEAL:
+                int healAmount = combatResolver.resolveHealing(actor, definition, ability.getPowerMultiplier());
+                target.heal(healAmount);
+                battleLog.add(actor.getName() + " restores " + healAmount + " HP to " + target.getName() + " with " + definition.getName() + ".");
+                break;
+            case BUFF:
+            case UTILITY:
+                if (definition.getAppliedStatus() != null) {
+                    target.getStatusEffectManager().apply(definition.getAppliedStatus(), Math.max(1, definition.getStatusTurns()));
+                }
+                battleLog.add(actor.getName() + " uses " + definition.getName() + " on " + target.getName() + ".");
+                break;
+            case DEBUFF:
+                if (definition.getAppliedStatus() != null) {
+                    target.getStatusEffectManager().apply(definition.getAppliedStatus(), Math.max(1, definition.getStatusTurns()));
+                }
+                battleLog.add(actor.getName() + " afflicts " + target.getName() + " with " + definition.getName() + ".");
+                break;
+            default:
+                break;
         }
     }
 
-    private void defend(Combatant actor) {
-        actor.defending = true;
-        battleLog.add(actor.name + " takes a defensive stance.");
-        lockTurnAdvance(0.22f);
+    private void analyzeEnemy(BattleCombatant actor, BattleCombatant enemy) {
+        int bonusLevels = actor.getPartyIndex() >= 0 && hasAbility(actor, "scan") ? 2 : 1;
+        int scanLevel = bestiaryManager.recordScan(enemy.getId(), bonusLevels);
+        battleLog.add(actor.getName() + " analyzes " + enemy.getName() + ".");
+        if (scanLevel >= 1) {
+            battleLog.add("HP " + (int) enemy.getHealth() + "/" + (int) enemy.getMaxHealth() + " | Element " + describeElements(enemy));
+        }
+        if (scanLevel >= 2) {
+            battleLog.add("STR " + (int) enemy.getStrength() + " INT " + (int) enemy.getIntelligence() + " STA " + (int) enemy.getStamina());
+        }
+        if (scanLevel >= 3) {
+            battleLog.add("Scan complete. Gold reward: " + enemy.getRewardGold() + ".");
+        }
+        endTurn(actor, 50);
     }
 
-    private void useItem(Combatant actor) {
+    private String describeElements(BattleCombatant enemy) {
+        if (!enemy.getWeaknesses().isEmpty()) {
+            return "Weak " + enemy.getWeaknesses().get(0).name();
+        }
+        if (!enemy.getResistances().isEmpty()) {
+            return "Resist " + enemy.getResistances().get(0).name();
+        }
+        return "Neutral";
+    }
+
+    private void defend(BattleCombatant actor) {
+        actor.getStatusEffectManager().apply(StatusEffectType.DEFENDING, 1);
+        battleLog.add(actor.getName() + " takes a defensive stance.");
+        endTurn(actor, 40);
+    }
+
+    private void useItem(BattleCombatant actor) {
         if (healingPotions <= 0) {
             battleLog.add("No repair kits left.");
             return;
         }
-
         healingPotions--;
-        int healed = Math.round(26f + actor.stamina * 0.8f);
-        actor.health = Math.min(actor.maxHealth, actor.health + healed);
-        battleLog.add(actor.name + " uses a repair kit and recovers " + healed + " HP.");
-        lockTurnAdvance(0.28f);
+        int healAmount = Math.max(10, Math.round(actor.getMaxHealth() * 0.22f));
+        actor.heal(healAmount);
+        battleLog.add(actor.getName() + " uses a repair kit and restores " + healAmount + " HP.");
+        endTurn(actor, 70);
     }
 
-    private void attemptRun(Combatant actor) {
-        Combatant fastestEnemy = getFastestLivingEnemy();
-        float enemyAgility = fastestEnemy != null ? getEffectiveAgility(fastestEnemy) : 0f;
-        float escapeChance = 0.45f + Math.max(0f, getEffectiveAgility(actor) - enemyAgility) / 100f;
-        if (Math.random() < Math.min(0.9f, escapeChance)) {
-            battleLog.add(actor.name + " leads the party to safety.");
+    private void attemptFlee(BattleCombatant actor) {
+        float partySpeed = 0f;
+        for (BattleCombatant ally : livingAllies()) {
+            partySpeed += ally.getEffectiveSpeed();
+        }
+        float enemySpeed = 0f;
+        for (BattleCombatant enemy : livingEnemies()) {
+            enemySpeed += enemy.getEffectiveSpeed();
+        }
+        float partyAverage = livingAllies().isEmpty() ? 0f : partySpeed / livingAllies().size();
+        float enemyAverage = livingEnemies().isEmpty() ? 0f : enemySpeed / livingEnemies().size();
+        float fleeChance = Math.min(0.9f, Math.max(0.2f, 0.5f + ((partyAverage - enemyAverage) / 100f)));
+        if (Math.random() <= fleeChance) {
+            battleLog.add(actor.getName() + " leads the party to safety.");
             finishBattle(false, true);
-        } else {
-            battleLog.add(actor.name + " fails to escape.");
-            lockTurnAdvance(0.24f);
+            return;
         }
+        battleLog.add(actor.getName() + " cannot escape.");
+        endTurn(actor, 100);
     }
 
-    private Combatant getFastestLivingEnemy() {
-        Combatant fastest = null;
-        for (Combatant enemy : enemyCombatants) {
-            if (enemy.health <= 0f) {
-                continue;
-            }
-            if (fastest == null || getEffectiveAgility(enemy) > getEffectiveAgility(fastest)) {
-                fastest = enemy;
-            }
-        }
-        return fastest;
-    }
-
-    private void enemyAction(Combatant actor) {
-        Combatant target = chooseEnemyTarget();
+    private void executeEnemyTurn(BattleCombatant actor) {
+        BattleCombatant target = chooseEnemyTarget();
         if (target == null) {
             finishBattle(false, false);
             return;
         }
-
-        boolean usesTech = Math.random() < 0.35f;
-        float rawDamage = usesTech
-            ? actor.intelligence * 1.45f + getEffectiveAgility(actor) * 0.15f - getEffectiveStamina(target) * 0.25f
-            : actor.strength * 1.35f + getEffectiveAgility(actor) * 0.2f - getEffectiveStamina(target) * 0.35f;
-        int appliedDamage = Math.max(2, Math.round(rawDamage));
-        applyDamage(target, appliedDamage);
-        actor.animState = "attack";
-        actor.animTimer = 0.42f;
-        target.animState = "hurt";
-        target.animTimer = 0.32f;
-        battleLog.add(actor.name + (usesTech ? " uses Mind Lance on " : " strikes ")
-            + target.name + " for " + appliedDamage + " damage.");
-        lockTurnAdvance(0.42f);
-    }
-
-    private float getEffectiveStamina(Combatant target) {
-        return target.stamina + target.staminaBoost;
-    }
-
-    private void applyDamage(Combatant target, int appliedDamage) {
-        int reducedDamage = target.defending ? Math.max(1, Math.round(appliedDamage * 0.5f)) : appliedDamage;
-        target.health = Math.max(0f, target.health - reducedDamage);
-        if (target.defending) {
-            target.defending = false;
-        }
-    }
-
-    private void lockTurnAdvance(float durationSeconds) {
-        actionLockTimer = Math.max(actionLockTimer, durationSeconds);
-        pendingTurnAdvance = true;
-    }
-
-    private Combatant chooseEnemyTarget() {
-        Combatant tauntingTarget = null;
-        for (Combatant combatant : combatants) {
-            if (combatant.ally && combatant.health > 0f && combatant.tauntTurns > 0) {
-                tauntingTarget = combatant;
-                break;
-            }
-        }
-        if (tauntingTarget != null) {
-            return tauntingTarget;
-        }
-
-        List<Combatant> allies = new ArrayList<>();
-        for (Combatant combatant : combatants) {
-            if (combatant.ally && combatant.health > 0f) {
-                allies.add(combatant);
-            }
-        }
-        if (allies.isEmpty()) {
-            return null;
-        }
-
-        allies.sort(Comparator
-            .comparingDouble((Combatant c) -> c.health)
-            .thenComparing(c -> c.partyIndex));
-        return allies.get(0);
-    }
-
-    private void endActorTurn() {
-        if (battleResolved && !resultsVisible) {
-            return;
-        }
-
-        if (!hasLivingEnemies()) {
-            finishBattle(true, false);
-            return;
-        }
-        if (!hasLivingAllies()) {
-            finishBattle(false, false);
-            return;
-        }
-
-        showingAttackMenu = false;
-        showingAbilityMenu = false;
-        selectingTarget = false;
-        selectingAllyTarget = false;
-        selectingAbilityTarget = false;
-
-        Combatant actor = getCurrentActor();
-        if (actor != null && actor.tauntTurns > 0) {
-            actor.tauntTurns--;
-        }
-
-        rebuildTurnOrder();
-        if (turnOrder.isEmpty()) {
-            return;
-        }
-
-        turnIndex++;
-        if (turnIndex >= turnOrder.size()) {
-            turnIndex = 0;
-            rebuildTurnOrder();
-        }
-    }
-
-    private Combatant getCurrentActor() {
-        rebuildTurnOrder();
-        if (turnOrder.isEmpty()) {
-            return null;
-        }
-        if (turnIndex >= turnOrder.size()) {
-            turnIndex = 0;
-        }
-        return turnOrder.get(turnIndex);
-    }
-
-    private boolean hasLivingAllies() {
-        for (Combatant combatant : combatants) {
-            if (combatant.ally && combatant.health > 0f) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private boolean hasLivingEnemies() {
-        for (Combatant enemy : enemyCombatants) {
-            if (enemy.health > 0f) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private void drawBackdrop(float w, float h) {
-        shapeRenderer.setProjectionMatrix(camera.combined);
-        batch.setProjectionMatrix(camera.combined);
-        batch.begin();
-        batch.setColor(1f, 1f, 1f, 1f);
-        batch.draw(backgroundTexture, 0f, 0f, w, h);
-        batch.setColor(0f, 0f, 0f, 0.35f);
-        batch.draw(buttonTexture, 0f, 0f, w, h);
-        batch.setColor(Color.WHITE);
-        titleFont.setColor(1f, 0.88f, 0.55f, 1f);
-        titleFont.draw(batch, "BATTLE", 58f, h - 46f);
-        bodyFont.setColor(Color.WHITE);
-        Combatant actor = getCurrentActor();
-        String label = actionLockTimer > 0f
-            ? "Action resolving..."
-            : actor != null ? actor.name + "'s turn" : "Resolving...";
-        bodyFont.draw(batch, label, 60f, h - 82f);
-        batch.end();
-    }
-
-    private void drawEnemyPanel(float w, float h) {
-        shapeRenderer.setProjectionMatrix(camera.combined);
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-        shapeRenderer.setColor(0.10f, 0.11f, 0.15f, 0.96f);
-        shapeRenderer.rect(w - 400f, h - 340f, 340f, 250f);
-        shapeRenderer.end();
-
-        batch.begin();
-        bodyFont.setColor(Color.WHITE);
-        bodyFont.draw(batch, "Enemy Team", w - 370f, h - 110f);
-
-        int row = 0;
-        for (Combatant enemy : enemyCombatants) {
-            float panelY = h - 150f - (row * 66f);
-            if (enemy.health <= 0f) {
-                bodyFont.setColor(0.7f, 0.7f, 0.7f, 1f);
-            } else {
-                bodyFont.setColor(Color.WHITE);
-            }
-            drawShadow(w - 315f, panelY - 10f, 60f, 18f, 0.45f);
-            drawAnimatedSprite(getCombatantFrame(enemy, enemyAnimations[row % enemyAnimations.length]), enemy.facing,
-                w - 350f, panelY - 36f, 52f, 52f);
-            bodyFont.draw(batch, enemy.name, w - 280f, panelY + 18f);
-            bodyFont.draw(batch, enemy.health > 0f
-                ? "HP " + (int) enemy.health + "/" + (int) enemy.maxHealth
-                : "DOWN",
-                w - 280f, panelY - 4f);
-            bodyFont.draw(batch, statsLine(enemy), w - 280f, panelY - 26f);
-            row++;
-        }
-        batch.end();
-
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-        row = 0;
-        for (Combatant enemy : enemyCombatants) {
-            float barY = h - 163f - (row * 66f);
-            shapeRenderer.setColor(0.16f, 0.16f, 0.2f, 1f);
-            shapeRenderer.rect(w - 280f, barY, 180f, 10f);
-            shapeRenderer.setColor(0.82f, 0.24f, 0.24f, 1f);
-            float hpPercent = enemy.maxHealth > 0f ? Math.max(0f, enemy.health / enemy.maxHealth) : 0f;
-            shapeRenderer.rect(w - 280f, barY, 180f * hpPercent, 10f);
-            row++;
-        }
-        shapeRenderer.end();
-    }
-
-    private void drawPartyPanel(float h) {
-        shapeRenderer.setProjectionMatrix(camera.combined);
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-        shapeRenderer.setColor(0.10f, 0.11f, 0.15f, 0.96f);
-        shapeRenderer.rect(50f, 180f, 420f, h - 320f);
-        shapeRenderer.end();
-
-        batch.begin();
-        bodyFont.setColor(Color.WHITE);
-        int row = 0;
-        for (Combatant combatant : combatants) {
-            if (!combatant.ally) {
-                continue;
-            }
-            float y = h - 146f - (row * 54f);
-            TextureRegion sprite = combatant.partyIndex < 0
-                ? getCombatantFrame(combatant, playerAnimation)
-                : getCombatantFrame(combatant, robotAnimations[combatant.partyIndex % robotAnimations.length]);
-            drawShadow(110f, y - 10f, 46f, 14f, 0.4f);
-            drawAnimatedSprite(sprite, combatant.facing, 58f, y - 42f, 44f, 44f);
-            String hpText = combatant.health > 0f
-                ? (int) combatant.health + "/" + (int) combatant.maxHealth
-                : "DOWN";
-            bodyFont.draw(batch, combatant.name + "  HP " + hpText, 112f, y);
-            bodyFont.draw(batch, statsLine(combatant), 112f, y - 22f);
-            row++;
-        }
-        bodyFont.draw(batch, "Repair Kits: " + healingPotions, 72f, 210f);
-        batch.end();
-    }
-
-    private void drawTurnOrderPanel(float w, float h) {
-        shapeRenderer.setProjectionMatrix(camera.combined);
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-        shapeRenderer.setColor(0.10f, 0.11f, 0.15f, 0.96f);
-        shapeRenderer.rect(w - 400f, 180f, 340f, 190f);
-        shapeRenderer.end();
-
-        batch.begin();
-        bodyFont.setColor(Color.WHITE);
-        bodyFont.draw(batch, "Turn Order", w - 370f, 345f);
-        for (int i = 0; i < turnOrder.size(); i++) {
-            Combatant combatant = turnOrder.get(i);
-            String marker = i == turnIndex ? "> " : "  ";
-            bodyFont.draw(batch, marker + combatant.name + " (" + (int) getEffectiveAgility(combatant) + " AGI)", w - 370f, 315f - (i * 24f));
-        }
-        batch.end();
-    }
-
-    private void drawLogPanel(float w, float h) {
-        shapeRenderer.setProjectionMatrix(camera.combined);
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-        shapeRenderer.setColor(0.10f, 0.11f, 0.15f, 0.96f);
-        shapeRenderer.rect(500f, 70f, w - 560f, 120f);
-        shapeRenderer.end();
-
-        batch.begin();
-        bodyFont.setColor(Color.WHITE);
-        int lineCount = Math.min(4, battleLog.size());
-        for (int i = 0; i < lineCount; i++) {
-            String line = battleLog.get(battleLog.size() - lineCount + i);
-            bodyFont.draw(batch, line, 520f, 165f - (i * 24f));
-        }
-        batch.end();
-    }
-
-    private void drawActions(float w, float h) {
-        if (resultsVisible) {
-            return;
-        }
-
-        Combatant actor = getCurrentActor();
-        if (actor == null || !actor.ally) {
-            return;
-        }
-
-        String[] options = getCurrentOptions(actor);
-        float buttonW = 200f;
-        float buttonH = 46f;
-        float buttonGap = 16f;
-        float startX = 60f;
-        float y = 70f;
-
-        batch.begin();
-        for (int i = 0; i < options.length; i++) {
-            float bx = startX + i * (buttonW + buttonGap);
-            batch.setColor(i == hoveredOption ? Color.WHITE : new Color(0.82f, 0.82f, 0.82f, 1f));
-            batch.draw(buttonTexture, bx, y, buttonW, buttonH);
-        }
-        batch.setColor(Color.WHITE);
-        bodyFont.setColor(Color.WHITE);
-        String heading = selectingTarget
-            ? (selectingAllyTarget ? "Choose ally target" : "Choose enemy target")
-            : showingAbilityMenu ? "Choose ability"
-            : showingAttackMenu ? "Choose attack"
-            : "Choose action";
-        bodyFont.draw(batch, heading, startX, y + 72f);
-        for (int i = 0; i < options.length; i++) {
-            float bx = startX + i * (buttonW + buttonGap);
-            String label = (i + 1) + ". " + options[i];
-            layout.setText(buttonFont, label);
-            buttonFont.setColor(Color.WHITE);
-            buttonFont.draw(batch, label, bx + (buttonW - layout.width) / 2f, y + (buttonH + layout.height) / 2f);
-        }
-        if (showingAttackMenu || showingAbilityMenu || selectingTarget) {
-            bodyFont.draw(batch, "Esc: Back", startX + 670f, y + 72f);
-        }
-        batch.end();
-    }
-
-    private void drawResultsOverlay(float w, float h) {
-        shapeRenderer.setProjectionMatrix(camera.combined);
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-        shapeRenderer.setColor(0f, 0f, 0f, 0.76f);
-        shapeRenderer.rect(0f, 0f, w, h);
-        shapeRenderer.setColor(0.08f, 0.09f, 0.14f, 0.98f);
-        shapeRenderer.rect(w * 0.24f, h * 0.22f, w * 0.52f, h * 0.46f);
-        shapeRenderer.end();
-
-        batch.begin();
-        titleFont.setColor(1f, 0.88f, 0.55f, 1f);
-        titleFont.draw(batch, "VICTORY", w * 0.34f, h * 0.62f);
-        bodyFont.setColor(Color.WHITE);
-        bodyFont.draw(batch, "Gold earned: " + previewGoldEarned, w * 0.31f, h * 0.53f);
-        bodyFont.draw(batch, "Experience earned: " + previewExperienceEarned, w * 0.31f, h * 0.48f);
-        bodyFont.draw(batch, "Level-ups: " + previewLevelUps, w * 0.31f, h * 0.43f);
-        bodyFont.draw(batch, "Repair kits remaining: " + healingPotions, w * 0.31f, h * 0.38f);
-        bodyFont.draw(batch, "Press Enter to return to the field.", w * 0.31f, h * 0.30f);
-        batch.end();
-    }
-
-    private String statsLine(Combatant combatant) {
-        return "AGI " + (int) getEffectiveAgility(combatant)
-            + "  STR " + (int) combatant.strength
-            + "  INT " + (int) combatant.intelligence
-            + "  STA " + (int) getEffectiveStamina(combatant);
-    }
-
-    private TextureRegion getCombatantFrame(Combatant combatant, AnimationSet animationSet) {
-        TextureRegion[] frames = animationSet.getFrames(combatant.facing, false);
-        if ("attack".equals(combatant.animState)) {
-            frames = animationSet.getAttackFrames(combatant.facing);
-        } else if ("hurt".equals(combatant.animState)) {
-            frames = animationSet.getHurtFrames(combatant.facing);
-        }
-        int index = (int) (battleAnimationTime / 0.10f) % frames.length;
-        return frames[index];
-    }
-
-    private void drawShadow(float x, float y, float width, float height, float alpha) {
-        batch.setColor(1f, 1f, 1f, alpha);
-        batch.draw(shadowTexture, x - width / 2f, y - height / 2f, width, height);
-        batch.setColor(Color.WHITE);
-    }
-
-    private void drawAnimatedSprite(TextureRegion frame, Vector2 facing, float x, float y, float width, float height) {
-        boolean flip = Math.abs(facing.x) > Math.abs(facing.y) && facing.x > 0f;
-        if (flip) {
-            batch.draw(frame, x + width, y, -width, height);
+        int speedCost = 80;
+        if ("RANGED".equals(actor.getAiProfile()) || "BOSS".equals(actor.getAiProfile())) {
+            int damage = combatResolver.resolveAbilityDamage(actor, target, createEnemyAbility());
+            combatResolver.applyDamage(target, damage);
+            battleLog.add(actor.getName() + " unleashes Mind Lance on " + target.getName() + " for " + Math.abs(damage) + " damage.");
+            speedCost = 95;
         } else {
-            batch.draw(frame, x, y, width, height);
+            int damage = combatResolver.resolvePhysicalDamage(actor, target, 1.2f);
+            combatResolver.applyDamage(target, damage);
+            battleLog.add(actor.getName() + " strikes " + target.getName() + " for " + damage + " damage.");
         }
+        endTurn(actor, speedCost);
     }
 
-    private String joinEnemyNames(String[] names) {
-        if (names == null || names.length == 0) {
-            return "Unknown threat";
-        }
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < names.length; i++) {
-            if (i > 0) {
-                sb.append(i == names.length - 1 ? " and " : ", ");
+    private AbilityDefinition createEnemyAbility() {
+        AbilityDefinition definition = new AbilityDefinition(
+            "enemy_mind_lance",
+            "Mind Lance",
+            AbilityDefinition.AbilityType.DAMAGE,
+            AbilityDefinition.TargetType.SINGLE_ENEMY,
+            0f,
+            18f,
+            0f,
+            "Enemy tech strike"
+        );
+        definition.setElement(Element.LIGHTNING);
+        definition.setSpeedCost(95);
+        return definition;
+    }
+
+    private BattleCombatant chooseEnemyTarget() {
+        for (BattleCombatant ally : livingAllies()) {
+            if (ally.getStatusEffectManager().has(StatusEffectType.TAUNT)) {
+                return ally;
             }
-            sb.append(names[i]);
         }
-        return sb.toString();
+        BattleCombatant lowest = null;
+        for (BattleCombatant ally : livingAllies()) {
+            if (lowest == null || ally.getHealth() < lowest.getHealth()) {
+                lowest = ally;
+            }
+        }
+        return lowest;
+    }
+
+    private void endTurn(BattleCombatant actor, int speedCost) {
+        tickCooldowns();
+        appendLogs(actor.getStatusEffectManager().onActionTaken(actor));
+        appendLogs(actor.getStatusEffectManager().endTurn(actor));
+        battleState.getTurnTimeline().consumeTurn(actor, speedCost);
+        activeActor = null;
+        turnInitialized = false;
+        mode = Mode.ROOT;
+        selectedIndex = 0;
+        selectedAttackIndex = -1;
+        selectedAbilityIndex = -1;
+        actionDelay = 0.18f;
+    }
+
+    private void tickCooldowns() {
+        for (BattleCombatant combatant : battleState.getCombatants()) {
+            for (AbilityInstance ability : combatant.getAbilities()) {
+                ability.update(1f);
+            }
+        }
     }
 
     private void finishBattle(boolean enemyDefeated, boolean escaped) {
-        if (battleResolved) {
-            return;
-        }
-
         BattleResult result = new BattleResult();
-        result.playerHealth = combatants.isEmpty() ? 0f : combatants.get(0).health;
-        result.robotHealth = new float[encounter.robotHealth != null ? encounter.robotHealth.length : 0];
-        for (int i = 0; i < result.robotHealth.length; i++) {
-            int combatantIndex = i + 1;
-            if (combatantIndex < combatants.size()) {
-                result.robotHealth[i] = combatants.get(combatantIndex).health;
-            }
-        }
-        result.enemyHealth = new float[enemyCombatants.size()];
-        result.goldEarned = new int[enemyCombatants.size()];
-        result.experienceEarned = new int[enemyCombatants.size()];
-        result.enemyReferences = encounter.enemyReferences != null
-            ? encounter.enemyReferences.clone()
-            : new Object[enemyCombatants.size()];
-        for (int i = 0; i < enemyCombatants.size(); i++) {
-            Combatant enemy = enemyCombatants.get(i);
-            result.enemyHealth[i] = enemy.health;
-            result.goldEarned[i] = enemy.health <= 0f && enemyDefeated ? encounter.enemyRewardGold[i] : 0;
-            result.experienceEarned[i] = enemy.health <= 0f && enemyDefeated ? encounter.enemyExperienceReward[i] : 0;
-        }
+        result.playerHealth = battleState.getAllies().isEmpty() ? 0f : battleState.getAllies().get(0).getHealth();
+        result.robotHealth = buildRobotHealth();
+        result.enemyHealth = buildEnemyHealth();
         result.healingPotions = healingPotions;
         result.enemyDefeated = enemyDefeated;
         result.enemyEscaped = escaped;
+        result.goldEarned = buildGoldRewards(enemyDefeated);
+        result.experienceEarned = buildExperienceRewards(enemyDefeated);
+        result.enemyReferences = encounter.enemyReferences;
+        result.updatedBestiary = bestiaryManager.exportData();
+        result.droppedEquipmentIds = buildDroppedEquipmentIds(enemyDefeated);
+        result.droppedEquipmentNames = resolveDropNames(result.droppedEquipmentIds);
 
-        if (enemyDefeated) {
-            pendingResult = result;
-            previewGoldEarned = sum(result.goldEarned);
-            previewExperienceEarned = sum(result.experienceEarned);
-            previewLevelUps = gameScreen.previewLevelUps(previewExperienceEarned);
-            resultsVisible = true;
+        if (!enemyDefeated) {
+            gameScreen.resolveBattle(result);
             return;
         }
 
-        battleResolved = true;
-        gameScreen.resolveBattle(result);
+        closingToResults = true;
+        GameScreen.BattleProgressionPreview robotPreview = gameScreen.previewRobotBattleProgression(sum(result.experienceEarned));
+        BattleResultSummary summary = new BattleResultSummary(
+            sum(result.goldEarned),
+            sum(result.experienceEarned),
+            gameScreen.previewLevelUps(sum(result.experienceEarned)),
+            countBestiaryUpdates(),
+            result.droppedEquipmentNames,
+            toProgressLines(abilityXpGains, "XP"),
+            toProgressLines(weaponXpGains, "XP"),
+            masteryUnlocks.toArray(new String[0]),
+            robotPreview.robotProgress.toArray(new String[0])
+        );
+        screenManager.push(new BattleResultsScreen(game, screenManager, gameScreen, result, summary));
+    }
+
+    private void recordAbilityGain(BattleCombatant actor, AbilityInstance ability, int xpAmount) {
+        if (actor == null || ability == null || !actor.isAlly() || actor.getPartyIndex() < 0) {
+            return;
+        }
+        int beforeLevel = ability.getProficiencyLevel();
+        int levelsGained = ability.addProficiencyXp(xpAmount);
+        String key = actor.getName() + ": " + ability.getDefinition().getName();
+        abilityXpGains.put(key, abilityXpGains.getOrDefault(key, 0) + xpAmount);
+        if (levelsGained > 0) {
+            masteryUnlocks.add(key + " proficiency reached Lv." + ability.getProficiencyLevel() + ".");
+        }
+        List<String> newUnlocks = gameScreen.applyAbilityMasteryUnlocks(actor.getPartyIndex());
+        masteryUnlocks.addAll(newUnlocks);
+        if (!newUnlocks.isEmpty()) {
+            syncActorAbilities(actor);
+        }
+    }
+
+    private void awardWeaponProgress(BattleCombatant actor, WeaponType weaponType, String actionName) {
+        if (actor == null || !actor.isAlly() || actor.getPartyIndex() < 0 || weaponType == null
+            || weaponType == WeaponType.NONE) {
+            return;
+        }
+        GameScreen.WeaponGain gain = gameScreen.awardWeaponProficiency(
+            actor.getPartyIndex(),
+            weaponType,
+            com.rogueforge.game.progression.WeaponProficiencyTracker.xpForAttack()
+        );
+        String key = actor.getName() + ": " + weaponType.name();
+        weaponXpGains.put(key, weaponXpGains.getOrDefault(key, 0)
+            + com.rogueforge.game.progression.WeaponProficiencyTracker.xpForAttack());
+        if (gain != null && gain.toLevel > gain.fromLevel) {
+            masteryUnlocks.add(actor.getName() + " raised " + weaponType.name() + " proficiency to Lv." + gain.toLevel
+                + " with " + actionName + ".");
+            for (String unlockLabel : gain.unlockLabels) {
+                masteryUnlocks.add(actor.getName() + " unlocked " + unlockLabel + " for " + weaponType.name() + ".");
+            }
+        }
+    }
+
+    private void syncActorAbilities(BattleCombatant actor) {
+        if (actor == null || actor.getPartyIndex() < 0) {
+            return;
+        }
+        Map<Object, AbilityInstance> byProgression = new HashMap<>();
+        Map<String, AbilityInstance> byId = new HashMap<>();
+        for (AbilityInstance existing : actor.getAbilities()) {
+            byId.put(existing.getDefinition().getId(), existing);
+            if (existing.getProgressionState() != null) {
+                byProgression.put(existing.getProgressionState(), existing);
+            }
+        }
+
+        List<AbilityInstance> refreshed = gameScreen.getPartyAbilityInstances(actor.getPartyIndex());
+        for (AbilityInstance replacement : refreshed) {
+            AbilityInstance source = replacement.getProgressionState() != null
+                ? byProgression.get(replacement.getProgressionState())
+                : byId.get(replacement.getDefinition().getId());
+            if (source != null) {
+                replacement.setCurrentCooldown(source.getCurrentCooldown());
+            }
+        }
+        actor.getAbilities().clear();
+        actor.getAbilities().addAll(refreshed);
+    }
+
+    private String[] toProgressLines(Map<String, Integer> values, String suffix) {
+        List<String> lines = new ArrayList<>();
+        for (Map.Entry<String, Integer> entry : values.entrySet()) {
+            lines.add(entry.getKey() + " +" + entry.getValue() + " " + suffix);
+        }
+        return lines.toArray(new String[0]);
+    }
+
+    private String[] buildDroppedEquipmentIds(boolean enemyDefeated) {
+        if (!enemyDefeated) {
+            return new String[0];
+        }
+        List<EquipmentItem> catalog = gameScreen.getFullEquipmentCatalog();
+        List<String> drops = new ArrayList<>();
+        for (BattleCombatant enemy : battleState.getEnemies()) {
+            if (enemy.isAlive()) {
+                continue;
+            }
+            if (Math.random() > getDropChance(enemy.getRank())) {
+                continue;
+            }
+            EquipmentItem drop = chooseDropForRank(catalog, enemy.getRank(), drops);
+            if (drop != null) {
+                drops.add(drop.getId());
+            }
+        }
+        return drops.toArray(new String[0]);
+    }
+
+    private float getDropChance(String rank) {
+        switch (rank) {
+            case "B":
+            case "A":
+            case "S":
+                return 0.45f;
+            case "C":
+            case "D":
+                return 0.3f;
+            default:
+                return 0.2f;
+        }
+    }
+
+    private EquipmentItem chooseDropForRank(List<EquipmentItem> catalog, String rank, List<String> existingDrops) {
+        int maxTier = maxTierForRank(rank);
+        List<EquipmentItem> eligible = new ArrayList<>();
+        for (EquipmentItem item : catalog) {
+            if (item.getTier() <= maxTier && !existingDrops.contains(item.getId())) {
+                eligible.add(item);
+            }
+        }
+        if (eligible.isEmpty()) {
+            return null;
+        }
+        return eligible.get((int) (Math.random() * eligible.size()));
+    }
+
+    private int maxTierForRank(String rank) {
+        switch (rank) {
+            case "S":
+            case "A":
+            case "B":
+                return 3;
+            case "C":
+            case "D":
+            case "E":
+                return 2;
+            default:
+                return 1;
+        }
+    }
+
+    private String[] resolveDropNames(String[] ids) {
+        String[] names = new String[ids != null ? ids.length : 0];
+        for (int i = 0; i < names.length; i++) {
+            EquipmentItem item = gameScreen.findEquipmentItem(ids[i]);
+            names[i] = item != null ? item.getName() : ids[i];
+        }
+        return names;
+    }
+
+    private int countBestiaryUpdates() {
+        int updates = 0;
+        for (BattleCombatant enemy : battleState.getEnemies()) {
+            if (bestiaryManager.getScanLevel(enemy.getId()) > gameScreen.getBestiaryScanLevel(enemy.getId())) {
+                updates++;
+            }
+        }
+        return updates;
+    }
+
+    private float[] buildRobotHealth() {
+        List<BattleCombatant> allies = battleState.getAllies();
+        if (allies.size() <= 1) {
+            return new float[0];
+        }
+        float[] values = new float[allies.size() - 1];
+        for (int i = 1; i < allies.size(); i++) {
+            values[i - 1] = allies.get(i).getHealth();
+        }
+        return values;
+    }
+
+    private float[] buildEnemyHealth() {
+        List<BattleCombatant> enemies = battleState.getEnemies();
+        float[] values = new float[enemies.size()];
+        for (int i = 0; i < enemies.size(); i++) {
+            values[i] = enemies.get(i).getHealth();
+        }
+        return values;
+    }
+
+    private int[] buildGoldRewards(boolean enemyDefeated) {
+        List<BattleCombatant> enemies = battleState.getEnemies();
+        int[] values = new int[enemies.size()];
+        for (int i = 0; i < enemies.size(); i++) {
+            values[i] = enemyDefeated && !enemies.get(i).isAlive() ? enemies.get(i).getRewardGold() : 0;
+        }
+        return values;
+    }
+
+    private int[] buildExperienceRewards(boolean enemyDefeated) {
+        List<BattleCombatant> enemies = battleState.getEnemies();
+        int[] values = new int[enemies.size()];
+        for (int i = 0; i < enemies.size(); i++) {
+            values[i] = enemyDefeated && !enemies.get(i).isAlive() ? enemies.get(i).getRewardExperience() : 0;
+        }
+        return values;
     }
 
     private int sum(int[] values) {
         int total = 0;
         if (values == null) {
-            return 0;
+            return total;
         }
         for (int value : values) {
             total += value;
         }
         return total;
+    }
+
+    private void appendLogs(List<String> logs) {
+        for (String log : logs) {
+            battleLog.add(log);
+        }
+        while (battleLog.size() > 9) {
+            battleLog.remove(0);
+        }
+    }
+
+    private List<BattleCombatant> livingEnemies() {
+        List<BattleCombatant> living = new ArrayList<>();
+        for (BattleCombatant enemy : battleState.getEnemies()) {
+            if (enemy.isAlive()) {
+                living.add(enemy);
+            }
+        }
+        return living;
+    }
+
+    private List<BattleCombatant> livingAllies() {
+        List<BattleCombatant> living = new ArrayList<>();
+        for (BattleCombatant ally : battleState.getAllies()) {
+            if (ally.isAlive()) {
+                living.add(ally);
+            }
+        }
+        return living;
+    }
+
+    private AbilityInstance readyAbilityAt(BattleCombatant actor, int index) {
+        if (actor == null) {
+            return null;
+        }
+        if (index < 0 || index >= actor.getAbilities().size()) {
+            return null;
+        }
+        return actor.getAbilities().get(index);
+    }
+
+    private boolean hasAbility(BattleCombatant actor, String abilityId) {
+        for (AbilityInstance ability : actor.getAbilities()) {
+            if (ability.getDefinition().getId().equals(abilityId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String[] getCurrentOptions() {
+        switch (mode) {
+            case ATTACK:
+                return attackOptions();
+            case ABILITY:
+                return abilityOptions();
+            case TARGET_ENEMY:
+            case ANALYZE_TARGET:
+                return combatantOptions(livingEnemies());
+            case TARGET_ALLY:
+                return combatantOptions(livingAllies());
+            case ROOT:
+            default:
+                return ROOT_ACTIONS;
+        }
+    }
+
+    private String[] attackOptions() {
+        String[] options = new String[ATTACK_MOVES.length];
+        for (int i = 0; i < ATTACK_MOVES.length; i++) {
+            options[i] = ATTACK_MOVES[i].name + " [" + ATTACK_MOVES[i].speedCost + "]";
+        }
+        return options;
+    }
+
+    private String[] abilityOptions() {
+        String[] options = new String[activeActor.getAbilities().size()];
+        for (int i = 0; i < activeActor.getAbilities().size(); i++) {
+            AbilityInstance ability = activeActor.getAbilities().get(i);
+            String cooldown = ability.isReady() ? "" : " [" + Math.max(1, Math.round(ability.getCurrentCooldown())) + "]";
+            options[i] = ability.getDefinition().getName() + cooldown;
+        }
+        return options;
+    }
+
+    private String[] combatantOptions(List<BattleCombatant> combatants) {
+        String[] options = new String[combatants.size()];
+        for (int i = 0; i < combatants.size(); i++) {
+            BattleCombatant combatant = combatants.get(i);
+            options[i] = combatant.getName() + " HP " + (int) combatant.getHealth() + "/" + (int) combatant.getMaxHealth();
+        }
+        return options;
+    }
+
+    private void drawPanels(float w, float h) {
+        shapeRenderer.setProjectionMatrix(camera.combined);
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        shapeRenderer.setColor(0.11f, 0.12f, 0.16f, 1f);
+        shapeRenderer.rect(32f, h - 150f, w - 64f, 118f);
+        shapeRenderer.rect(32f, 32f, w - 64f, 170f);
+        shapeRenderer.rect(32f, 220f, (w * 0.45f), h - 390f);
+        shapeRenderer.rect(w * 0.52f, 220f, w * 0.43f, h - 390f);
+        shapeRenderer.end();
+    }
+
+    private void drawCombatants(float w, float h) {
+        batch.setProjectionMatrix(camera.combined);
+        batch.begin();
+        titleFont.setColor(1f, 0.87f, 0.56f, 1f);
+        titleFont.draw(batch, "ROGUE FORGE BATTLE", 48f, h - 54f);
+        bodyFont.setColor(Color.WHITE);
+        bodyFont.draw(batch, activeActor != null ? activeActor.getName() + "'s turn" : "Resolving...", 48f, h - 92f);
+
+        float leftY = h - 180f;
+        bodyFont.draw(batch, "Party", 48f, leftY);
+        for (int i = 0; i < battleState.getAllies().size(); i++) {
+            drawCombatantLine(48f, leftY - 34f - (i * 56f), battleState.getAllies().get(i));
+        }
+
+        float rightY = h - 180f;
+        bodyFont.draw(batch, "Enemies", w * 0.55f, rightY);
+        for (int i = 0; i < battleState.getEnemies().size(); i++) {
+            drawCombatantLine(w * 0.55f, rightY - 34f - (i * 56f), battleState.getEnemies().get(i));
+        }
+        batch.end();
+    }
+
+    private void drawCombatantLine(float x, float y, BattleCombatant combatant) {
+        bodyFont.setColor(combatant.isAlive() ? Color.WHITE : Color.GRAY);
+        bodyFont.draw(batch, combatant.getName(), x, y);
+        smallFont.setColor(Color.WHITE);
+        smallFont.draw(batch,
+            "HP " + (int) combatant.getHealth() + "/" + (int) combatant.getMaxHealth()
+                + "  SPD " + (int) combatant.getEffectiveSpeed()
+                + "  " + statusSummary(combatant),
+            x,
+            y - 22f);
+    }
+
+    private String statusSummary(BattleCombatant combatant) {
+        if (combatant.getStatusEffectManager().getActiveEffects().isEmpty()) {
+            return "No status";
+        }
+        return combatant.getStatusEffectManager().getActiveEffects().get(0).getType().name();
+    }
+
+    private void drawTimeline(float w, float h) {
+        batch.begin();
+        bodyFont.setColor(Color.WHITE);
+        bodyFont.draw(batch, "Timeline", w - 235f, h - 56f);
+        List<BattleCombatant> turns = battleState.getTurnTimeline().getNextTurns(battleState.getCombatants(), 8);
+        for (int i = 0; i < turns.size(); i++) {
+            BattleCombatant combatant = turns.get(i);
+            smallFont.setColor(combatant.isAlly() ? new Color(0.71f, 0.9f, 1f, 1f) : new Color(1f, 0.78f, 0.74f, 1f));
+            smallFont.draw(batch, (i + 1) + ". " + combatant.getName(), w - 235f, h - 82f - (i * 18f));
+        }
+        batch.end();
+    }
+
+    private void drawActionPanel(float w, float h) {
+        batch.begin();
+        bodyFont.setColor(Color.WHITE);
+        bodyFont.draw(batch, "Commands", 48f, 180f);
+        String[] options = getCurrentOptions();
+        for (int i = 0; i < options.length; i++) {
+            bodyFont.setColor(i == selectedIndex ? new Color(1f, 0.9f, 0.55f, 1f) : Color.WHITE);
+            bodyFont.draw(batch, (i + 1) + ". " + options[i], 48f, 148f - (i * 22f));
+        }
+        smallFont.setColor(Color.LIGHT_GRAY);
+        smallFont.draw(batch, "Enter to confirm, Esc to back, Arrow keys to move.", w * 0.38f, 52f);
+        batch.end();
+    }
+
+    private void drawBattleLog(float w, float h) {
+        batch.begin();
+        bodyFont.setColor(Color.WHITE);
+        bodyFont.draw(batch, "Battle Log", w * 0.52f, 180f);
+        for (int i = 0; i < battleLog.size(); i++) {
+            smallFont.setColor(Color.WHITE);
+            smallFont.draw(batch, battleLog.get(battleLog.size() - 1 - i), w * 0.52f, 148f - (i * 18f));
+        }
+        batch.end();
+    }
+
+    private String join(String[] values) {
+        if (values == null || values.length == 0) {
+            return "Unknown threat";
+        }
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0; i < values.length; i++) {
+            if (i > 0) {
+                builder.append(i == values.length - 1 ? " and " : ", ");
+            }
+            builder.append(values[i]);
+        }
+        return builder.toString();
     }
 
     @Override
@@ -1211,33 +1097,23 @@ public class BattleScreen implements Screen {
         shapeRenderer.dispose();
         titleFont.dispose();
         bodyFont.dispose();
-        buttonFont.dispose();
-        backgroundTexture.dispose();
-        shadowTexture.dispose();
-        buttonTexture.dispose();
-        disposeAnimationSet(playerAnimation);
-        for (AnimationSet animationSet : robotAnimations) {
-            disposeAnimationSet(animationSet);
-        }
-        for (AnimationSet animationSet : enemyAnimations) {
-            disposeAnimationSet(animationSet);
-        }
-    }
-
-    private void disposeAnimationSet(AnimationSet animationSet) {
-        for (Texture texture : animationSet.getOwnedTextures()) {
-            texture.dispose();
-        }
+        smallFont.dispose();
     }
 
     public static class Encounter {
         public String[] enemyNames;
+        public String[] enemyIds;
+        public String[] enemyRanks;
+        public String[] enemyAiProfiles;
         public float[] enemyHealth;
         public float[] enemyMaxHealth;
         public float[] enemyAgility;
         public float[] enemyStrength;
         public float[] enemyIntelligence;
         public float[] enemyStamina;
+        public String[][] enemyWeaknesses;
+        public String[][] enemyResistances;
+        public String[][] enemyAbsorbs;
         public int[] enemyRewardGold;
         public int[] enemyExperienceReward;
         public Object[] enemyReferences;
@@ -1269,118 +1145,31 @@ public class BattleScreen implements Screen {
         public int[] goldEarned;
         public int[] experienceEarned;
         public Object[] enemyReferences;
+        public Map<String, Integer> updatedBestiary;
+        public String[] droppedEquipmentIds;
+        public String[] droppedEquipmentNames;
     }
 
-    private static class Combatant {
-        String name;
-        boolean ally;
-        int partyIndex;
-        Vector2 facing;
-        String animState = "idle";
-        float animTimer;
-        float health;
-        float maxHealth;
-        float agility;
-        float agilityBoost;
-        float strength;
-        float intelligence;
-        float stamina;
-        float staminaBoost;
-        boolean defending;
-        int tauntTurns;
-        List<AbilityInstance> abilities = new ArrayList<>();
+    private enum Mode {
+        ROOT,
+        ATTACK,
+        ABILITY,
+        TARGET_ENEMY,
+        TARGET_ALLY,
+        ANALYZE_TARGET
     }
 
-    private static class AnimationSet {
-        final TextureRegion[] downIdle;
-        final TextureRegion[] downWalk;
-        final TextureRegion[] sideIdle;
-        final TextureRegion[] sideWalk;
-        final TextureRegion[] upIdle;
-        final TextureRegion[] upWalk;
-        final TextureRegion[] downAttack;
-        final TextureRegion[] sideAttack;
-        final TextureRegion[] upAttack;
-        final TextureRegion[] downHurt;
-        final TextureRegion[] sideHurt;
-        final TextureRegion[] upHurt;
+    private static class AttackMove {
+        private final String name;
+        private final int speedCost;
+        private final float multiplier;
+        private final Element element;
 
-        AnimationSet(TextureRegion[] downIdle, TextureRegion[] downWalk, TextureRegion[] sideIdle,
-                     TextureRegion[] sideWalk, TextureRegion[] upIdle, TextureRegion[] upWalk,
-                     TextureRegion[] downAttack, TextureRegion[] sideAttack, TextureRegion[] upAttack,
-                     TextureRegion[] downHurt, TextureRegion[] sideHurt, TextureRegion[] upHurt) {
-            this.downIdle = downIdle;
-            this.downWalk = downWalk;
-            this.sideIdle = sideIdle;
-            this.sideWalk = sideWalk;
-            this.upIdle = upIdle;
-            this.upWalk = upWalk;
-            this.downAttack = downAttack;
-            this.sideAttack = sideAttack;
-            this.upAttack = upAttack;
-            this.downHurt = downHurt;
-            this.sideHurt = sideHurt;
-            this.upHurt = upHurt;
-        }
-
-        TextureRegion[] getFrames(Vector2 facing, boolean moving) {
-            boolean vertical = Math.abs(facing.y) >= Math.abs(facing.x);
-            if (vertical && facing.y > 0f) {
-                return moving ? upWalk : upIdle;
-            }
-            if (vertical) {
-                return moving ? downWalk : downIdle;
-            }
-            return moving ? sideWalk : sideIdle;
-        }
-
-        TextureRegion[] getAttackFrames(Vector2 facing) {
-            boolean vertical = Math.abs(facing.y) >= Math.abs(facing.x);
-            if (vertical && facing.y > 0f) {
-                return upAttack;
-            }
-            if (vertical) {
-                return downAttack;
-            }
-            return sideAttack;
-        }
-
-        TextureRegion[] getHurtFrames(Vector2 facing) {
-            boolean vertical = Math.abs(facing.y) >= Math.abs(facing.x);
-            if (vertical && facing.y > 0f) {
-                return upHurt;
-            }
-            if (vertical) {
-                return downHurt;
-            }
-            return sideHurt;
-        }
-
-        Texture[] getOwnedTextures() {
-            List<Texture> textures = new ArrayList<>();
-            appendTexture(textures, downIdle);
-            appendTexture(textures, downWalk);
-            appendTexture(textures, sideIdle);
-            appendTexture(textures, sideWalk);
-            appendTexture(textures, upIdle);
-            appendTexture(textures, upWalk);
-            appendTexture(textures, downAttack);
-            appendTexture(textures, sideAttack);
-            appendTexture(textures, upAttack);
-            appendTexture(textures, downHurt);
-            appendTexture(textures, sideHurt);
-            appendTexture(textures, upHurt);
-            return textures.toArray(new Texture[0]);
-        }
-
-        private void appendTexture(List<Texture> textures, TextureRegion[] frames) {
-            if (frames.length == 0) {
-                return;
-            }
-            Texture texture = frames[0].getTexture();
-            if (!textures.contains(texture)) {
-                textures.add(texture);
-            }
+        private AttackMove(String name, int speedCost, float multiplier, Element element) {
+            this.name = name;
+            this.speedCost = speedCost;
+            this.multiplier = multiplier;
+            this.element = element;
         }
     }
 }

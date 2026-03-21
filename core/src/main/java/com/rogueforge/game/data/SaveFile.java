@@ -1,5 +1,6 @@
 package com.rogueforge.game.data;
 
+import com.rogueforge.game.progression.RobotProgressionState;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -10,6 +11,7 @@ import java.util.Map;
  * Contains all player, robot, and progression data for a save game.
  */
 public class SaveFile {
+    private int version = 2;
 
     private String playerName;
     private int playerHp;
@@ -24,6 +26,7 @@ public class SaveFile {
     private Map<String, String> playerEquipment;
     private List<String> ownedEquipmentIds;
     private Map<String, Boolean> questFlags;
+    private Map<String, Integer> bestiaryScanLevels;
     private List<String> keyItems;
 
     // Robot data: robotId -> Map of equipped items (slotType -> equipmentId)
@@ -39,6 +42,7 @@ public class SaveFile {
     private float[] robotY;
     private float[] robotAngleDeg;
     private float[] robotAttackTimers;
+    private Map<String, RobotProgressionState> robotProgressionStates;
 
     // Current run state
     private int totalEnemiesKilled;
@@ -58,7 +62,9 @@ public class SaveFile {
         this.playerEquipment = new HashMap<>();
         this.ownedEquipmentIds = new ArrayList<>();
         this.questFlags = new HashMap<>();
+        this.bestiaryScanLevels = new HashMap<>();
         this.keyItems = new ArrayList<>();
+        this.robotProgressionStates = new HashMap<>();
     }
 
     public SaveFile(String playerName, int playerHp, int playerMaxHp, float playerX, float playerY,
@@ -78,12 +84,18 @@ public class SaveFile {
         this.playerEquipment = new HashMap<>();
         this.ownedEquipmentIds = new ArrayList<>();
         this.questFlags = new HashMap<>();
+        this.bestiaryScanLevels = new HashMap<>();
         this.keyItems = new ArrayList<>();
+        this.robotProgressionStates = new HashMap<>();
     }
 
     // Getters
     public String getPlayerName() {
         return playerName;
+    }
+
+    public int getVersion() {
+        return version;
     }
 
     public int getPlayerHp() {
@@ -134,6 +146,13 @@ public class SaveFile {
         return questFlags;
     }
 
+    public Map<String, Integer> getBestiaryScanLevels() {
+        if (bestiaryScanLevels == null) {
+            bestiaryScanLevels = new HashMap<>();
+        }
+        return bestiaryScanLevels;
+    }
+
     public List<String> getKeyItems() {
         return keyItems;
     }
@@ -178,6 +197,13 @@ public class SaveFile {
         return robotAttackTimers;
     }
 
+    public Map<String, RobotProgressionState> getRobotProgressionStates() {
+        if (robotProgressionStates == null) {
+            robotProgressionStates = new HashMap<>();
+        }
+        return robotProgressionStates;
+    }
+
     public int getTotalEnemiesKilled() {
         return totalEnemiesKilled;
     }
@@ -205,6 +231,10 @@ public class SaveFile {
     // Setters
     public void setPlayerName(String playerName) {
         this.playerName = playerName;
+    }
+
+    public void setVersion(int version) {
+        this.version = version;
     }
 
     public void setPlayerHp(int playerHp) {
@@ -255,6 +285,10 @@ public class SaveFile {
         this.questFlags = questFlags;
     }
 
+    public void setBestiaryScanLevels(Map<String, Integer> bestiaryScanLevels) {
+        this.bestiaryScanLevels = bestiaryScanLevels != null ? bestiaryScanLevels : new HashMap<>();
+    }
+
     public void setKeyItems(List<String> keyItems) {
         this.keyItems = keyItems;
     }
@@ -299,6 +333,10 @@ public class SaveFile {
         this.robotAttackTimers = robotAttackTimers;
     }
 
+    public void setRobotProgressionStates(Map<String, RobotProgressionState> robotProgressionStates) {
+        this.robotProgressionStates = robotProgressionStates != null ? robotProgressionStates : new HashMap<>();
+    }
+
     public void setTotalEnemiesKilled(int totalEnemiesKilled) {
         this.totalEnemiesKilled = totalEnemiesKilled;
     }
@@ -327,6 +365,7 @@ public class SaveFile {
      * Serializable live enemy state for restoring an in-progress run.
      */
     public static class EnemyState {
+        private String monsterId;
         private float x;
         private float y;
         private float hp;
@@ -346,6 +385,14 @@ public class SaveFile {
         private float patrolTargetY;
 
         public EnemyState() {
+        }
+
+        public String getMonsterId() {
+            return monsterId;
+        }
+
+        public void setMonsterId(String monsterId) {
+            this.monsterId = monsterId;
         }
 
         public float getX() {

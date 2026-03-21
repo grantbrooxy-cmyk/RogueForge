@@ -34,6 +34,76 @@ public class CombatResolver {
         return finalDamage;
     }
 
+    public int resolvePhysicalDamage(BattleCombatant attacker, BattleCombatant defender, float actionMultiplier) {
+        return resolvePhysicalDamage(attacker, defender, actionMultiplier, 1f);
+    }
+
+    public int resolvePhysicalDamage(BattleCombatant attacker, BattleCombatant defender, float actionMultiplier, float weaponMultiplier) {
+        if (attacker == null || defender == null) {
+            return 0;
+        }
+        float baseDamage = (attacker.getStrength() * actionMultiplier)
+            * Math.max(1f, weaponMultiplier)
+            * attacker.getStatusEffectManager().getPhysicalDamageDealtMultiplier()
+            - (defender.getEffectiveStamina() * DEFENSE_REDUCTION_FACTOR);
+        float finalDamage = Math.max(MIN_DAMAGE, applyVariance(baseDamage));
+        if (Math.random() < getCritChance(attacker)) {
+            finalDamage *= 1.5f;
+        }
+        finalDamage *= defender.getStatusEffectManager().getPhysicalDamageTakenMultiplier();
+        return Math.max(1, Math.round(finalDamage));
+    }
+
+    public int resolveAbilityDamage(BattleCombatant caster, BattleCombatant target, AbilityDefinition ability) {
+        return resolveAbilityDamage(caster, target, ability, 1f);
+    }
+
+    public int resolveAbilityDamage(BattleCombatant caster, BattleCombatant target, AbilityDefinition ability, float proficiencyMultiplier) {
+        if (caster == null || target == null || ability == null) {
+            return 0;
+        }
+        float offense = (caster.getStrength() * 0.6f) + (caster.getIntelligence() * 0.4f);
+        float baseDamage = ability.getPower()
+            * Math.max(1f, proficiencyMultiplier)
+            * Math.max(1f, offense)
+            / Math.max(1f, target.getEffectiveStamina());
+        float multiplier = ElementalSystem.getMultiplier(ability.getElement(), target);
+        if (multiplier < 0f) {
+            int healing = Math.max(1, Math.round(Math.abs(baseDamage)));
+            target.heal(healing);
+            return -healing;
+        }
+        float finalDamage = Math.max(MIN_DAMAGE, applyVariance(baseDamage * multiplier));
+        finalDamage *= target.getStatusEffectManager().getAbilityDamageTakenMultiplier();
+        return Math.max(1, Math.round(finalDamage));
+    }
+
+    public int resolveHealing(BattleCombatant caster, AbilityDefinition ability) {
+        return resolveHealing(caster, ability, 1f);
+    }
+
+    public int resolveHealing(BattleCombatant caster, AbilityDefinition ability, float proficiencyMultiplier) {
+        if (caster == null || ability == null) {
+            return 0;
+        }
+        float healAmount = ability.getPower()
+            * ((caster.getIntelligence() * 0.8f) + (caster.getStrength() * 0.2f))
+            * 0.08f
+            * Math.max(1f, proficiencyMultiplier);
+        return Math.max(1, Math.round(healAmount));
+    }
+
+    public void applyDamage(BattleCombatant defender, int damage) {
+        if (defender == null || damage == 0) {
+            return;
+        }
+        if (damage < 0) {
+            defender.heal(Math.abs(damage));
+            return;
+        }
+        defender.applyDirectDamage(damage);
+    }
+
     /**
      * Processes all active status effects, advancing their timers and executing their effects.
      *
@@ -124,5 +194,14 @@ public class CombatResolver {
 
         checkDeath(defender, null);
         return damage;
+    }
+
+    private float applyVariance(float value) {
+        float variance = 0.95f + ((float) Math.random() * 0.1f);
+        return value * variance;
+    }
+
+    private float getCritChance(BattleCombatant attacker) {
+        return Math.min(0.3f, 0.05f + (attacker.getEffectiveSpeed() / 1000f));
     }
 }

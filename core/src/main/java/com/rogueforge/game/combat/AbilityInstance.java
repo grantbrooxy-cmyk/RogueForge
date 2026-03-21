@@ -1,5 +1,8 @@
 package com.rogueforge.game.combat;
 
+import com.rogueforge.game.progression.AbilityProgressionState;
+import com.rogueforge.game.progression.ProficiencyTracker;
+
 /**
  * Runtime instance of an ability tracking its cooldown state.
  * Each entity has instances of their abilities that track cooldown independently.
@@ -7,6 +10,7 @@ package com.rogueforge.game.combat;
 public class AbilityInstance {
 
     private AbilityDefinition definition;
+    private AbilityProgressionState progressionState;
     private float currentCooldown;  // Counts down to 0
 
     /**
@@ -15,7 +19,12 @@ public class AbilityInstance {
      * @param definition The ability definition
      */
     public AbilityInstance(AbilityDefinition definition) {
+        this(definition, null);
+    }
+
+    public AbilityInstance(AbilityDefinition definition, AbilityProgressionState progressionState) {
         this.definition = definition;
+        this.progressionState = progressionState;
         this.currentCooldown = 0f;
     }
 
@@ -32,7 +41,7 @@ public class AbilityInstance {
      * Marks the ability as used, starting its cooldown
      */
     public void use() {
-        this.currentCooldown = definition.getCooldown();
+        this.currentCooldown = getEffectiveCooldown();
     }
 
     /**
@@ -70,6 +79,14 @@ public class AbilityInstance {
         return currentCooldown;
     }
 
+    public void setCurrentCooldown(float currentCooldown) {
+        this.currentCooldown = Math.max(0f, currentCooldown);
+    }
+
+    public float getEffectiveCooldown() {
+        return definition.getCooldown() * ProficiencyTracker.cooldownMultiplier(getProficiencyLevel());
+    }
+
     /**
      * Gets the ability definition
      *
@@ -77,6 +94,36 @@ public class AbilityInstance {
      */
     public AbilityDefinition getDefinition() {
         return definition;
+    }
+
+    public void setDefinition(AbilityDefinition definition) {
+        if (definition != null) {
+            this.definition = definition;
+        }
+    }
+
+    public AbilityProgressionState getProgressionState() {
+        return progressionState;
+    }
+
+    public void setProgressionState(AbilityProgressionState progressionState) {
+        this.progressionState = progressionState;
+    }
+
+    public int getProficiencyLevel() {
+        return progressionState != null ? progressionState.getProficiencyLevel() : 1;
+    }
+
+    public int getProficiencyXp() {
+        return progressionState != null ? progressionState.getProficiencyXp() : 0;
+    }
+
+    public int addProficiencyXp(int amount) {
+        return progressionState != null ? progressionState.addXp(amount) : 0;
+    }
+
+    public float getPowerMultiplier() {
+        return ProficiencyTracker.abilityPowerMultiplier(getProficiencyLevel());
     }
 
     @Override

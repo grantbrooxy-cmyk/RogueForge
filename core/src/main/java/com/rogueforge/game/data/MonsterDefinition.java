@@ -1,5 +1,9 @@
 package com.rogueforge.game.data;
 
+import com.rogueforge.game.combat.Element;
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Data POJO for monster definitions loaded from JSON.
  * Represents the base stats and configuration of a monster type.
@@ -16,6 +20,9 @@ public class MonsterDefinition {
     private int baseLoot;
     private String aiProfile;
     private String[] lootTableIds;
+    private String[] weaknesses;
+    private String[] resistances;
+    private String[] absorbs;
 
     /**
      * No-arg constructor required for JSON deserialization.
@@ -75,5 +82,40 @@ public class MonsterDefinition {
 
     public String[] getLootTableIds() {
         return lootTableIds;
+    }
+
+    public String[] getWeaknesses() {
+        return weaknesses != null ? weaknesses : new String[0];
+    }
+
+    public String[] getResistances() {
+        return resistances != null ? resistances : new String[0];
+    }
+
+    public String[] getAbsorbs() {
+        return absorbs != null ? absorbs : new String[0];
+    }
+
+    public List<Element> getWeaknessElements() {
+        return toElements(getWeaknesses());
+    }
+
+    public List<Element> getResistanceElements() {
+        return toElements(getResistances());
+    }
+
+    public List<Element> getAbsorbElements() {
+        return toElements(getAbsorbs());
+    }
+
+    private List<Element> toElements(String[] values) {
+        List<Element> elements = new ArrayList<>();
+        for (String value : values) {
+            Element element = Element.fromString(value);
+            if (element != Element.NONE) {
+                elements.add(element);
+            }
+        }
+        return elements;
     }
 }

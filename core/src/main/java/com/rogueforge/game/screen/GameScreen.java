@@ -20,6 +20,9 @@ import com.rogueforge.game.core.RogueForgeGame;
 import com.rogueforge.game.core.ScreenManager;
 import com.rogueforge.game.core.GameLoop;
 import com.rogueforge.game.core.GameState;
+import com.rogueforge.game.combat.AbilityDefinition;
+import com.rogueforge.game.combat.AbilityRegistry;
+import com.rogueforge.game.combat.WeaponType;
 import com.rogueforge.game.data.EquipmentItem;
 import com.rogueforge.game.data.MonsterDefinition;
 import com.rogueforge.game.data.SaveFile;
@@ -27,7 +30,15 @@ import com.rogueforge.game.data.ShopDefinition;
 import com.rogueforge.game.data.ShopEntryDefinition;
 import com.rogueforge.game.data.ZoneDefinition;
 import com.rogueforge.game.economy.ShopInventory;
+import com.rogueforge.game.persistence.SaveManager;
 import com.rogueforge.game.persistence.SettingsManager;
+import com.rogueforge.game.progression.AbilityEvolutionManager;
+import com.rogueforge.game.progression.AbilityProgressionState;
+import com.rogueforge.game.progression.RobotEvolutionManager;
+import com.rogueforge.game.progression.RobotProgressionState;
+import com.rogueforge.game.progression.WeaponProficiencyState;
+import com.rogueforge.game.progression.WeaponProficiencyTracker;
+import com.rogueforge.game.robot.RobotDefinition;
 import com.rogueforge.game.world.TmxWorldLoader;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -117,8 +128,10 @@ public class GameScreen implements Screen {
     private final Map<String, ZoneDefinition> zoneDefinitions = new HashMap<>();
     private final Map<String, MonsterDefinition> monsterDefinitions = new HashMap<>();
     private final Map<String, ShopDefinition> shopDefinitions = new HashMap<>();
+    private final Map<String, RobotDefinition> robotDefinitions = new HashMap<>();
     private final TmxWorldLoader worldLoader = new TmxWorldLoader();
     private final SettingsManager settingsManager = new SettingsManager();
+    private final SaveManager saveManager = new SaveManager();
     private final Map<String, Boolean> openedChestStates = new HashMap<>();
     private final Map<String, Boolean> questFlags = new HashMap<>();
     private final List<String> keyItems = new ArrayList<>();
@@ -209,8 +222,10 @@ public class GameScreen implements Screen {
 
         initializeEquipmentCatalog();
         loadZoneDefinitions();
+        loadRobotDefinitions();
         loadMonsterDefinitions();
         loadShopDefinitions();
+        ensureRobotProgressionStates();
         loadZone(currentZoneId, "town_square", true);
 
         hudOverlay.setPlayerHealth(playerHealth, playerMaxHealth);
@@ -1147,11 +1162,13 @@ public class GameScreen implements Screen {
         sf.setPlayerEquipment(new HashMap<>(gameState.getPlayerEquipmentSlots()));
         sf.setOwnedEquipmentIds(new ArrayList<>(gameState.getOwnedEquipmentIds()));
         sf.setQuestFlags(new HashMap<>(gameState.getQuestFlags()));
+        sf.setBestiaryScanLevels(new HashMap<>(gameState.getBestiaryScanLevels()));
         sf.setKeyItems(new ArrayList<>(gameState.getKeyItems()));
         sf.setCurrentZoneId(gameState.getCurrentZoneId());
         sf.setRobotEquipment(copyRobotEquipment(robotEquipment));
         sf.setCollectedRobotIds(new ArrayList<>(gameState.getCollectedRobotIds()));
         sf.setActiveRobotIds(new ArrayList<>(gameState.getActiveRobotIds()));
+        sf.setRobotProgressionStates(new HashMap<>(gameState.getRobotProgressionStates()));
         sf.setRobotHealth(getRobotHealthValues());
         sf.setRobotMaxHealth(getRobotMaxHealthValues());
         sf.setRobotBaseMaxHealth(getRobotBaseMaxHealthValues());
@@ -1200,6 +1217,7 @@ public class GameScreen implements Screen {
             questFlags.putAll(saveFile.getQuestFlags());
         }
         gameState.setQuestFlags(questFlags);
+        gameState.setBestiaryScanLevels(saveFile.getBestiaryScanLevels());
         keyItems.clear();
         if (saveFile.getKeyItems() != null) {
             keyItems.addAll(saveFile.getKeyItems());
@@ -1223,6 +1241,8 @@ public class GameScreen implements Screen {
             : new ArrayList<>();
         gameState.setCollectedRobotIds(collectedRobotIds);
         gameState.setActiveRobotIds(activeRobotIds);
+        gameState.setRobotProgressionStates(saveFile.getRobotProgressionStates());
+        ensureRobotProgressionStates();
         restoreRobotState(
             saveFile.getRobotHealth(),
             saveFile.getRobotMaxHealth(),
@@ -1257,6 +1277,7 @@ public class GameScreen implements Screen {
         List<SaveFile.EnemyState> enemyStates = new ArrayList<>();
         for (Enemy enemy : enemies) {
             SaveFile.EnemyState enemyState = new SaveFile.EnemyState();
+            enemyState.setMonsterId(enemy.monsterId);
             enemyState.setX(enemy.pos.x);
             enemyState.setY(enemy.pos.y);
             enemyState.setHp(enemy.hp);
@@ -1309,24 +1330,37 @@ public class GameScreen implements Screen {
         RobotStatBlock playerStats = getPlayerStats();
         List<Enemy> encounterEnemies = collectEncounterEnemies(enemy);
         encounter.enemyNames = new String[encounterEnemies.size()];
+        encounter.enemyIds = new String[encounterEnemies.size()];
+        encounter.enemyRanks = new String[encounterEnemies.size()];
+        encounter.enemyAiProfiles = new String[encounterEnemies.size()];
         encounter.enemyHealth = new float[encounterEnemies.size()];
         encounter.enemyMaxHealth = new float[encounterEnemies.size()];
         encounter.enemyAgility = new float[encounterEnemies.size()];
         encounter.enemyStrength = new float[encounterEnemies.size()];
         encounter.enemyIntelligence = new float[encounterEnemies.size()];
         encounter.enemyStamina = new float[encounterEnemies.size()];
+        encounter.enemyWeaknesses = new String[encounterEnemies.size()][];
+        encounter.enemyResistances = new String[encounterEnemies.size()][];
+        encounter.enemyAbsorbs = new String[encounterEnemies.size()][];
         encounter.enemyRewardGold = new int[encounterEnemies.size()];
         encounter.enemyExperienceReward = new int[encounterEnemies.size()];
         encounter.enemyReferences = new Object[encounterEnemies.size()];
         for (int i = 0; i < encounterEnemies.size(); i++) {
             Enemy groupEnemy = encounterEnemies.get(i);
+            MonsterDefinition definition = groupEnemy.monsterId != null ? monsterDefinitions.get(groupEnemy.monsterId) : null;
             encounter.enemyNames[i] = groupEnemy.name;
+            encounter.enemyIds[i] = groupEnemy.monsterId != null ? groupEnemy.monsterId : "enemy_" + i;
+            encounter.enemyRanks[i] = definition != null ? definition.getRank() : "G";
+            encounter.enemyAiProfiles[i] = definition != null ? definition.getAiProfile() : "PATROL";
             encounter.enemyHealth[i] = groupEnemy.hp;
             encounter.enemyMaxHealth[i] = groupEnemy.maxHp;
             encounter.enemyAgility[i] = groupEnemy.agility;
             encounter.enemyStrength[i] = groupEnemy.strength;
             encounter.enemyIntelligence[i] = groupEnemy.intelligence;
             encounter.enemyStamina[i] = groupEnemy.stamina;
+            encounter.enemyWeaknesses[i] = definition != null ? definition.getWeaknesses() : new String[0];
+            encounter.enemyResistances[i] = definition != null ? definition.getResistances() : new String[0];
+            encounter.enemyAbsorbs[i] = definition != null ? definition.getAbsorbs() : new String[0];
             encounter.enemyRewardGold[i] = groupEnemy.rewardGold;
             encounter.enemyExperienceReward[i] = 20 + groupEnemy.rewardGold;
             encounter.enemyReferences[i] = groupEnemy;
@@ -1353,14 +1387,20 @@ public class GameScreen implements Screen {
     private List<Enemy> collectEncounterEnemies(Enemy primaryEnemy) {
         List<Enemy> group = new ArrayList<>();
         group.add(primaryEnemy);
+        List<Enemy> nearby = new ArrayList<>();
         for (Enemy enemy : enemies) {
             if (enemy == primaryEnemy || !enemy.alive) {
                 continue;
             }
-            if (enemy.pos.dst(primaryEnemy.pos) <= 180f) {
+            nearby.add(enemy);
+        }
+        nearby.sort((a, b) -> Float.compare(a.pos.dst2(primaryEnemy.pos), b.pos.dst2(primaryEnemy.pos)));
+        for (Enemy enemy : nearby) {
+            float distance = enemy.pos.dst(primaryEnemy.pos);
+            if (distance <= 320f || group.size() == 1) {
                 group.add(enemy);
             }
-            if (group.size() >= 3) {
+            if (group.size() >= 5) {
                 break;
             }
         }
@@ -1397,6 +1437,15 @@ public class GameScreen implements Screen {
             }
             if (totalExperienceEarned > 0) {
                 addExperience(totalExperienceEarned);
+                applyRobotBattleExperience(totalExperienceEarned);
+            }
+        }
+        if (result.updatedBestiary != null) {
+            gameState.setBestiaryScanLevels(result.updatedBestiary);
+        }
+        if (result.droppedEquipmentIds != null) {
+            for (String itemId : result.droppedEquipmentIds) {
+                unlockEquipment(itemId);
             }
         }
 
@@ -1411,8 +1460,56 @@ public class GameScreen implements Screen {
         }
 
         refreshHud();
+        if (result.enemyDefeated) {
+            autosave();
+        }
 
         screenManager.pop();
+    }
+
+    public BattleProgressionPreview previewRobotBattleProgression(int experienceEarned) {
+        BattleProgressionPreview preview = new BattleProgressionPreview();
+        for (int i = 0; i < activeRobotIds.size() && i < ROBOT_COUNT; i++) {
+            RobotProgressionState state = getRobotProgressionStateForPartyIndex(i);
+            if (state == null) {
+                continue;
+            }
+            int currentLevel = state.getLevel();
+            int currentTier = state.getEvolutionTier();
+            int simulatedLevel = currentLevel;
+            int simulatedXp = state.getExperience() + Math.max(0, experienceEarned);
+            while (simulatedXp >= robotExperienceRequirementForLevel(simulatedLevel)) {
+                simulatedXp -= robotExperienceRequirementForLevel(simulatedLevel);
+                simulatedLevel++;
+            }
+            int simulatedTier = currentTier;
+            if (simulatedLevel >= 10 && isGradeUnlocked("C")) {
+                simulatedTier = 3;
+            } else if (simulatedLevel >= 5 && isGradeUnlocked("E")) {
+                simulatedTier = Math.max(simulatedTier, 2);
+            }
+            if (simulatedLevel > currentLevel) {
+                preview.robotProgress.add(getRobotName(i) + " +" + (simulatedLevel - currentLevel) + " level(s)");
+            }
+            if (simulatedTier > currentTier) {
+                preview.robotProgress.add(getRobotName(i) + " evolved to Tier " + simulatedTier);
+            }
+        }
+        return preview;
+    }
+
+    private void applyRobotBattleExperience(int experienceEarned) {
+        for (int i = 0; i < activeRobotIds.size() && i < ROBOT_COUNT; i++) {
+            RobotProgressionState state = getRobotProgressionStateForPartyIndex(i);
+            if (state == null) {
+                continue;
+            }
+            RobotEvolutionManager.addExperience(state, experienceEarned);
+            boolean evolved = RobotEvolutionManager.applyEvolution(state, getUnlockedGrade());
+            if (evolved) {
+                evolveRobotAtIndex(i, state);
+            }
+        }
     }
 
     private void applyRobotHealth(float[] values) {
@@ -1448,7 +1545,7 @@ public class GameScreen implements Screen {
     private String[] getRobotNames() {
         String[] names = new String[ROBOT_COUNT];
         for (int i = 0; i < ROBOT_COUNT; i++) {
-            names[i] = "Bot " + (i + 1);
+            names[i] = getRobotName(i);
         }
         return names;
     }
@@ -1481,6 +1578,18 @@ public class GameScreen implements Screen {
         }
         for (ZoneDefinition definition : definitions) {
             zoneDefinitions.put(definition.getId(), definition);
+        }
+    }
+
+    private void loadRobotDefinitions() {
+        RobotDefinition[] definitions = new Json().fromJson(RobotDefinition[].class, Gdx.files.internal("data/robots.json").readString());
+        if (definitions == null) {
+            return;
+        }
+        for (RobotDefinition definition : definitions) {
+            if (definition != null && definition.getId() != null) {
+                robotDefinitions.put(definition.getId(), definition);
+            }
         }
     }
 
@@ -1540,6 +1649,7 @@ public class GameScreen implements Screen {
             spawnEnemies();
         }
         refreshHud();
+        autosave();
     }
 
     private void positionRobotsBehindPlayer() {
@@ -1744,6 +1854,145 @@ public class GameScreen implements Screen {
 
     private String getRobotId(int index) {
         return "bot_" + index;
+    }
+
+    private RobotProgressionState getRobotProgressionStateForPartyIndex(int index) {
+        if (index < 0 || index >= activeRobotIds.size()) {
+            return null;
+        }
+        return getOrCreateRobotProgressionState(activeRobotIds.get(index));
+    }
+
+    private RobotProgressionState getOrCreateRobotProgressionState(String robotId) {
+        if (robotId == null || robotId.isEmpty()) {
+            return null;
+        }
+        RobotProgressionState state = gameState.getRobotProgressionState(robotId);
+        if (state != null) {
+            return state;
+        }
+
+        RobotDefinition definition = robotDefinitions.get(robotId);
+        String displayName = definition != null ? definition.getName() : robotId;
+        state = new RobotProgressionState(robotId, displayName);
+        if (definition != null && definition.getAbilityIds() != null) {
+            state.setKnownAbilityIds(new ArrayList<>(definition.getAbilityIds()));
+            for (String abilityId : definition.getAbilityIds()) {
+                state.getOrCreateAbilityProgression(abilityId);
+            }
+        }
+        gameState.putRobotProgressionState(state);
+        return state;
+    }
+
+    private void ensureRobotProgressionStates() {
+        for (String robotId : collectedRobotIds) {
+            getOrCreateRobotProgressionState(robotId);
+        }
+        for (String robotId : activeRobotIds) {
+            getOrCreateRobotProgressionState(robotId);
+        }
+    }
+
+    private int robotExperienceRequirementForLevel(int level) {
+        return 35 + (Math.max(1, level) * 18);
+    }
+
+    private boolean isGradeUnlocked(String grade) {
+        return gradeIndex(getUnlockedGrade()) >= gradeIndex(grade);
+    }
+
+    private int gradeIndex(String grade) {
+        if (grade == null || grade.isEmpty()) {
+            return 0;
+        }
+        for (int i = 0; i < GRADE_ORDER.length; i++) {
+            if (GRADE_ORDER[i].equals(grade)) {
+                return i;
+            }
+        }
+        return 0;
+    }
+
+    private WeaponProficiencyState getOrCreateWeaponProficiencyState(int partyIndex, WeaponType weaponType) {
+        RobotProgressionState state = getRobotProgressionStateForPartyIndex(partyIndex);
+        return WeaponProficiencyTracker.getOrCreate(state, weaponType);
+    }
+
+    private void evolveRobotAtIndex(int partyIndex, RobotProgressionState state) {
+        if (partyIndex < 0 || partyIndex >= activeRobotIds.size() || state == null) {
+            return;
+        }
+        String oldRobotId = activeRobotIds.get(partyIndex);
+        String evolvedRobotId = RobotEvolutionManager.getEvolvedRobotId(oldRobotId, state.getEvolutionTier());
+        if (evolvedRobotId == null || evolvedRobotId.equals(oldRobotId)) {
+            mergeDefinitionAbilities(state, robotDefinitions.get(oldRobotId));
+            return;
+        }
+
+        RobotDefinition evolvedDefinition = robotDefinitions.get(evolvedRobotId);
+        activeRobotIds.set(partyIndex, evolvedRobotId);
+        for (int i = 0; i < collectedRobotIds.size(); i++) {
+            if (oldRobotId.equals(collectedRobotIds.get(i))) {
+                collectedRobotIds.set(i, evolvedRobotId);
+            }
+        }
+        state.setRobotId(evolvedRobotId);
+        if (evolvedDefinition != null) {
+            state.setDisplayName(evolvedDefinition.getName());
+            mergeDefinitionAbilities(state, evolvedDefinition);
+        }
+        gameState.setActiveRobotIds(activeRobotIds);
+        gameState.setCollectedRobotIds(collectedRobotIds);
+        gameState.removeRobotProgressionState(oldRobotId);
+        gameState.putRobotProgressionState(state);
+    }
+
+    private void mergeDefinitionAbilities(RobotProgressionState state, RobotDefinition definition) {
+        if (state == null || definition == null || definition.getAbilityIds() == null) {
+            return;
+        }
+        for (String abilityId : definition.getAbilityIds()) {
+            if (!state.getKnownAbilityIds().contains(abilityId)) {
+                state.getKnownAbilityIds().add(abilityId);
+            }
+            state.getOrCreateAbilityProgression(abilityId);
+        }
+    }
+
+    public WeaponType getEquippedWeaponType(int partyIndex) {
+        if (partyIndex < 0 || partyIndex >= activeRobotIds.size()) {
+            return WeaponType.NONE;
+        }
+        Map<String, String> equipped = robotEquipment.get(getRobotId(partyIndex));
+        if (equipped == null) {
+            return WeaponType.NONE;
+        }
+        String itemId = equipped.get("WEAPON");
+        EquipmentItem item = itemId != null ? findEquipmentItem(itemId) : null;
+        return item != null ? item.getWeaponType() : WeaponType.NONE;
+    }
+
+    public float getWeaponDamageMultiplier(int partyIndex, WeaponType weaponType) {
+        WeaponProficiencyState state = getOrCreateWeaponProficiencyState(partyIndex, weaponType);
+        return state != null ? WeaponProficiencyTracker.damageMultiplier(state.getLevel()) : 1f;
+    }
+
+    public WeaponGain awardWeaponProficiency(int partyIndex, WeaponType weaponType, int xpAmount) {
+        WeaponProficiencyState state = getOrCreateWeaponProficiencyState(partyIndex, weaponType);
+        if (state == null) {
+            return null;
+        }
+        int beforeLevel = state.getLevel();
+        state.addXp(xpAmount);
+        List<String> unlocked = new ArrayList<>();
+        for (int level = beforeLevel + 1; level <= state.getLevel(); level++) {
+            String unlock = WeaponProficiencyTracker.unlockLabel(level);
+            if (!unlock.isEmpty() && state.unlockMilestone(unlock)) {
+                unlocked.add(unlock);
+            }
+        }
+        return new WeaponGain(weaponType, beforeLevel, state.getLevel(), unlocked);
     }
 
     private EquipmentTotals getPlayerEquipmentTotals() {
@@ -2072,7 +2321,7 @@ public class GameScreen implements Screen {
 
     public void addExperience(int amount) {
         gameState.setPlayerHealth(playerHealth);
-        gameState.addExperience(amount);
+        gameState.addExperience(amount, this::getExperienceRequirementForLevel);
         playerExperience = gameState.getPlayerExperience();
         playerLevel = gameState.getPlayerLevel();
         playerHealth = gameState.getPlayerHealth();
@@ -2158,6 +2407,15 @@ public class GameScreen implements Screen {
     }
 
     public String getRobotName(int index) {
+        RobotProgressionState progressionState = getRobotProgressionStateForPartyIndex(index);
+        if (progressionState != null && progressionState.getDisplayName() != null && !progressionState.getDisplayName().isEmpty()) {
+            return progressionState.getDisplayName();
+        }
+        String robotId = index >= 0 && index < activeRobotIds.size() ? activeRobotIds.get(index) : null;
+        RobotDefinition definition = robotId != null ? robotDefinitions.get(robotId) : null;
+        if (definition != null && definition.getName() != null && !definition.getName().isEmpty()) {
+            return definition.getName();
+        }
         return "Bot " + (index + 1);
     }
 
@@ -2165,16 +2423,68 @@ public class GameScreen implements Screen {
         return robots[index].grade;
     }
 
+    public int getRobotLevel(int index) {
+        RobotProgressionState progressionState = getRobotProgressionStateForPartyIndex(index);
+        return progressionState != null ? progressionState.getLevel() : 1;
+    }
+
+    public int getRobotExperience(int index) {
+        RobotProgressionState progressionState = getRobotProgressionStateForPartyIndex(index);
+        return progressionState != null ? progressionState.getExperience() : 0;
+    }
+
+    public int getRobotEvolutionTier(int index) {
+        RobotProgressionState progressionState = getRobotProgressionStateForPartyIndex(index);
+        return progressionState != null ? progressionState.getEvolutionTier() : 1;
+    }
+
+    public List<String> getRobotAbilityProgressionLines(int index) {
+        List<String> lines = new ArrayList<>();
+        RobotProgressionState progressionState = getRobotProgressionStateForPartyIndex(index);
+        if (progressionState == null || progressionState.getKnownAbilityIds() == null) {
+            return lines;
+        }
+        for (String abilityId : progressionState.getKnownAbilityIds()) {
+            AbilityProgressionState abilityState = progressionState.getAbilityProgression().get(abilityId);
+            AbilityDefinition definition = AbilityRegistry.get(abilityId);
+            String abilityName = definition != null ? definition.getName() : abilityId;
+            int level = abilityState != null ? abilityState.getProficiencyLevel() : 1;
+            int xp = abilityState != null ? abilityState.getProficiencyXp() : 0;
+            lines.add(abilityName + " Lv." + level + " (" + xp + " XP)");
+        }
+        return lines;
+    }
+
+    public List<String> getRobotWeaponProgressionLines(int index) {
+        List<String> lines = new ArrayList<>();
+        RobotProgressionState progressionState = getRobotProgressionStateForPartyIndex(index);
+        if (progressionState == null) {
+            return lines;
+        }
+        for (WeaponProficiencyState state : progressionState.getWeaponProficiencies().values()) {
+            if (state == null || state.getWeaponType() == null || state.getWeaponType().isEmpty()) {
+                continue;
+            }
+            lines.add(state.getWeaponType() + " Lv." + state.getLevel() + " (" + state.getXp() + " XP)");
+        }
+        return lines;
+    }
+
     public RobotStatBlock getRobotStats(int index) {
         RobotCompanion robot = robots[index];
         EquipmentTotals equipmentTotals = getEquipmentTotals(index);
+        RobotProgressionState progressionState = getRobotProgressionStateForPartyIndex(index);
+        int robotLevel = progressionState != null ? progressionState.getLevel() : 1;
+        int evolutionTier = progressionState != null ? progressionState.getEvolutionTier() : 1;
+        float levelBonus = Math.max(0f, (robotLevel - 1) * RobotEvolutionManager.levelBonusPerLevel());
+        float evolutionMultiplier = RobotEvolutionManager.statMultiplier(evolutionTier);
         return new RobotStatBlock(
             robot.health,
-            robot.maxHealth + equipmentTotals.hpBonus,
-            robot.agility + equipmentTotals.agilityBonus,
-            robot.strength + equipmentTotals.strengthBonus,
-            robot.intelligence + equipmentTotals.intelligenceBonus,
-            robot.stamina + equipmentTotals.staminaBonus
+            (robot.maxHealth + (levelBonus * 4f)) * evolutionMultiplier + equipmentTotals.hpBonus,
+            (robot.agility + levelBonus) * evolutionMultiplier + equipmentTotals.agilityBonus,
+            (robot.strength + levelBonus) * evolutionMultiplier + equipmentTotals.strengthBonus,
+            (robot.intelligence + levelBonus) * evolutionMultiplier + equipmentTotals.intelligenceBonus,
+            (robot.stamina + levelBonus) * evolutionMultiplier + equipmentTotals.staminaBonus
         );
     }
 
@@ -2273,22 +2583,33 @@ public class GameScreen implements Screen {
             ids.add("heal_pulse");
             return ids;
         }
-        List<String> activeIds = gameState.getActiveRobotIds();
-        String robotType = partyIndex < activeIds.size() ? activeIds.get(partyIndex) : "";
-        if ("scout_mk1".equals(robotType)) {
-            ids.add("dash");
-            ids.add("scan");
-        } else if ("guardian_mk1".equals(robotType)) {
-            ids.add("shield_wall");
-            ids.add("taunt");
-        } else if ("medic_mk1".equals(robotType)) {
-            ids.add("heal_pulse");
-            ids.add("repair_aura");
-        } else {
-            ids.add("power_strike");
-            ids.add("rapid_fire");
+        RobotProgressionState progressionState = getRobotProgressionStateForPartyIndex(partyIndex);
+        if (progressionState != null && progressionState.getKnownAbilityIds() != null) {
+            ids.addAll(progressionState.getKnownAbilityIds());
         }
         return ids;
+    }
+
+    public List<com.rogueforge.game.combat.AbilityInstance> getPartyAbilityInstances(int partyIndex) {
+        if (partyIndex < 0) {
+            return com.rogueforge.game.combat.AbilityRegistry.createInstances(getPartyAbilityIds(-1));
+        }
+        RobotProgressionState progressionState = getRobotProgressionStateForPartyIndex(partyIndex);
+        if (progressionState == null) {
+            return com.rogueforge.game.combat.AbilityRegistry.createInstances(getPartyAbilityIds(partyIndex));
+        }
+        return com.rogueforge.game.combat.AbilityRegistry.createInstances(
+            progressionState.getKnownAbilityIds(),
+            progressionState.getAbilityProgression()
+        );
+    }
+
+    public List<String> applyAbilityMasteryUnlocks(int partyIndex) {
+        RobotProgressionState progressionState = getRobotProgressionStateForPartyIndex(partyIndex);
+        if (progressionState == null) {
+            return new ArrayList<>();
+        }
+        return AbilityEvolutionManager.applyMasteryUnlocks(progressionState, gameState.getRobotProgressionStates());
     }
 
     public ShopInventory createShopInventory(String shopId) {
@@ -2336,6 +2657,18 @@ public class GameScreen implements Screen {
         }
         unlockEquipment(equipment.getId());
         return "Purchased " + equipment.getName() + ".";
+    }
+
+    public int getBestiaryScanLevel(String monsterId) {
+        return gameState.getBestiaryScanLevel(monsterId);
+    }
+
+    public Map<String, Integer> getBestiaryScanLevels() {
+        return gameState.getBestiaryScanLevels();
+    }
+
+    public void autosave() {
+        saveManager.autosave(buildSaveFile(SaveManager.AUTOSAVE_SLOT));
     }
 
     private void restoreRobotState(
@@ -2402,6 +2735,7 @@ public class GameScreen implements Screen {
             enemy.stamina = enemyState.getStamina();
             enemy.rewardGold = enemyState.getRewardGold();
             enemy.name = enemyState.getName();
+            enemy.monsterId = enemyState.getMonsterId();
             enemy.alive = enemyState.isAlive();
             enemy.attackCooldown = ENEMY_MELEE_COOLDOWN;
             enemy.attackTimer = enemyState.getAttackTimer();
@@ -2614,6 +2948,24 @@ public class GameScreen implements Screen {
             this.strength = strength;
             this.intelligence = intelligence;
             this.stamina = stamina;
+        }
+    }
+
+    public static class BattleProgressionPreview {
+        public final List<String> robotProgress = new ArrayList<>();
+    }
+
+    public static class WeaponGain {
+        public final WeaponType weaponType;
+        public final int fromLevel;
+        public final int toLevel;
+        public final List<String> unlockLabels;
+
+        WeaponGain(WeaponType weaponType, int fromLevel, int toLevel, List<String> unlockLabels) {
+            this.weaponType = weaponType;
+            this.fromLevel = fromLevel;
+            this.toLevel = toLevel;
+            this.unlockLabels = unlockLabels != null ? unlockLabels : new ArrayList<>();
         }
     }
 

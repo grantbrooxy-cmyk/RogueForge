@@ -26,6 +26,8 @@ public class WorkshopScreen implements Screen {
     private static final float TAB_W = 150f;
     private static final float TAB_H = 42f;
     private static final float TAB_GAP = 10f;
+    private static final float EXIT_W = 140f;
+    private static final float EXIT_H = 42f;
 
     private final RogueForgeGame game;
     private final ScreenManager screenManager;
@@ -46,8 +48,9 @@ public class WorkshopScreen implements Screen {
     private int hoveredTab = -1;
     private int hoveredRobot = -1;
     private int hoveredEquipment = -1;
+    private boolean hoveredExit;
     private String statusMessage;
-    private boolean closeKeysReleased;
+    private float closeInputBlockTimer;
 
     public WorkshopScreen(RogueForgeGame game, ScreenManager screenManager, GameScreen gameScreen) {
         this.game = game;
@@ -77,7 +80,8 @@ public class WorkshopScreen implements Screen {
 
     @Override
     public void show() {
-        closeKeysReleased = !Gdx.input.isKeyPressed(Input.Keys.I) && !Gdx.input.isKeyPressed(Input.Keys.ESCAPE);
+        closeInputBlockTimer = 0.18f;
+        Gdx.input.setInputProcessor(null);
     }
 
     @Override
@@ -108,6 +112,7 @@ public class WorkshopScreen implements Screen {
                 hoveredTab = i;
             }
         }
+        hoveredExit = isExitButtonHit(mx, my, w, h);
 
         drawTabs(h);
         drawRosterPanel(h, mx, my);
@@ -119,18 +124,24 @@ public class WorkshopScreen implements Screen {
     }
 
     private void handleInput() {
-        if (!closeKeysReleased) {
-            closeKeysReleased = !Gdx.input.isKeyPressed(Input.Keys.I) && !Gdx.input.isKeyPressed(Input.Keys.ESCAPE);
-        } else if (Gdx.input.isKeyJustPressed(Input.Keys.I) || Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
-            screenManager.pop();
+        closeInputBlockTimer = Math.max(0f, closeInputBlockTimer - Gdx.graphics.getDeltaTime());
+        if (closeInputBlockTimer <= 0f
+            && (Gdx.input.isKeyJustPressed(Input.Keys.I) || Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE))) {
+            closeMenu();
             return;
         }
 
+        float width = w();
         float h = Gdx.graphics.getHeight();
         float mx = Gdx.input.getX();
         float my = h - Gdx.input.getY();
 
         if (Gdx.input.justTouched()) {
+            if (isExitButtonHit(mx, my, width, h)) {
+                closeMenu();
+                return;
+            }
+
             for (int i = 0; i < TAB_LABELS.length; i++) {
                 float tx = 48f + i * (TAB_W + TAB_GAP);
                 if (mx >= tx && mx <= tx + TAB_W && my >= h - 140f && my <= h - 140f + TAB_H) {
@@ -175,6 +186,10 @@ public class WorkshopScreen implements Screen {
             batch.setColor(i == currentTab ? Color.WHITE : (i == hoveredTab ? new Color(0.9f, 0.9f, 0.9f, 1f) : new Color(0.78f, 0.78f, 0.78f, 1f)));
             batch.draw(buttonTexture, tx, h - 140f, TAB_W, TAB_H);
         }
+        float exitX = exitButtonX(w());
+        float exitY = h - 140f;
+        batch.setColor(hoveredExit ? Color.WHITE : new Color(0.78f, 0.78f, 0.78f, 1f));
+        batch.draw(buttonTexture, exitX, exitY, EXIT_W, EXIT_H);
         batch.setColor(Color.WHITE);
         titleFont.setColor(1f, 0.88f, 0.55f, 1f);
         titleFont.draw(batch, "PARTY MENU", 48f, h - 50f);
@@ -184,9 +199,25 @@ public class WorkshopScreen implements Screen {
             buttonFont.setColor(Color.WHITE);
             buttonFont.draw(batch, TAB_LABELS[i], tx + (TAB_W - layout.width) / 2f, h - 112f);
         }
+        layout.setText(buttonFont, "Exit");
+        buttonFont.draw(batch, "Exit", exitX + (EXIT_W - layout.width) / 2f, h - 112f);
         bodyFont.setColor(Color.WHITE);
         bodyFont.draw(batch, "Press I or Esc to close", w() - 260f, h - 60f);
         batch.end();
+    }
+
+    private void closeMenu() {
+        screenManager.pop();
+    }
+
+    private float exitButtonX(float width) {
+        return width - 48f - EXIT_W;
+    }
+
+    private boolean isExitButtonHit(float mx, float my, float width, float height) {
+        float x = exitButtonX(width);
+        float y = height - 140f;
+        return mx >= x && mx <= x + EXIT_W && my >= y && my <= y + EXIT_H;
     }
 
     private void drawRosterPanel(float h, float mx, float my) {
@@ -231,7 +262,9 @@ public class WorkshopScreen implements Screen {
         bodyFont.draw(batch, playerSelected ? gameScreen.getPlayerName() : gameScreen.getRobotName(selectedPartyMember - 1), x, y);
         bodyFont.draw(batch, playerSelected
             ? "Level " + gameScreen.getPlayerLevel() + "  Unlock Grade " + gameScreen.getUnlockedGrade()
-            : "Robot Grade " + gameScreen.getRobotGrade(selectedPartyMember - 1),
+            : "Level " + gameScreen.getRobotLevel(selectedPartyMember - 1)
+                + "  Grade " + gameScreen.getRobotGrade(selectedPartyMember - 1)
+                + "  Evo " + gameScreen.getRobotEvolutionTier(selectedPartyMember - 1),
             x, y - 24f);
         bodyFont.draw(batch, "HP: " + (int) stats.currentHealth + "/" + (int) stats.maxHealth, x, y - 58f);
         bodyFont.draw(batch, "Agility: " + (int) stats.agility, x, y - 93f);
@@ -240,6 +273,8 @@ public class WorkshopScreen implements Screen {
         bodyFont.draw(batch, "Stamina: " + (int) stats.stamina, x, y - 198f);
         if (playerSelected) {
             bodyFont.draw(batch, "XP: " + gameScreen.getPlayerExperience() + "/" + gameScreen.getExperienceForNextLevel(), x, y - 233f);
+        } else {
+            bodyFont.draw(batch, "Robot XP: " + gameScreen.getRobotExperience(selectedPartyMember - 1), x, y - 233f);
         }
 
         bodyFont.draw(batch, "Equipped:", x, y - 280f);
@@ -252,6 +287,29 @@ public class WorkshopScreen implements Screen {
         }
         if (equipped.isEmpty()) {
             bodyFont.draw(batch, "No equipment assigned.", x, y - 315f);
+        }
+
+        if (!playerSelected) {
+            List<String> abilityLines = gameScreen.getRobotAbilityProgressionLines(selectedPartyMember - 1);
+            List<String> weaponLines = gameScreen.getRobotWeaponProgressionLines(selectedPartyMember - 1);
+            float abilityX = x + 300f;
+            bodyFont.draw(batch, "Abilities:", abilityX, y - 280f);
+            if (abilityLines.isEmpty()) {
+                bodyFont.draw(batch, "No learned abilities.", abilityX, y - 315f);
+            } else {
+                for (int i = 0; i < abilityLines.size() && i < 6; i++) {
+                    bodyFont.draw(batch, abilityLines.get(i), abilityX, y - 315f - (i * 28f));
+                }
+            }
+            float weaponY = y - 315f - (Math.min(6, abilityLines.size()) * 28f) - 20f;
+            bodyFont.draw(batch, "Weapons:", abilityX, weaponY);
+            if (weaponLines.isEmpty()) {
+                bodyFont.draw(batch, "No weapon proficiency yet.", abilityX, weaponY - 28f);
+            } else {
+                for (int i = 0; i < weaponLines.size() && i < 4; i++) {
+                    bodyFont.draw(batch, weaponLines.get(i), abilityX, weaponY - 28f - (i * 28f));
+                }
+            }
         }
         batch.end();
     }

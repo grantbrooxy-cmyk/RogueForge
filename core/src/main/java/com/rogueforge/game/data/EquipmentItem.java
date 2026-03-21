@@ -1,5 +1,7 @@
 package com.rogueforge.game.data;
 
+import com.rogueforge.game.combat.WeaponType;
+
 /**
  * Data POJO for equipment items loaded from JSON.
  * Represents a piece of equipment with slot type and stat bonuses.
@@ -18,6 +20,7 @@ public class EquipmentItem {
     private int tier;
     private String gradeRequirement;
     private String uniqueBoost;
+    private WeaponType weaponType = WeaponType.NONE;
 
     /**
      * No-arg constructor required for JSON deserialization.
@@ -88,5 +91,13 @@ public class EquipmentItem {
 
     public String getUniqueBoost() {
         return uniqueBoost != null ? uniqueBoost : "";
+    }
+
+    public WeaponType getWeaponType() {
+        return weaponType != null ? weaponType : WeaponType.NONE;
+    }
+
+    public void setWeaponType(WeaponType weaponType) {
+        this.weaponType = weaponType;
     }
 }

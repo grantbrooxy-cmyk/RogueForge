@@ -1,6 +1,14 @@
 package com.rogueforge.game.combat;
 
-import java.util.*;
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.utils.Json;
+import com.rogueforge.game.progression.AbilityProgressionState;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Static registry that maps ability IDs to their definitions.
@@ -18,103 +26,22 @@ public class AbilityRegistry {
     private static void ensureInitialized() {
         if (!initialized) {
             initialized = true;
-            registerDefaults();
+            loadDefinitions();
         }
     }
 
-    /**
-     * Registers all default ability definitions.
-     * These match the abilityIds from robots.json
-     */
-    private static void registerDefaults() {
-        // Hardcoded ability definitions matching robots.json abilityIds
-        register(new AbilityDefinition(
-            "dash",
-            "Dash",
-            AbilityDefinition.AbilityType.UTILITY,
-            AbilityDefinition.TargetType.SELF,
-            5f,
-            0f,
-            2f,
-            "Quick dash increasing speed temporarily"
-        ));
-
-        register(new AbilityDefinition(
-            "scan",
-            "Scan",
-            AbilityDefinition.AbilityType.UTILITY,
-            AbilityDefinition.TargetType.SINGLE_ENEMY,
-            8f,
-            0f,
-            5f,
-            "Reveals enemy stats and weaknesses"
-        ));
-
-        register(new AbilityDefinition(
-            "shield_wall",
-            "Shield Wall",
-            AbilityDefinition.AbilityType.BUFF,
-            AbilityDefinition.TargetType.SELF,
-            12f,
-            15f,
-            6f,
-            "Greatly increases defense for 6 seconds"
-        ));
-
-        register(new AbilityDefinition(
-            "taunt",
-            "Taunt",
-            AbilityDefinition.AbilityType.DEBUFF,
-            AbilityDefinition.TargetType.ALL_ENEMIES,
-            10f,
-            0f,
-            4f,
-            "Forces enemies to target this robot"
-        ));
-
-        register(new AbilityDefinition(
-            "power_strike",
-            "Power Strike",
-            AbilityDefinition.AbilityType.DAMAGE,
-            AbilityDefinition.TargetType.SINGLE_ENEMY,
-            6f,
-            45f,
-            0f,
-            "A devastating single-target attack"
-        ));
-
-        register(new AbilityDefinition(
-            "rapid_fire",
-            "Rapid Fire",
-            AbilityDefinition.AbilityType.DAMAGE,
-            AbilityDefinition.TargetType.ALL_ENEMIES,
-            10f,
-            20f,
-            0f,
-            "Hits all enemies for moderate damage"
-        ));
-
-        register(new AbilityDefinition(
-            "heal_pulse",
-            "Heal Pulse",
-            AbilityDefinition.AbilityType.HEAL,
-            AbilityDefinition.TargetType.ALL_ALLIES,
-            15f,
-            30f,
-            0f,
-            "Heals all allies for 30 HP"
-        ));
-
-        register(new AbilityDefinition(
-            "repair_aura",
-            "Repair Aura",
-            AbilityDefinition.AbilityType.HEAL,
-            AbilityDefinition.TargetType.ALL_ALLIES,
-            20f,
-            5f,
-            8f,
-            "Heals allies over time for 8 seconds"
-        ));
+    private static void loadDefinitions() {
+        Json json = new Json();
+        AbilityDefinition[] definitions = json.fromJson(
+            AbilityDefinition[].class,
+            Gdx.files.internal("data/abilities.json").readString()
+        );
+        if (definitions == null) {
+            return;
+        }
+        for (AbilityDefinition definition : definitions) {
+            register(definition);
+        }
     }
 
     /**
@@ -148,6 +75,10 @@ public class AbilityRegistry {
      * @return List of AbilityInstance objects, or empty list if abilityIds is null
      */
     public static List<AbilityInstance> createInstances(List<String> abilityIds) {
+        return createInstances(abilityIds, null);
+    }
+
+    public static List<AbilityInstance> createInstances(List<String> abilityIds, Map<String, AbilityProgressionState> progressionStates) {
         ensureInitialized();
         List<AbilityInstance> instances = new ArrayList<>();
 
@@ -158,7 +89,14 @@ public class AbilityRegistry {
         for (String abilityId : abilityIds) {
             AbilityDefinition definition = get(abilityId);
             if (definition != null) {
-                instances.add(new AbilityInstance(definition));
+                AbilityProgressionState progressionState = progressionStates != null
+                    ? progressionStates.get(abilityId)
+                    : null;
+                if (progressionStates != null && progressionState == null) {
+                    progressionState = new AbilityProgressionState(abilityId);
+                    progressionStates.put(abilityId, progressionState);
+                }
+                instances.add(new AbilityInstance(definition, progressionState));
             }
         }
 
