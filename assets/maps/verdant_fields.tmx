@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="1.10.2" orientation="orthogonal" renderorder="right-down" width="40" height="28" tilewidth="48" tileheight="48" infinite="0" nextlayerid="7" nextobjectid="32">
+ <properties>
+  <property name="groundStyle" value="meadow"/>
+  <property name="safeZone" value="true"/>
+ </properties>
+ <objectgroup id="1" name="features">
+  <object id="1" name="workshop" x="240" y="452" width="240" height="192">
+   <properties>
+    <property name="kind" value="house"/>
+    <property name="label" value="Workshop"/>
+    <property name="houseId" value="0"/>
+   </properties>
+  </object>
+  <object id="2" name="lodge" x="560" y="422" width="288" height="192">
+   <properties>
+    <property name="kind" value="house"/>
+    <property name="label" value="Traveler Lodge"/>
+    <property name="houseId" value="1"/>
+   </properties>
+  </object>
+  <object id="3" name="herbalist" x="900" y="474" width="240" height="180">
+   <properties>
+    <property name="kind" value="house"/>
+    <property name="label" value="Herbalist"/>
+    <property name="houseId" value="2"/>
+   </properties>
+  </object>
+  <object id="4" name="cave_wall" x="1590" y="484" width="220" height="300">
+   <properties>
+    <property name="kind" value="cliff"/>
+    <property name="label" value="Shadow Caves Gate"/>
+   </properties>
+  </object>
+  <object id="5" name="peak_gate" x="1120" y="144" width="240" height="160">
+   <properties>
+    <property name="kind" value="gate"/>
+    <property name="label" value="Dragon Peak Lift"/>
+   </properties>
+  </object>
+ </objectgroup>
+ <objectgroup id="2" name="collisions">
+  <object id="6" x="240" y="452" width="240" height="192"/>
+  <object id="7" x="560" y="422" width="288" height="192"/>
+  <object id="8" x="900" y="474" width="240" height="180"/>
+  <object id="9" x="1590" y="484" width="220" height="300"/>
+  <object id="10" x="1120" y="144" width="240" height="160"/>
+  <object id="11" x="0" y="0" width="1920" height="60"/>
+  <object id="12" x="0" y="1284" width="1920" height="60"/>
+  <object id="13" x="0" y="0" width="60" height="1344"/>
+  <object id="14" x="1860" y="0" width="60" height="1344"/>
+ </objectgroup>
+ <objectgroup id="3" name="spawn_points">
+  <object id="15" name="town_square" type="player" x="380" y="764">
+   <properties>
+    <property name="spawnId" value="town_square"/>
+   </properties>
+  </object>
+  <object id="16" name="from_caves" type="player" x="1490" y="764">
+   <properties>
+    <property name="spawnId" value="from_caves"/>
+   </properties>
+  </object>
+  <object id="17" name="from_peak" type="player" x="1180" y="360">
+   <properties>
+    <property name="spawnId" value="from_peak"/>
+   </properties>
+  </object>
+  <object id="18" name="enemy_1" type="enemy" x="1320" y="914"/>
+  <object id="19" name="enemy_2" type="enemy" x="1480" y="824"/>
+  <object id="20" name="enemy_3" type="enemy" x="1570" y="584"/>
+  <object id="21" name="enemy_4" type="enemy" x="1320" y="444"/>
+ </objectgroup>
+ <objectgroup id="4" name="doors">
+  <object id="22" name="door_workshop" x="330" y="644" width="60" height="46">
+   <properties>
+    <property name="label" value="Workshop"/>
+    <property name="houseId" value="0"/>
+   </properties>
+  </object>
+  <object id="23" name="door_lodge" x="670" y="614" width="68" height="46">
+   <properties>
+    <property name="label" value="Traveler Lodge"/>
+    <property name="houseId" value="1"/>
+   </properties>
+  </object>
+  <object id="24" name="door_herbalist" x="988" y="654" width="60" height="46">
+   <properties>
+    <property name="label" value="Herbalist"/>
+    <property name="houseId" value="2"/>
+   </properties>
+  </object>
+  <object id="25" name="shadow_caves_gate" x="1670" y="732" width="72" height="72">
+   <properties>
+    <property name="label" value="Shadow Caves"/>
+    <property name="targetZone" value="shadow_caves"/>
+    <property name="targetSpawn" value="cave_entry"/>
+    <property name="keyItem" value="workshop_pass"/>
+    <property name="lockMessage" value="Mira's workshop pass should unlock the cave gate."/>
+   </properties>
+  </object>
+  <object id="26" name="dragon_peak_lift" x="1208" y="358" width="72" height="72">
+   <properties>
+    <property name="label" value="Dragon Peak"/>
+    <property name="targetZone" value="dragon_peak"/>
+    <property name="targetSpawn" value="foothill"/>
+    <property name="keyItem" value="peak_sigil"/>
+    <property name="lockMessage" value="A resonant sigil is needed to raise the lift."/>
+   </properties>
+  </object>
+ </objectgroup>
+ <objectgroup id="5" name="npcs">
+  <object id="27" name="mira" x="480" y="734">
+   <properties>
+    <property name="npcId" value="mira"/>
+    <property name="displayName" value="Mira"/>
+   </properties>
+  </object>
+  <object id="28" name="tor" x="760" y="744">
+   <properties>
+    <property name="npcId" value="tor"/>
+    <property name="displayName" value="Tor"/>
+   </properties>
+  </object>
+  <object id="29" name="edda" x="1060" y="734">
+   <properties>
+    <property name="npcId" value="edda_town"/>
+    <property name="displayName" value="Edda"/>
+   </properties>
+  </object>
+ </objectgroup>
+ <objectgroup id="6" name="chests"/>
+</map>

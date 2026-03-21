@@ -1,0 +1,54 @@
+{
+playerName: Player
+playerHp: 106
+playerMaxHp: 100
+playerX: 1324.6846
+playerY: 580
+currentZoneId: verdant_fields
+currencyBalance: 85
+healingPotions: 4
+playerLevel: 2
+ownedEquipmentIds: [
+	bronze_edge
+	swift_boots
+]
+questFlags: {
+	class: java.util.HashMap
+	quest_shard_found: true
+	quest_shard_started: true
+}
+keyItems: [
+	workshop_pass
+	luminous_shard
+]
+collectedRobotIds: [
+	scout_mk1
+	guardian_mk1
+	striker_mk1
+]
+activeRobotIds: [
+	scout_mk1
+	guardian_mk1
+	striker_mk1
+]
+robotHealth: [ 21, 75, 75 ]
+robotMaxHealth: [ 75, 75, 75 ]
+robotBaseMaxHealth: [ 75, 75, 75 ]
+robotX: [ 1376.486, 1424.9199, 1460.7139 ]
+robotY: [ 575.4592, 556.5343, 518.81433 ]
+robotAngleDeg: [ 174.98811, 158.65924, 133.49901 ]
+robotAttackTimers: [ 0, 0, 0 ]
+totalEnemiesKilled: 1
+enemies: []
+chests: [
+	{
+		zoneId: shadow_caves
+		houseId: -1
+		chestId: luminous_shard_cache
+		opened: true
+	}
+]
+playTimeSeconds: 48
+saveTimestamp: 2026-03-21 19:13
+saveSlot: 1
+}

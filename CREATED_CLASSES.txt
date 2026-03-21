@@ -1,0 +1,161 @@
+LibGDX Rogue Forge - Created Java Classes Summary
+================================================
+
+COMBAT PACKAGE (com.rogueforge.game.combat)
+===========================================
+
+1. CombatResolver.java
+   - Processes hit events with damage calculations
+   - resolveHit(CombatStats attacker, CombatStats defender) 
+     Formula: baseDamage = attack - (defense * 0.5), min 1.0
+   - processStatusEffects(List<StatusEffect> effects, float delta)
+     Ticks all active effects and removes expired ones
+   - onContactBegin(Object entityA, Object entityB) - Box2D integration point
+   - applyDamage(Object target, float damage, Object source)
+     Applies damage and fires DamageDealtEvent
+   - checkDeath(Object entity) - fires EntityKilledEvent if HP <= 0
+
+2. CombatStats.java
+   - Container for combat statistics (attack, defense, hp, maxHp)
+   - Methods: getAttack(), getDefense(), getHp(), getMaxHp()
+   - takeDamage(float damage), heal(float amount), isAlive()
+   - HP clamped between 0 and maxHp
+
+3. StatusEffect.java - Abstract base class for status effects
+   - Fields: name, duration, elapsed, tickInterval, tickTimer
+   - Abstract tick(Object target) - called each tick interval
+   - update(float delta) - advances timers and ticks
+   - isExpired() - checks if elapsed >= duration
+   - Concrete inner classes:
+     * BurnEffect: 5 damage per tick, 0.5s intervals
+     * SlowEffect: 50% speed reduction (passive)
+     * StunEffect: Prevents actions (duration-based)
+
+4. LootResolver.java
+   - Subscribes to EntityKilledEvent via EventBus
+   - onKill(MonsterDefinition monster) calculates rewards:
+     * baseLoot = monster base loot value
+     * multiplier from RankMultiplier (uses getMultiplier())
+     * total = baseLoot * multiplier
+   - Fires CurrencyEarnedEvent with total
+   - rollEquipmentDrop(MonsterDefinition) - TODO placeholder
+
+
+ECONOMY PACKAGE (com.rogueforge.game.economy)
+==============================================
+
+1. RankMultiplier.java - Enum for rank tiers
+   Ranks: G(1), F(2), E(4), D(8), C(16), B(32), A(64), S(128), 
+          S_PLUS(256), S_PLUS_PLUS(512), S_PLUS_PLUS_PLUS(1024)
+   
+   Methods:
+   - getMultiplier() - returns int value
+   - getDisplayName() - returns string (e.g., "S+++")
+   - fromString(String name) - parses rank by name or display
+   - next(RankMultiplier) - returns next rank or null if max
+   - previous(RankMultiplier) - returns previous rank or null if min
+   - getIndex() - 0-based rank index
+   - isHigherThan(RankMultiplier), isLowerThan(RankMultiplier)
+
+2. CurrencyWallet.java - Player currency management
+   - long balance field (starts at 0)
+   - earn(long amount) - adds currency
+   - spend(long amount) - removes currency (throws if insufficient)
+   - trySpend(long amount) - returns boolean instead of throwing
+   - canAfford(long cost) - checks if wallet has enough
+   - getBalance(), setBalance(long), reset()
+   - onCurrencyEarned(CurrencyEarnedEvent) - auto-credit via EventBus
+   - No-arg constructor for JSON serialization
+
+3. ShopInventory.java - Shop management with zone-based loading
+   - List<ShopEntry> items - current inventory
+   - loadForZone(ZoneDefinition zone) - populates based on zone rank
+   - purchase(ShopEntry entry, CurrencyWallet wallet) 
+     * Checks affordability
+     * Deducts currency
+     * Removes from inventory
+     * Returns EquipmentItem
+   - getAvailableItems() - returns copy of inventory
+   - getItem(int index), getItemCount()
+   - restock() - regenerates items
+   
+   Inner classes:
+   - ShopEntry: holds EquipmentItem + cost
+   - EquipmentItem: interface for equipment
+   - ZoneDefinition: interface for zones
+
+
+SUPPORTING CLASSES
+==================
+
+EVENT PACKAGE (com.rogueforge.game.event)
+1. DamageDealtEvent.java
+   - Fields: source, target, damage
+   - Fired when damage is applied
+
+2. EntityKilledEvent.java
+   - Fields: entity
+   - Fired when entity HP reaches 0
+
+3. CurrencyEarnedEvent.java
+   - Fields: amount, source
+   - Fired when currency is earned
+
+CORE PACKAGE (com.rogueforge.game.core)
+1. EventBus.java - Simple event dispatch system
+   - subscribe(Object subscriber) - scans methods for onXxx handlers
+   - unsubscribe(Object subscriber)
+   - fire(Object event) - dispatches to all listeners
+   - getListenerCount(Class eventType), clear()
+   - Uses reflection to find listener methods by naming convention
+
+
+FILE LOCATIONS
+==============
+/sessions/ecstatic-wonderful-darwin/mnt/Projects/rogue-forge/core/src/main/java/com/rogueforge/game/
+
+combat/
+  - CombatResolver.java
+  - CombatStats.java
+  - StatusEffect.java
+  - LootResolver.java
+
+economy/
+  - RankMultiplier.java
+  - CurrencyWallet.java
+  - ShopInventory.java
+
+event/
+  - DamageDealtEvent.java
+  - EntityKilledEvent.java
+  - CurrencyEarnedEvent.java
+
+core/
+  - EventBus.java
+
+
+KEY FEATURES IMPLEMENTED
+========================
+
+1. Combat System
+   - Damage calculation with defense scaling
+   - Status effect management with timed ticks
+   - Event-driven damage/death notifications
+
+2. Economy System
+   - Multi-tier ranking (G to S+++)
+   - Currency wallet with spend validation
+   - Zone-based shop system
+
+3. Loot System
+   - Rank-based multipliers for rewards
+   - Event bus integration for currency distribution
+   - Extensible for equipment drops
+
+4. Event Bus
+   - Reflection-based automatic listener registration
+   - Decoupled system communication
+   - Simple naming convention: onEventName(EventType)
+
+All classes follow object-oriented principles with proper encapsulation,
+clean APIs, and comprehensive documentation.

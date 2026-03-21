@@ -1,0 +1,8 @@
+[
+  { "id": "slime_g", "name": "Green Slime", "rank": "G", "hp": 20, "attack": 5, "defense": 2, "speed": 30, "baseLoot": 5, "aiProfile": "PATROL", "lootTableIds": ["common_drop"] },
+  { "id": "goblin_f", "name": "Goblin Scout", "rank": "F", "hp": 40, "attack": 12, "defense": 5, "speed": 50, "baseLoot": 10, "aiProfile": "AGGRO", "lootTableIds": ["common_drop", "goblin_gear"] },
+  { "id": "skeleton_e", "name": "Skeleton Warrior", "rank": "E", "hp": 80, "attack": 25, "defense": 15, "speed": 35, "baseLoot": 20, "aiProfile": "AGGRO", "lootTableIds": ["uncommon_drop"] },
+  { "id": "mage_d", "name": "Dark Mage", "rank": "D", "hp": 60, "attack": 40, "defense": 8, "speed": 25, "baseLoot": 40, "aiProfile": "RANGED", "lootTableIds": ["uncommon_drop", "magic_gear"] },
+  { "id": "golem_c", "name": "Stone Golem", "rank": "C", "hp": 200, "attack": 50, "defense": 40, "speed": 15, "baseLoot": 80, "aiProfile": "AGGRO", "lootTableIds": ["rare_drop"] },
+  { "id": "dragon_boss_b", "name": "Elder Drake", "rank": "B", "hp": 500, "attack": 80, "defense": 50, "speed": 40, "baseLoot": 200, "aiProfile": "BOSS", "lootTableIds": ["boss_drop", "rare_drop"] }
+]

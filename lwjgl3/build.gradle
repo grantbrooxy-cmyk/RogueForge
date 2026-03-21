@@ -1,0 +1,29 @@
+plugins {
+    id 'application'
+}
+
+import org.gradle.api.file.DuplicatesStrategy
+
+dependencies {
+    implementation project(':core')
+    implementation "com.badlogicgames.gdx:gdx-backend-lwjgl3:${gdxVersion}"
+    implementation "com.badlogicgames.gdx:gdx-platform:${gdxVersion}:natives-desktop"
+    implementation "com.badlogicgames.gdx:gdx-box2d-platform:${gdxVersion}:natives-desktop"
+    implementation "com.badlogicgames.gdx:gdx-freetype-platform:${gdxVersion}:natives-desktop"
+}
+
+application {
+    mainClass = 'com.rogueforge.game.lwjgl3.Lwjgl3Launcher'
+    applicationDefaultJvmArgs = org.gradle.internal.os.OperatingSystem.current().isMacOsX() ?
+        ['-XstartOnFirstThread'] : []
+}
+
+jar {
+    dependsOn project(':core').tasks.named('jar')
+    archiveFileName = 'rogue-forge.jar'
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    manifest {
+        attributes 'Main-Class': 'com.rogueforge.game.lwjgl3.Lwjgl3Launcher'
+    }
+    from configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+}

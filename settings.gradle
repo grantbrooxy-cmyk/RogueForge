@@ -1,0 +1,4 @@
+rootProject.name = 'rogue-forge'
+
+include 'core'
+include 'lwjgl3'
