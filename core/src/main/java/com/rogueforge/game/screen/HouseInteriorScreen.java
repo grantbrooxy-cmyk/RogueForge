@@ -161,6 +161,7 @@ public class HouseInteriorScreen implements Screen {
                 if (chest.potionReward > 0) {
                     gameScreen.addHealingPotions(chest.potionReward);
                 }
+                gameScreen.onInteriorChestOpened(chest.id);
                 activeSpeaker = "Chest";
                 activeDialog = "You found " + chest.goldReward + " gold and " + chest.potionReward + " repair kit(s).";
                 lootMessage = "Loot secured from " + house.name + ".";
@@ -188,8 +189,10 @@ public class HouseInteriorScreen implements Screen {
                 screenManager.push(new ShopScreen(game, screenManager, gameScreen, closestNpc.name, gameScreen.createShopInventory(closestNpc.shopId)));
                 return;
             }
-            activeSpeaker = closestNpc.name;
-            activeDialog = closestNpc.dialog;
+            com.rogueforge.game.world.DialogueSystem.DialogueResult result =
+                gameScreen.interactWithInteriorNpc(closestNpc.id, closestNpc.name);
+            activeSpeaker = result.speaker != null ? result.speaker : closestNpc.name;
+            activeDialog = result.text != null && !result.text.isEmpty() ? result.text : closestNpc.dialog;
         } else {
             activeSpeaker = null;
             activeDialog = null;

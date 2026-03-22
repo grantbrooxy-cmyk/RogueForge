@@ -119,11 +119,14 @@ public class BattleScreen implements Screen {
         ));
         if (encounter.robotHealth != null) {
             for (int i = 0; i < encounter.robotHealth.length; i++) {
+                int partySlot = encounter.robotPartySlots != null && i < encounter.robotPartySlots.length
+                    ? encounter.robotPartySlots[i]
+                    : i;
                 combatants.add(new BattleCombatant(
                     "ally_" + i,
                     encounter.robotNames[i],
                     true,
-                    i,
+                    partySlot,
                     "ALLY",
                     "ALLY",
                     encounter.robotHealth[i],
@@ -132,7 +135,7 @@ public class BattleScreen implements Screen {
                     encounter.robotStrength[i],
                     encounter.robotIntelligence[i],
                     encounter.robotStamina[i],
-                    gameScreen.getPartyAbilityInstances(i),
+                    gameScreen.getPartyAbilityInstances(partySlot),
                     new ArrayList<>(),
                     new ArrayList<>(),
                     new ArrayList<>(),
@@ -184,6 +187,7 @@ public class BattleScreen implements Screen {
 
     @Override
     public void show() {
+        Gdx.input.setInputProcessor(null);
     }
 
     @Override
@@ -292,6 +296,10 @@ public class BattleScreen implements Screen {
                 handleRootSelection();
                 break;
             case ATTACK:
+                if (isBackSelection()) {
+                    goBack();
+                    return;
+                }
                 selectedAttackIndex = selectedIndex;
                 if (livingEnemies().size() > 1) {
                     mode = Mode.TARGET_ENEMY;
@@ -301,6 +309,10 @@ public class BattleScreen implements Screen {
                 }
                 break;
             case ABILITY:
+                if (isBackSelection()) {
+                    goBack();
+                    return;
+                }
                 selectedAbilityIndex = selectedIndex;
                 AbilityInstance ability = readyAbilityAt(activeActor, selectedAbilityIndex);
                 if (ability == null) {
@@ -319,6 +331,10 @@ public class BattleScreen implements Screen {
                 }
                 break;
             case TARGET_ENEMY:
+                if (isBackSelection()) {
+                    goBack();
+                    return;
+                }
                 BattleCombatant enemy = livingEnemies().get(selectedIndex);
                 if (selectedAbilityIndex >= 0 && modeBeforeTargetWasAbility()) {
                     useAbility(activeActor, readyAbilityAt(activeActor, selectedAbilityIndex), enemy);
@@ -329,9 +345,17 @@ public class BattleScreen implements Screen {
                 }
                 break;
             case TARGET_ALLY:
+                if (isBackSelection()) {
+                    goBack();
+                    return;
+                }
                 useAbility(activeActor, readyAbilityAt(activeActor, selectedAbilityIndex), livingAllies().get(selectedIndex));
                 break;
             case ANALYZE_TARGET:
+                if (isBackSelection()) {
+                    goBack();
+                    return;
+                }
                 analyzeEnemy(activeActor, livingEnemies().get(selectedIndex));
                 break;
             default:
@@ -385,17 +409,46 @@ public class BattleScreen implements Screen {
         switch (mode) {
             case ATTACK:
             case ABILITY:
-            case TARGET_ENEMY:
-            case TARGET_ALLY:
             case ANALYZE_TARGET:
                 mode = Mode.ROOT;
                 selectedIndex = 0;
                 selectedAttackIndex = -1;
                 selectedAbilityIndex = -1;
                 break;
+            case TARGET_ENEMY:
+                if (modeBeforeTargetWasAbility()) {
+                    mode = Mode.ABILITY;
+                    selectedIndex = clampSelection(selectedAbilityIndex, getCurrentOptions().length);
+                    selectedAttackIndex = -1;
+                } else {
+                    mode = Mode.ATTACK;
+                    selectedIndex = clampSelection(selectedAttackIndex, getCurrentOptions().length);
+                    selectedAbilityIndex = -1;
+                }
+                break;
+            case TARGET_ALLY:
+                mode = Mode.ABILITY;
+                selectedIndex = clampSelection(selectedAbilityIndex, getCurrentOptions().length);
+                selectedAttackIndex = -1;
+                break;
             default:
                 break;
         }
+    }
+
+    private boolean isBackSelection() {
+        String[] options = getCurrentOptions();
+        return options.length > 0 && selectedIndex == options.length - 1 && !"Flee".equals(options[selectedIndex]);
+    }
+
+    private int clampSelection(int preferredIndex, int optionCount) {
+        if (optionCount <= 0) {
+            return 0;
+        }
+        if (preferredIndex < 0) {
+            return 0;
+        }
+        return Math.min(preferredIndex, optionCount - 1);
     }
 
     private void performAttack(BattleCombatant actor, BattleCombatant target, AttackMove move) {
@@ -647,6 +700,7 @@ public class BattleScreen implements Screen {
         BattleResult result = new BattleResult();
         result.playerHealth = battleState.getAllies().isEmpty() ? 0f : battleState.getAllies().get(0).getHealth();
         result.robotHealth = buildRobotHealth();
+        result.robotPartySlots = encounter.robotPartySlots;
         result.enemyHealth = buildEnemyHealth();
         result.healingPotions = healingPotions;
         result.enemyDefeated = enemyDefeated;
@@ -952,29 +1006,32 @@ public class BattleScreen implements Screen {
     }
 
     private String[] attackOptions() {
-        String[] options = new String[ATTACK_MOVES.length];
+        String[] options = new String[ATTACK_MOVES.length + 1];
         for (int i = 0; i < ATTACK_MOVES.length; i++) {
             options[i] = ATTACK_MOVES[i].name + " [" + ATTACK_MOVES[i].speedCost + "]";
         }
+        options[options.length - 1] = "Back";
         return options;
     }
 
     private String[] abilityOptions() {
-        String[] options = new String[activeActor.getAbilities().size()];
+        String[] options = new String[activeActor.getAbilities().size() + 1];
         for (int i = 0; i < activeActor.getAbilities().size(); i++) {
             AbilityInstance ability = activeActor.getAbilities().get(i);
             String cooldown = ability.isReady() ? "" : " [" + Math.max(1, Math.round(ability.getCurrentCooldown())) + "]";
             options[i] = ability.getDefinition().getName() + cooldown;
         }
+        options[options.length - 1] = "Back";
         return options;
     }
 
     private String[] combatantOptions(List<BattleCombatant> combatants) {
-        String[] options = new String[combatants.size()];
+        String[] options = new String[combatants.size() + 1];
         for (int i = 0; i < combatants.size(); i++) {
             BattleCombatant combatant = combatants.get(i);
             options[i] = combatant.getName() + " HP " + (int) combatant.getHealth() + "/" + (int) combatant.getMaxHealth();
         }
+        options[options.length - 1] = "Back";
         return options;
     }
 
@@ -1126,6 +1183,7 @@ public class BattleScreen implements Screen {
         public float playerIntelligence;
         public float playerStamina;
         public String[] robotNames;
+        public int[] robotPartySlots;
         public float[] robotHealth;
         public float[] robotMaxHealth;
         public float[] robotAgility;
@@ -1138,6 +1196,7 @@ public class BattleScreen implements Screen {
     public static class BattleResult {
         public float playerHealth;
         public float[] robotHealth;
+        public int[] robotPartySlots;
         public float[] enemyHealth;
         public int healingPotions;
         public boolean enemyDefeated;

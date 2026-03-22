@@ -1,0 +1,350 @@
+[
+  {
+    "id": "mira_start",
+    "npcId": "mira",
+    "priority": 100,
+    "requiredQuestId": "shard_hunt",
+    "requiredQuestState": "NOT_STARTED",
+    "lines": [
+      { "speaker": "Mira", "text": "Take this Workshop Pass and search Shadow Caves for the Luminous Shard. Bring it back and I'll stabilize the lift to Dragon Peak." }
+    ],
+    "addKeyItem": "workshop_pass",
+    "setQuestId": "shard_hunt",
+    "setQuestStep": "search_shard",
+    "setWorldFlag": "access.workshop_pass"
+  },
+  {
+    "id": "mira_return",
+    "npcId": "mira",
+    "priority": 95,
+    "requiredQuestId": "shard_hunt",
+    "requiredQuestState": "return_shard",
+    "lines": [
+      { "speaker": "Mira", "text": "You found it. With this shard tuned, the peak lift will answer your sigil. Take these supplies and keep climbing." }
+    ],
+    "rewardGold": 120,
+    "rewardExperience": 90,
+    "rewardPotions": 2,
+    "addKeyItem": "peak_sigil",
+    "completeQuestId": "shard_hunt",
+    "setWorldFlag": "frontier.peak_lift_unlocked"
+  },
+  {
+    "id": "mira_mid",
+    "npcId": "mira",
+    "priority": 80,
+    "requiredQuestId": "shard_hunt",
+    "requiredQuestState": "search_shard",
+    "lines": [
+      { "speaker": "Mira", "text": "The cave gate will open for the Workshop Pass. Find the Luminous Shard and watch for old scout caches." }
+    ]
+  },
+  {
+    "id": "mira_after",
+    "npcId": "mira",
+    "priority": 70,
+    "requiredQuestId": "shard_hunt",
+    "requiredQuestCompleted": true,
+    "lines": [
+      { "speaker": "Mira", "text": "Your bots are carrying real momentum now. The lift to Dragon Peak should answer the sigil I tuned for you." }
+    ]
+  },
+  {
+    "id": "tor_pre",
+    "npcId": "tor",
+    "priority": 70,
+    "requiredQuestId": "shard_hunt",
+    "requiredQuestState": "search_shard",
+    "lines": [
+      { "speaker": "Tor", "text": "Mira's pass should get you into the caves. Once you're inside, keep right at the broken pillars." }
+    ]
+  },
+  {
+    "id": "tor_post",
+    "npcId": "tor",
+    "priority": 60,
+    "requiredQuestId": "shard_hunt",
+    "requiredQuestCompleted": true,
+    "lines": [
+      { "speaker": "Tor", "text": "The frontier opens in layers. Keep one eye on your party order and the other on the sky." }
+    ]
+  },
+  {
+    "id": "tor_watchtower_mid",
+    "npcId": "tor",
+    "priority": 94,
+    "requiredQuestId": "watchtower_links",
+    "requiredQuestState": "report_tor",
+    "lines": [
+      { "speaker": "Tor", "text": "Bram wants the watchtower online? Good. Take these alignment notes back to him. Once the lamps are synced, we can start seeing farther than the gate." }
+    ],
+    "setQuestId": "watchtower_links",
+    "setQuestStep": "return_bram"
+  },
+  {
+    "id": "tor_artificer_offer",
+    "npcId": "tor",
+    "priority": 93,
+    "requiredWorldFlag": "settlement.watchtower_network",
+    "blockedWorldFlag": "recruit.artificer_joined",
+    "lines": [
+      { "speaker": "Tor", "text": "One of the watchtower crates held an intact Artificer frame. It isn't fit for the line yet, but it can travel with you if you want to bring it online." }
+    ],
+    "recruitEventId": "artificer_join"
+  },
+  {
+    "id": "edda_town_pre",
+    "npcId": "edda_town",
+    "priority": 70,
+    "requiredQuestId": "shard_hunt",
+    "requiredQuestState": "search_shard",
+    "lines": [
+      { "speaker": "Edda", "text": "Mira won't let anyone near the lift until the cave shard is secured." }
+    ]
+  },
+  {
+    "id": "edda_town_post",
+    "npcId": "edda_town",
+    "priority": 60,
+    "requiredQuestId": "shard_hunt",
+    "requiredQuestCompleted": true,
+    "lines": [
+      { "speaker": "Edda", "text": "The mountain lift is humming again. When you're ready, Dragon Peak is waiting." }
+    ]
+  },
+  {
+    "id": "cave_scout_pre",
+    "npcId": "cave_scout",
+    "priority": 70,
+    "requiredQuestId": "shard_hunt",
+    "requiredQuestState": "search_shard",
+    "lines": [
+      { "speaker": "Scout", "text": "I saw a strange cache deeper in. It was tucked beyond the central pillar where the cave forks east." }
+    ]
+  },
+  {
+    "id": "cave_scout_post",
+    "npcId": "cave_scout",
+    "priority": 60,
+    "requiredKeyItem": "luminous_shard",
+    "lines": [
+      { "speaker": "Scout", "text": "That glow in your pack means you found the cache. Head back before the tunnels shift." }
+    ]
+  },
+  {
+    "id": "edda_peak_start",
+    "npcId": "edda_peak",
+    "priority": 100,
+    "requiredQuestId": "shard_hunt",
+    "requiredQuestCompleted": true,
+    "requiredQuestState": "NOT_STARTED",
+    "lines": [
+      { "speaker": "Edda", "text": "Dragon Peak's reactors are starving. Search the ridge for a Sun Core and we'll relight the old warding pylons." }
+    ],
+    "setQuestId": "core_ascent",
+    "setQuestStep": "search_core"
+  },
+  {
+    "id": "edda_peak_return",
+    "npcId": "edda_peak",
+    "priority": 95,
+    "requiredQuestId": "core_ascent",
+    "requiredQuestState": "return_core",
+    "lines": [
+      { "speaker": "Edda", "text": "Perfect. The Sun Core is stable. Take this reward and keep pushing outward. The whole frontier is starting to wake up." }
+    ],
+    "rewardGold": 220,
+    "rewardExperience": 140,
+    "rewardPotions": 3,
+    "completeQuestId": "core_ascent",
+    "setWorldFlag": "frontier.warding_pylons_online"
+  },
+  {
+    "id": "edda_peak_mid",
+    "npcId": "edda_peak",
+    "priority": 80,
+    "requiredQuestId": "core_ascent",
+    "requiredQuestState": "search_core",
+    "lines": [
+      { "speaker": "Edda", "text": "The Sun Core should be stashed past the wind-broken ridge on the eastern path." }
+    ]
+  },
+  {
+    "id": "edda_peak_after",
+    "npcId": "edda_peak",
+    "priority": 70,
+    "requiredQuestId": "core_ascent",
+    "requiredQuestCompleted": true,
+    "lines": [
+      { "speaker": "Edda", "text": "You've done more than reopen the lift. The frontier feels alive again." }
+    ]
+  },
+  {
+    "id": "toma_upgrade",
+    "npcId": "toma",
+    "priority": 100,
+    "requiredQuestId": "shard_hunt",
+    "requiredQuestCompleted": true,
+    "blockedWorldFlag": "settlement.workshop_tools",
+    "lines": [
+      { "speaker": "Toma", "text": "That shard stabilized the old forge rails. With a little calibration, I can reopen the workshop line for advanced components." }
+    ],
+    "setQuestId": "workshop_tools",
+    "setQuestStep": "upgrade_workshop",
+    "completeQuestId": "workshop_tools",
+    "setWorldFlag": "settlement.workshop_tools",
+    "settlementUpgradeId": "workshop_tools"
+  },
+  {
+    "id": "toma_survey_mid",
+    "npcId": "toma",
+    "priority": 94,
+    "requiredQuestId": "survey_drones",
+    "requiredQuestState": "speak_toma",
+    "lines": [
+      { "speaker": "Toma", "text": "Survey cradle's half buried, but not dead. Give me a minute and I'll kick it back online. Tell Nia the drones are hers again." }
+    ],
+    "setQuestId": "survey_drones",
+    "setQuestStep": "return_nia"
+  },
+  {
+    "id": "toma_idle",
+    "npcId": "toma",
+    "priority": 50,
+    "lines": [
+      { "speaker": "Toma", "text": "If you find old parts in the wild, bring them here and I can rebuild them." }
+    ]
+  },
+  {
+    "id": "nia_rumor",
+    "npcId": "nia",
+    "priority": 100,
+    "requiredQuestId": "vault_rumor",
+    "requiredQuestState": "NOT_STARTED",
+    "lines": [
+      { "speaker": "Nia", "text": "Travelers leave rumors behind. One says there is a buried vault east of town. Start with the herbalist's walls." }
+    ],
+    "setQuestId": "vault_rumor",
+    "setQuestStep": "find_stash"
+  },
+  {
+    "id": "nia_done",
+    "npcId": "nia",
+    "priority": 90,
+    "requiredQuestId": "vault_rumor",
+    "requiredQuestCompleted": true,
+    "lines": [
+      { "speaker": "Nia", "text": "So the rumor was true. Good crews always test the hidden seams of a place." }
+    ]
+  },
+  {
+    "id": "nia_survey_start",
+    "npcId": "nia",
+    "priority": 96,
+    "requiredQuestId": "survey_drones",
+    "requiredQuestState": "NOT_STARTED",
+    "requiredWorldFlag": "frontier.warding_pylons_online",
+    "zoneId": "town",
+    "lines": [
+      { "speaker": "Nia", "text": "Now that the peak relays are live again, I can chart farther routes. Toma just needs someone to kick the old survey drone cradle back awake." }
+    ],
+    "setQuestId": "survey_drones",
+    "setQuestStep": "speak_toma"
+  },
+  {
+    "id": "nia_survey_finish",
+    "npcId": "nia",
+    "priority": 95,
+    "requiredQuestId": "survey_drones",
+    "requiredQuestState": "return_nia",
+    "lines": [
+      { "speaker": "Nia", "text": "Perfect. The survey drones are airborne again, which means safer routes, better supply calls, and one less blind frontier." }
+    ],
+    "completeQuestId": "survey_drones",
+    "setWorldFlag": "settlement.survey_drones",
+    "settlementUpgradeId": "survey_drones",
+    "rewardGold": 90,
+    "rewardExperience": 70
+  },
+  {
+    "id": "nia_idle",
+    "npcId": "nia",
+    "priority": 50,
+    "lines": [
+      { "speaker": "Nia", "text": "Travelers leave rumors behind. Keep listening." }
+    ]
+  },
+  {
+    "id": "bram_idle",
+    "npcId": "bram",
+    "priority": 50,
+    "lines": [
+      { "speaker": "Bram", "text": "Rest when you can. Even machines need a rhythm." }
+    ]
+  },
+  {
+    "id": "bram_watchtower_start",
+    "npcId": "bram",
+    "priority": 96,
+    "requiredQuestId": "watchtower_links",
+    "requiredQuestState": "NOT_STARTED",
+    "requiredWorldFlag": "frontier.peak_lift_unlocked",
+    "lines": [
+      { "speaker": "Bram", "text": "With the lift alive again, we can finally power the old watchtower. Tor still has the alignment notes if you're willing to carry them over." }
+    ],
+    "setQuestId": "watchtower_links",
+    "setQuestStep": "report_tor"
+  },
+  {
+    "id": "bram_watchtower_finish",
+    "npcId": "bram",
+    "priority": 95,
+    "requiredQuestId": "watchtower_links",
+    "requiredQuestState": "return_bram",
+    "lines": [
+      { "speaker": "Bram", "text": "That's the last of it. The watchtower lamps are online again, and Ironhaven won't feel quite so small tonight." }
+    ],
+    "completeQuestId": "watchtower_links",
+    "setWorldFlag": "settlement.watchtower_network",
+    "settlementUpgradeId": "watchtower_network",
+    "rewardGold": 70,
+    "rewardExperience": 55
+  },
+  {
+    "id": "iris_start",
+    "npcId": "iris",
+    "priority": 100,
+    "requiredQuestId": "field_medic",
+    "requiredQuestState": "NOT_STARTED",
+    "requiredWorldFlag": "access.workshop_pass",
+    "lines": [
+      { "speaker": "Iris", "text": "Hidden chests react to careful eyes. Walk close and watch the outline flicker. And if you find an intact medic frame, I'll patch it into your crew." }
+    ],
+    "setQuestId": "field_medic",
+    "setQuestStep": "recruit_medic"
+  },
+  {
+    "id": "iris_recruit",
+    "npcId": "iris",
+    "priority": 95,
+    "requiredWorldFlag": "recruit.medic_frame_found",
+    "blockedWorldFlag": "recruit.medic_joined",
+    "lines": [
+      { "speaker": "Iris", "text": "There. The support frame is stable again. It will follow your commands from here on out." }
+    ],
+    "setQuestId": "field_medic",
+    "setQuestStep": "recruit_medic",
+    "completeQuestId": "field_medic",
+    "setWorldFlag": "recruit.medic_joined",
+    "recruitEventId": "medic_join",
+    "settlementUpgradeId": "apothecary_stock"
+  },
+  {
+    "id": "iris_idle",
+    "npcId": "iris",
+    "priority": 50,
+    "lines": [
+      { "speaker": "Iris", "text": "Hidden chests react to careful eyes. Walk close and watch the outline flicker." }
+    ]
+  }
+]

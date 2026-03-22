@@ -13,5 +13,9 @@
 
   { "id": "medic_mk1", "name": "Medic MK-I", "role": "SUPPORT", "baseHp": 90, "baseAttack": 8, "baseDefense": 15, "baseSpeed": 40, "abilityIds": ["heal_pulse", "repair_aura"], "equipmentSlots": ["HEAD", "BODY", "ARMS", "LEGS", "WEAPON", "ACCESSORY"] },
   { "id": "medic_mk2", "name": "Medic MK-II", "role": "SUPPORT", "baseHp": 106, "baseAttack": 12, "baseDefense": 19, "baseSpeed": 48, "abilityIds": ["revitalise_wave", "nanite_field"], "equipmentSlots": ["HEAD", "BODY", "ARMS", "LEGS", "WEAPON", "ACCESSORY"] },
-  { "id": "medic_mk3", "name": "Medic MK-III", "role": "SUPPORT", "baseHp": 122, "baseAttack": 16, "baseDefense": 23, "baseSpeed": 56, "abilityIds": ["revitalise_wave", "nanite_field", "miracle_core"], "equipmentSlots": ["HEAD", "BODY", "ARMS", "LEGS", "WEAPON", "ACCESSORY"] }
+  { "id": "medic_mk3", "name": "Medic MK-III", "role": "SUPPORT", "baseHp": 122, "baseAttack": 16, "baseDefense": 23, "baseSpeed": 56, "abilityIds": ["revitalise_wave", "nanite_field", "miracle_core"], "equipmentSlots": ["HEAD", "BODY", "ARMS", "LEGS", "WEAPON", "ACCESSORY"] },
+
+  { "id": "artificer_mk1", "name": "Artificer MK-I", "role": "SUPPORT", "baseHp": 84, "baseAttack": 12, "baseDefense": 14, "baseSpeed": 46, "abilityIds": ["scan", "repair_aura"], "equipmentSlots": ["HEAD", "BODY", "ARMS", "LEGS", "WEAPON", "ACCESSORY"] },
+  { "id": "artificer_mk2", "name": "Artificer MK-II", "role": "SUPPORT", "baseHp": 98, "baseAttack": 18, "baseDefense": 18, "baseSpeed": 54, "abilityIds": ["deep_scan", "nanite_field"], "equipmentSlots": ["HEAD", "BODY", "ARMS", "LEGS", "WEAPON", "ACCESSORY"] },
+  { "id": "artificer_mk3", "name": "Artificer MK-III", "role": "SUPPORT", "baseHp": 114, "baseAttack": 24, "baseDefense": 22, "baseSpeed": 62, "abilityIds": ["deep_scan", "nanite_field", "miracle_core"], "equipmentSlots": ["HEAD", "BODY", "ARMS", "LEGS", "WEAPON", "ACCESSORY"] }
 ]

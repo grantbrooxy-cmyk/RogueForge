@@ -1,6 +1,7 @@
 package com.rogueforge.game.data;
 
 import com.rogueforge.game.progression.RobotProgressionState;
+import com.rogueforge.game.world.SettlementState;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -26,8 +27,11 @@ public class SaveFile {
     private Map<String, String> playerEquipment;
     private List<String> ownedEquipmentIds;
     private Map<String, Boolean> questFlags;
+    private Map<String, String> questStates;
     private Map<String, Integer> bestiaryScanLevels;
     private List<String> keyItems;
+    private Map<String, Boolean> worldStateFlags;
+    private Map<String, SettlementState> settlementUpgrades;
 
     // Robot data: robotId -> Map of equipped items (slotType -> equipmentId)
     private Map<String, Map<String, String>> robotEquipment;
@@ -62,8 +66,11 @@ public class SaveFile {
         this.playerEquipment = new HashMap<>();
         this.ownedEquipmentIds = new ArrayList<>();
         this.questFlags = new HashMap<>();
+        this.questStates = new HashMap<>();
         this.bestiaryScanLevels = new HashMap<>();
         this.keyItems = new ArrayList<>();
+        this.worldStateFlags = new HashMap<>();
+        this.settlementUpgrades = new HashMap<>();
         this.robotProgressionStates = new HashMap<>();
     }
 
@@ -84,8 +91,11 @@ public class SaveFile {
         this.playerEquipment = new HashMap<>();
         this.ownedEquipmentIds = new ArrayList<>();
         this.questFlags = new HashMap<>();
+        this.questStates = new HashMap<>();
         this.bestiaryScanLevels = new HashMap<>();
         this.keyItems = new ArrayList<>();
+        this.worldStateFlags = new HashMap<>();
+        this.settlementUpgrades = new HashMap<>();
         this.robotProgressionStates = new HashMap<>();
     }
 
@@ -146,6 +156,13 @@ public class SaveFile {
         return questFlags;
     }
 
+    public Map<String, String> getQuestStates() {
+        if (questStates == null) {
+            questStates = new HashMap<>();
+        }
+        return questStates;
+    }
+
     public Map<String, Integer> getBestiaryScanLevels() {
         if (bestiaryScanLevels == null) {
             bestiaryScanLevels = new HashMap<>();
@@ -155,6 +172,20 @@ public class SaveFile {
 
     public List<String> getKeyItems() {
         return keyItems;
+    }
+
+    public Map<String, Boolean> getWorldStateFlags() {
+        if (worldStateFlags == null) {
+            worldStateFlags = new HashMap<>();
+        }
+        return worldStateFlags;
+    }
+
+    public Map<String, SettlementState> getSettlementUpgrades() {
+        if (settlementUpgrades == null) {
+            settlementUpgrades = new HashMap<>();
+        }
+        return settlementUpgrades;
     }
 
     public Map<String, Map<String, String>> getRobotEquipment() {
@@ -285,12 +316,24 @@ public class SaveFile {
         this.questFlags = questFlags;
     }
 
+    public void setQuestStates(Map<String, String> questStates) {
+        this.questStates = questStates != null ? questStates : new HashMap<>();
+    }
+
     public void setBestiaryScanLevels(Map<String, Integer> bestiaryScanLevels) {
         this.bestiaryScanLevels = bestiaryScanLevels != null ? bestiaryScanLevels : new HashMap<>();
     }
 
     public void setKeyItems(List<String> keyItems) {
         this.keyItems = keyItems;
+    }
+
+    public void setWorldStateFlags(Map<String, Boolean> worldStateFlags) {
+        this.worldStateFlags = worldStateFlags != null ? worldStateFlags : new HashMap<>();
+    }
+
+    public void setSettlementUpgrades(Map<String, SettlementState> settlementUpgrades) {
+        this.settlementUpgrades = settlementUpgrades != null ? settlementUpgrades : new HashMap<>();
     }
 
     public void setRobotEquipment(Map<String, Map<String, String>> robotEquipment) {

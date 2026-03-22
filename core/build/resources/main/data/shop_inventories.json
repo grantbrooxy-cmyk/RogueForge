@@ -6,7 +6,9 @@
       { "type": "equipment", "itemId": "swift_boots", "cost": 65 },
       { "type": "equipment", "itemId": "copper_core", "cost": 95 },
       { "type": "equipment", "itemId": "tactics_lens", "cost": 90 },
-      { "type": "healing", "label": "Repair Kit x1", "quantity": 1, "cost": 25 }
+      { "type": "healing", "label": "Repair Kit x1", "quantity": 1, "cost": 25 },
+      { "type": "equipment", "itemId": "mentor_sigil", "cost": 220, "requiredWorldFlag": "settlement.watchtower_network" },
+      { "type": "equipment", "itemId": "vanguard_frame", "cost": 260, "requiredWorldFlag": "settlement.workshop_tools" }
     ]
   },
   {
@@ -15,7 +17,9 @@
       { "type": "healing", "label": "Repair Kit x1", "quantity": 1, "cost": 25 },
       { "type": "healing", "label": "Repair Kit x3", "quantity": 3, "cost": 70 },
       { "type": "equipment", "itemId": "spark_ring", "cost": 110 },
-      { "type": "equipment", "itemId": "heavy_plating", "cost": 140 }
+      { "type": "equipment", "itemId": "heavy_plating", "cost": 140 },
+      { "type": "healing", "label": "Repair Kit x5", "quantity": 5, "cost": 110, "requiredWorldFlag": "settlement.apothecary_stock" },
+      { "type": "equipment", "itemId": "oracle_prism", "cost": 320, "requiredWorldFlag": "settlement.survey_drones" }
     ]
   }
 ]

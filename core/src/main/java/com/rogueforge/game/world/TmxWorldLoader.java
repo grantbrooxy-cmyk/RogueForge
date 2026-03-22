@@ -83,6 +83,7 @@ public class TmxWorldLoader {
         door.targetSpawnId = readProperty(object, "targetSpawn", null);
         door.lockedByKeyItem = readProperty(object, "keyItem", null);
         door.lockedByFlag = readProperty(object, "questFlag", null);
+        door.requiredWorldFlag = readProperty(object, "requiredWorldFlag", null);
         door.lockMessage = readProperty(object, "lockMessage", "It won't open yet.");
         String houseIdText = readProperty(object, "houseId", null);
         door.houseId = houseIdText != null && !houseIdText.isEmpty() ? Integer.parseInt(houseIdText) : -1;
@@ -105,6 +106,8 @@ public class TmxWorldLoader {
         npc.id = readProperty(object, "npcId", object.getAttribute("name", ""));
         npc.name = readProperty(object, "displayName", npc.id);
         npc.position = readPoint(zone, object);
+        npc.requiredWorldFlag = readProperty(object, "requiredWorldFlag", null);
+        npc.hiddenUntilFlag = readProperty(object, "hiddenUntilFlag", null);
         return npc;
     }
 
@@ -128,6 +131,8 @@ public class TmxWorldLoader {
         chest.hidden = Boolean.parseBoolean(readProperty(object, "hidden", "false"));
         chest.keyItemReward = readProperty(object, "keyItemReward", null);
         chest.questFlag = readProperty(object, "questFlag", null);
+        chest.requiredWorldFlag = readProperty(object, "requiredWorldFlag", null);
+        chest.hiddenUntilFlag = readProperty(object, "hiddenUntilFlag", null);
         chest.message = readProperty(object, "message", "You found supplies.");
         return chest;
     }
@@ -207,6 +212,7 @@ public class TmxWorldLoader {
         public String targetSpawnId;
         public String lockedByKeyItem;
         public String lockedByFlag;
+        public String requiredWorldFlag;
         public String lockMessage;
         public int houseId = -1;
     }
@@ -215,6 +221,8 @@ public class TmxWorldLoader {
         public String id;
         public String name;
         public Vector2 position;
+        public String requiredWorldFlag;
+        public String hiddenUntilFlag;
     }
 
     public static class Feature {
@@ -233,6 +241,8 @@ public class TmxWorldLoader {
         public boolean hidden;
         public String keyItemReward;
         public String questFlag;
+        public String requiredWorldFlag;
+        public String hiddenUntilFlag;
         public String message;
     }
 }

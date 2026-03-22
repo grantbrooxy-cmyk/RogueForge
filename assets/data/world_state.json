@@ -1,0 +1,13 @@
+[
+  { "id": "access.workshop_pass", "defaultValue": false },
+  { "id": "frontier.peak_lift_unlocked", "defaultValue": false },
+  { "id": "frontier.warding_pylons_online", "defaultValue": false },
+  { "id": "recruit.medic_frame_found", "defaultValue": false },
+  { "id": "recruit.medic_joined", "defaultValue": false },
+  { "id": "recruit.artificer_joined", "defaultValue": false },
+  { "id": "chest.herbalist_hidden.opened", "defaultValue": false },
+  { "id": "settlement.workshop_tools", "defaultValue": false },
+  { "id": "settlement.apothecary_stock", "defaultValue": false },
+  { "id": "settlement.watchtower_network", "defaultValue": false },
+  { "id": "settlement.survey_drones", "defaultValue": false }
+]

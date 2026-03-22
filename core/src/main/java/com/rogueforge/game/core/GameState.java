@@ -4,6 +4,7 @@ import com.badlogic.gdx.math.Vector2;
 import com.rogueforge.game.data.EquipmentItem;
 import com.rogueforge.game.data.SaveFile;
 import com.rogueforge.game.progression.RobotProgressionState;
+import com.rogueforge.game.world.SettlementState;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -48,8 +49,11 @@ public class GameState {
     private final List<EquipmentItem> equipmentCatalog = new ArrayList<>();
     private final List<String> ownedEquipmentIds = new ArrayList<>();
     private final Map<String, Boolean> questFlags = new HashMap<>();
+    private final Map<String, String> questStates = new HashMap<>();
     private final List<String> keyItems = new ArrayList<>();
     private final Map<String, Integer> bestiaryScanLevels = new HashMap<>();
+    private final Map<String, Boolean> worldStateFlags = new HashMap<>();
+    private final Map<String, SettlementState> settlementUpgrades = new HashMap<>();
     private final Map<String, RobotProgressionState> robotProgressionStates = new HashMap<>();
 
     // Robot roster tracking
@@ -249,11 +253,19 @@ public class GameState {
     public List<String> getActiveRobotIds() { return new ArrayList<>(activeRobotIds); }
     public void setCollectedRobotIds(List<String> ids) {
         collectedRobotIds.clear();
-        if (ids != null) collectedRobotIds.addAll(ids);
+        if (ids != null) {
+            for (String id : ids) {
+                if (id != null && !id.isEmpty()) {
+                    collectedRobotIds.add(id);
+                }
+            }
+        }
     }
     public void setActiveRobotIds(List<String> ids) {
         activeRobotIds.clear();
-        if (ids != null) activeRobotIds.addAll(ids);
+        if (ids != null) {
+            activeRobotIds.addAll(ids);
+        }
     }
 
     public Map<String, RobotProgressionState> getRobotProgressionStates() {
@@ -302,6 +314,27 @@ public class GameState {
         questFlags.put(flag, value);
     }
 
+    public Map<String, String> getQuestStates() {
+        return new HashMap<>(questStates);
+    }
+
+    public void setQuestStates(Map<String, String> states) {
+        questStates.clear();
+        if (states != null) {
+            questStates.putAll(states);
+        }
+    }
+
+    public String getQuestState(String questId) {
+        return questStates.getOrDefault(questId, "NOT_STARTED");
+    }
+
+    public void setQuestState(String questId, String state) {
+        if (questId != null && !questId.isEmpty()) {
+            questStates.put(questId, state != null ? state : "NOT_STARTED");
+        }
+    }
+
     public List<String> getKeyItems() {
         return new ArrayList<>(keyItems);
     }
@@ -341,6 +374,48 @@ public class GameState {
     public void setBestiaryScanLevel(String monsterId, int scanLevel) {
         if (monsterId != null && !monsterId.isEmpty()) {
             bestiaryScanLevels.put(monsterId, Math.max(0, Math.min(3, scanLevel)));
+        }
+    }
+
+    public Map<String, Boolean> getWorldStateFlags() {
+        return new HashMap<>(worldStateFlags);
+    }
+
+    public void setWorldStateFlags(Map<String, Boolean> flags) {
+        worldStateFlags.clear();
+        if (flags != null) {
+            worldStateFlags.putAll(flags);
+        }
+    }
+
+    public boolean isWorldStateFlagActive(String flag) {
+        return Boolean.TRUE.equals(worldStateFlags.get(flag));
+    }
+
+    public void setWorldStateFlag(String flag, boolean value) {
+        if (flag != null && !flag.isEmpty()) {
+            worldStateFlags.put(flag, value);
+        }
+    }
+
+    public Map<String, SettlementState> getSettlementUpgrades() {
+        return new HashMap<>(settlementUpgrades);
+    }
+
+    public void setSettlementUpgrades(Map<String, SettlementState> upgrades) {
+        settlementUpgrades.clear();
+        if (upgrades != null) {
+            settlementUpgrades.putAll(upgrades);
+        }
+    }
+
+    public SettlementState getSettlementUpgrade(String upgradeId) {
+        return settlementUpgrades.get(upgradeId);
+    }
+
+    public void putSettlementUpgrade(SettlementState state) {
+        if (state != null && state.getUpgradeId() != null) {
+            settlementUpgrades.put(state.getUpgradeId(), state);
         }
     }
 

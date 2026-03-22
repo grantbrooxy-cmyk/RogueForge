@@ -9,6 +9,8 @@ public class ShopEntryDefinition {
     private String label;
     private int quantity;
     private long cost;
+    private String requiredWorldFlag;
+    private String blockedWorldFlag;
 
     public String getType() {
         return type;
@@ -28,5 +30,13 @@ public class ShopEntryDefinition {
 
     public long getCost() {
         return cost;
+    }
+
+    public String getRequiredWorldFlag() {
+        return requiredWorldFlag;
+    }
+
+    public String getBlockedWorldFlag() {
+        return blockedWorldFlag;
     }
 }

@@ -28,6 +28,10 @@ public class WorkshopScreen implements Screen {
     private static final float TAB_GAP = 10f;
     private static final float EXIT_W = 140f;
     private static final float EXIT_H = 42f;
+    private static final float RESERVE_BUTTON_W = 220f;
+    private static final float RESERVE_BUTTON_H = 42f;
+    private static final float RESERVE_PANEL_X = 650f;
+    private static final float RESERVE_PANEL_Y = 500f;
 
     private final RogueForgeGame game;
     private final ScreenManager screenManager;
@@ -48,6 +52,8 @@ public class WorkshopScreen implements Screen {
     private int hoveredTab = -1;
     private int hoveredRobot = -1;
     private int hoveredEquipment = -1;
+    private int hoveredReserve = -1;
+    private boolean hoveredMoveToReserve;
     private boolean hoveredExit;
     private String statusMessage;
     private float closeInputBlockTimer;
@@ -113,6 +119,7 @@ public class WorkshopScreen implements Screen {
             }
         }
         hoveredExit = isExitButtonHit(mx, my, w, h);
+        hoveredMoveToReserve = isMoveToReserveButtonHit(mx, my, w, h);
 
         drawTabs(h);
         drawRosterPanel(h, mx, my);
@@ -173,6 +180,24 @@ public class WorkshopScreen implements Screen {
                             : "Grade requirement not met for " + catalog.get(i).getName() + ".";
                         return;
                     }
+                }
+            } else {
+                if (isMoveToReserveButtonHit(mx, my, width, h)) {
+                    if (selectedPartyMember == 0) {
+                        statusMessage = "The player always stays in the active party.";
+                    } else {
+                        statusMessage = gameScreen.moveRobotToReserve(selectedPartyMember - 1);
+                    }
+                    return;
+                }
+                int reserveIndex = reserveIndexAt(mx, my, width, h);
+                if (reserveIndex >= 0) {
+                    if (selectedPartyMember == 0) {
+                        statusMessage = "Select a robot slot before deploying a reserve frame.";
+                    } else {
+                        statusMessage = gameScreen.deployReserveRobotToSlot(selectedPartyMember - 1, reserveIndex);
+                    }
+                    return;
                 }
             }
         }
@@ -266,14 +291,20 @@ public class WorkshopScreen implements Screen {
                 + "  Grade " + gameScreen.getRobotGrade(selectedPartyMember - 1)
                 + "  Evo " + gameScreen.getRobotEvolutionTier(selectedPartyMember - 1),
             x, y - 24f);
-        bodyFont.draw(batch, "HP: " + (int) stats.currentHealth + "/" + (int) stats.maxHealth, x, y - 58f);
-        bodyFont.draw(batch, "Agility: " + (int) stats.agility, x, y - 93f);
-        bodyFont.draw(batch, "Strength: " + (int) stats.strength, x, y - 128f);
-        bodyFont.draw(batch, "Intelligence: " + (int) stats.intelligence, x, y - 163f);
-        bodyFont.draw(batch, "Stamina: " + (int) stats.stamina, x, y - 198f);
+        boolean activeRobotSelected = !playerSelected && gameScreen.hasActiveRobotAt(selectedPartyMember - 1);
+        if (!playerSelected && !activeRobotSelected) {
+            bodyFont.draw(batch, "This party slot is currently empty.", x, y - 58f);
+            bodyFont.draw(batch, "Choose a reserve frame on the right to deploy it here.", x, y - 93f);
+        } else {
+            bodyFont.draw(batch, "HP: " + (int) stats.currentHealth + "/" + (int) stats.maxHealth, x, y - 58f);
+            bodyFont.draw(batch, "Agility: " + (int) stats.agility, x, y - 93f);
+            bodyFont.draw(batch, "Strength: " + (int) stats.strength, x, y - 128f);
+            bodyFont.draw(batch, "Intelligence: " + (int) stats.intelligence, x, y - 163f);
+            bodyFont.draw(batch, "Stamina: " + (int) stats.stamina, x, y - 198f);
+        }
         if (playerSelected) {
             bodyFont.draw(batch, "XP: " + gameScreen.getPlayerExperience() + "/" + gameScreen.getExperienceForNextLevel(), x, y - 233f);
-        } else {
+        } else if (activeRobotSelected) {
             bodyFont.draw(batch, "Robot XP: " + gameScreen.getRobotExperience(selectedPartyMember - 1), x, y - 233f);
         }
 
@@ -286,10 +317,10 @@ public class WorkshopScreen implements Screen {
             row++;
         }
         if (equipped.isEmpty()) {
-            bodyFont.draw(batch, "No equipment assigned.", x, y - 315f);
+            bodyFont.draw(batch, activeRobotSelected ? "No equipment assigned." : "Empty slots have no equipment.", x, y - 315f);
         }
 
-        if (!playerSelected) {
+        if (!playerSelected && activeRobotSelected) {
             List<String> abilityLines = gameScreen.getRobotAbilityProgressionLines(selectedPartyMember - 1);
             List<String> weaponLines = gameScreen.getRobotWeaponProgressionLines(selectedPartyMember - 1);
             float abilityX = x + 300f;
@@ -311,7 +342,91 @@ public class WorkshopScreen implements Screen {
                 }
             }
         }
+
+        if (!playerSelected && activeRobotSelected) {
+            float buttonX = x;
+            float buttonY = 112f;
+            batch.setColor(hoveredMoveToReserve ? Color.WHITE : new Color(0.82f, 0.82f, 0.82f, 1f));
+            batch.draw(buttonTexture, buttonX, buttonY, RESERVE_BUTTON_W, RESERVE_BUTTON_H);
+            batch.setColor(Color.WHITE);
+            layout.setText(buttonFont, "Move To Reserve");
+            buttonFont.setColor(Color.WHITE);
+            buttonFont.draw(batch, "Move To Reserve", buttonX + (RESERVE_BUTTON_W - layout.width) / 2f, buttonY + 28f);
+        }
+
+        List<String> questLines = gameScreen.getQuestJournalLines();
+        List<String> settlementLines = gameScreen.getSettlementUpgradeLines();
+        List<String> reserveLines = gameScreen.getReserveRobotLines();
+        hoveredReserve = reserveIndexAt(Gdx.input.getX(), h - Gdx.input.getY(), w, h);
+        float journalX = x;
+        float journalY = y - 470f;
+        bodyFont.draw(batch, "Journal:", journalX, journalY);
+        if (questLines.isEmpty()) {
+            bodyFont.draw(batch, "No active objectives.", journalX, journalY - 28f);
+        } else {
+            for (int i = 0; i < questLines.size() && i < 3; i++) {
+                bodyFont.draw(batch, questLines.get(i), journalX, journalY - 28f - (i * 28f));
+            }
+        }
+        float settlementY = journalY - 28f - (Math.min(3, questLines.size()) * 28f) - 18f;
+        bodyFont.draw(batch, "Settlement:", journalX, settlementY);
+        if (settlementLines.isEmpty()) {
+            bodyFont.draw(batch, "Ironhaven remains unchanged.", journalX, settlementY - 28f);
+        } else {
+            for (int i = 0; i < settlementLines.size() && i < 3; i++) {
+                bodyFont.draw(batch, settlementLines.get(i), journalX, settlementY - 28f - (i * 28f));
+            }
+        }
+        float reserveX = RESERVE_PANEL_X;
+        float reserveY = Math.min(h - 220f, RESERVE_PANEL_Y);
+        bodyFont.setColor(Color.WHITE);
+        bodyFont.draw(batch, "Reserve Frames:", reserveX, reserveY);
+        bodyFont.setColor(Color.LIGHT_GRAY);
+        if (playerSelected) {
+            bodyFont.draw(batch, "Select one of the robot slots on the left to manage deployment.", reserveX, reserveY - 28f);
+        } else {
+            bodyFont.draw(batch, "Selected slot: " + gameScreen.getRobotName(selectedPartyMember - 1), reserveX, reserveY - 28f);
+            bodyFont.draw(batch, "Click a reserve frame below to swap it into this slot.", reserveX, reserveY - 56f);
+            bodyFont.draw(batch, "The current active robot will move to reserve automatically.", reserveX, reserveY - 84f);
+        }
+        float reserveListY = reserveY - (playerSelected ? 56f : 112f);
+        if (reserveLines.isEmpty()) {
+            bodyFont.draw(batch, "No reserve robots collected yet.", reserveX, reserveListY);
+            bodyFont.draw(batch, "Recruit additional frames through quests and world events.", reserveX, reserveListY - 28f);
+        } else {
+            for (int i = 0; i < reserveLines.size() && i < 3; i++) {
+                bodyFont.setColor(i == hoveredReserve ? new Color(1f, 0.9f, 0.55f, 1f) : Color.WHITE);
+                bodyFont.draw(batch, reserveLines.get(i), reserveX, reserveListY - (i * 28f));
+            }
+        }
+        bodyFont.setColor(Color.WHITE);
         batch.end();
+    }
+
+    private int reserveIndexAt(float mx, float my, float width, float height) {
+        if (currentTab != 0) {
+            return -1;
+        }
+        float x = RESERVE_PANEL_X;
+        List<String> reserveLines = gameScreen.getReserveRobotLines();
+        float reserveY = Math.min(height - 220f, RESERVE_PANEL_Y);
+        float reserveListY = reserveY - (selectedPartyMember == 0 ? 56f : 112f);
+        for (int i = 0; i < reserveLines.size() && i < 3; i++) {
+            float lineY = reserveListY - (i * 28f);
+            if (mx >= x && mx <= width - 80f && my >= lineY - 20f && my <= lineY + 8f) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private boolean isMoveToReserveButtonHit(float mx, float my, float width, float height) {
+        if (currentTab != 0 || selectedPartyMember == 0 || !gameScreen.hasActiveRobotAt(selectedPartyMember - 1)) {
+            return false;
+        }
+        float x = 350f;
+        float y = 112f;
+        return mx >= x && mx <= x + RESERVE_BUTTON_W && my >= y && my <= y + RESERVE_BUTTON_H;
     }
 
     private void drawEquipmentPanel(float w, float h, float mx, float my) {

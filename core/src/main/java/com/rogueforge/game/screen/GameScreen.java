@@ -40,6 +40,12 @@ import com.rogueforge.game.progression.WeaponProficiencyState;
 import com.rogueforge.game.progression.WeaponProficiencyTracker;
 import com.rogueforge.game.robot.RobotDefinition;
 import com.rogueforge.game.world.TmxWorldLoader;
+import com.rogueforge.game.world.DialogueSystem;
+import com.rogueforge.game.world.QuestManager;
+import com.rogueforge.game.world.RobotRecruitmentManager;
+import com.rogueforge.game.world.SettlementManager;
+import com.rogueforge.game.world.SettlementState;
+import com.rogueforge.game.world.WorldStateManager;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -132,6 +138,11 @@ public class GameScreen implements Screen {
     private final TmxWorldLoader worldLoader = new TmxWorldLoader();
     private final SettingsManager settingsManager = new SettingsManager();
     private final SaveManager saveManager = new SaveManager();
+    private final QuestManager questManager = new QuestManager();
+    private final DialogueSystem dialogueSystem = new DialogueSystem();
+    private final WorldStateManager worldStateManager = new WorldStateManager();
+    private final RobotRecruitmentManager recruitmentManager = new RobotRecruitmentManager();
+    private final SettlementManager settlementManager = new SettlementManager();
     private final Map<String, Boolean> openedChestStates = new HashMap<>();
     private final Map<String, Boolean> questFlags = new HashMap<>();
     private final List<String> keyItems = new ArrayList<>();
@@ -206,8 +217,13 @@ public class GameScreen implements Screen {
             activeRobotIds.add("guardian_mk1");
             activeRobotIds.add("striker_mk1");
         }
+        normalizeActiveRobotSlots();
         if (collectedRobotIds.isEmpty()) {
-            collectedRobotIds.addAll(activeRobotIds);
+            for (String robotId : activeRobotIds) {
+                if (robotId != null && !robotId.isEmpty() && !collectedRobotIds.contains(robotId)) {
+                    collectedRobotIds.add(robotId);
+                }
+            }
         }
         gameState.setActiveRobotIds(activeRobotIds);
         gameState.setCollectedRobotIds(collectedRobotIds);
@@ -219,6 +235,8 @@ public class GameScreen implements Screen {
         gameState.setPlayerExperience(playerExperience);
         gameState.setHealingPotions(healingPotions);
         gameState.setTotalGold(totalGold);
+        worldStateManager.initialize(gameState);
+        questManager.initialize(gameState);
 
         initializeEquipmentCatalog();
         loadZoneDefinitions();
@@ -672,7 +690,7 @@ public class GameScreen implements Screen {
         Vector2 followTarget = playerPos;
         for (int i = 0; i < ROBOT_COUNT; i++) {
             RobotCompanion robot = robots[i];
-            if (robot.health <= 0f) {
+            if (!hasActiveRobotAt(i) || robot.health <= 0f) {
                 continue;
             }
 
@@ -891,7 +909,7 @@ public class GameScreen implements Screen {
         batch.begin();
         for (int i = 0; i < robots.length; i++) {
             RobotCompanion robot = robots[i];
-            if (robot.health <= 0f) {
+            if (!hasActiveRobotAt(i) || robot.health <= 0f) {
                 continue;
             }
             drawShadow(robot.pos.x, robot.pos.y, ROBOT_SIZE + 12f, 16f, 0.4f);
@@ -901,8 +919,9 @@ public class GameScreen implements Screen {
         batch.end();
 
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-        for (RobotCompanion robot : robots) {
-            if (robot.health <= 0f) {
+        for (int i = 0; i < robots.length; i++) {
+            RobotCompanion robot = robots[i];
+            if (!hasActiveRobotAt(i) || robot.health <= 0f) {
                 continue;
             }
             float barWidth = ROBOT_SIZE;
@@ -937,8 +956,9 @@ public class GameScreen implements Screen {
         RobotCompanion nearestRobot = null;
         float nearestDistance = Float.MAX_VALUE;
 
-        for (RobotCompanion robot : robots) {
-            if (robot.health <= 0f) {
+        for (int i = 0; i < robots.length; i++) {
+            RobotCompanion robot = robots[i];
+            if (!hasActiveRobotAt(i) || robot.health <= 0f) {
                 continue;
             }
 
@@ -955,7 +975,7 @@ public class GameScreen implements Screen {
     private float[] getRobotHealthValues() {
         float[] values = new float[ROBOT_COUNT];
         for (int i = 0; i < ROBOT_COUNT; i++) {
-            values[i] = robots[i].health;
+            values[i] = hasActiveRobotAt(i) ? robots[i].health : 0f;
         }
         return values;
     }
@@ -963,7 +983,7 @@ public class GameScreen implements Screen {
     private float[] getRobotMaxHealthValues() {
         float[] values = new float[ROBOT_COUNT];
         for (int i = 0; i < ROBOT_COUNT; i++) {
-            values[i] = getRobotStats(i).maxHealth;
+            values[i] = hasActiveRobotAt(i) ? getRobotStats(i).maxHealth : 0f;
         }
         return values;
     }
@@ -979,7 +999,7 @@ public class GameScreen implements Screen {
     private float[] getRobotAgilityValues() {
         float[] values = new float[ROBOT_COUNT];
         for (int i = 0; i < ROBOT_COUNT; i++) {
-            values[i] = getRobotStats(i).agility;
+            values[i] = hasActiveRobotAt(i) ? getRobotStats(i).agility : 0f;
         }
         return values;
     }
@@ -987,7 +1007,7 @@ public class GameScreen implements Screen {
     private float[] getRobotStrengthValues() {
         float[] values = new float[ROBOT_COUNT];
         for (int i = 0; i < ROBOT_COUNT; i++) {
-            values[i] = getRobotStats(i).strength;
+            values[i] = hasActiveRobotAt(i) ? getRobotStats(i).strength : 0f;
         }
         return values;
     }
@@ -995,7 +1015,7 @@ public class GameScreen implements Screen {
     private float[] getRobotIntelligenceValues() {
         float[] values = new float[ROBOT_COUNT];
         for (int i = 0; i < ROBOT_COUNT; i++) {
-            values[i] = getRobotStats(i).intelligence;
+            values[i] = hasActiveRobotAt(i) ? getRobotStats(i).intelligence : 0f;
         }
         return values;
     }
@@ -1003,7 +1023,7 @@ public class GameScreen implements Screen {
     private float[] getRobotStaminaValues() {
         float[] values = new float[ROBOT_COUNT];
         for (int i = 0; i < ROBOT_COUNT; i++) {
-            values[i] = getRobotStats(i).stamina;
+            values[i] = hasActiveRobotAt(i) ? getRobotStats(i).stamina : 0f;
         }
         return values;
     }
@@ -1162,8 +1182,11 @@ public class GameScreen implements Screen {
         sf.setPlayerEquipment(new HashMap<>(gameState.getPlayerEquipmentSlots()));
         sf.setOwnedEquipmentIds(new ArrayList<>(gameState.getOwnedEquipmentIds()));
         sf.setQuestFlags(new HashMap<>(gameState.getQuestFlags()));
+        sf.setQuestStates(new HashMap<>(gameState.getQuestStates()));
         sf.setBestiaryScanLevels(new HashMap<>(gameState.getBestiaryScanLevels()));
         sf.setKeyItems(new ArrayList<>(gameState.getKeyItems()));
+        sf.setWorldStateFlags(new HashMap<>(gameState.getWorldStateFlags()));
+        sf.setSettlementUpgrades(new HashMap<>(gameState.getSettlementUpgrades()));
         sf.setCurrentZoneId(gameState.getCurrentZoneId());
         sf.setRobotEquipment(copyRobotEquipment(robotEquipment));
         sf.setCollectedRobotIds(new ArrayList<>(gameState.getCollectedRobotIds()));
@@ -1217,12 +1240,18 @@ public class GameScreen implements Screen {
             questFlags.putAll(saveFile.getQuestFlags());
         }
         gameState.setQuestFlags(questFlags);
+        gameState.setQuestStates(saveFile.getQuestStates());
         gameState.setBestiaryScanLevels(saveFile.getBestiaryScanLevels());
         keyItems.clear();
         if (saveFile.getKeyItems() != null) {
             keyItems.addAll(saveFile.getKeyItems());
         }
         gameState.setKeyItems(keyItems);
+        gameState.setWorldStateFlags(saveFile.getWorldStateFlags());
+        gameState.setSettlementUpgrades(saveFile.getSettlementUpgrades());
+        worldStateManager.initialize(gameState);
+        questManager.initialize(gameState);
+        questManager.syncProgress(gameState, worldStateManager);
         totalEnemiesKilled = saveFile.getTotalEnemiesKilled();
         survivalTime = saveFile.getPlayTimeSeconds();
         currentSaveSlot = saveFile.getSaveSlot();
@@ -1236,9 +1265,11 @@ public class GameScreen implements Screen {
         collectedRobotIds = saveFile.getCollectedRobotIds() != null
             ? new ArrayList<>(saveFile.getCollectedRobotIds())
             : new ArrayList<>();
+        collectedRobotIds.removeIf(robotId -> robotId == null || robotId.isEmpty());
         activeRobotIds = saveFile.getActiveRobotIds() != null
             ? new ArrayList<>(saveFile.getActiveRobotIds())
             : new ArrayList<>();
+        normalizeActiveRobotSlots();
         gameState.setCollectedRobotIds(collectedRobotIds);
         gameState.setActiveRobotIds(activeRobotIds);
         gameState.setRobotProgressionStates(saveFile.getRobotProgressionStates());
@@ -1373,13 +1404,27 @@ public class GameScreen implements Screen {
         encounter.playerStrength = playerStats.strength;
         encounter.playerIntelligence = playerStats.intelligence;
         encounter.playerStamina = playerStats.stamina;
-        encounter.robotNames = getRobotNames();
-        encounter.robotHealth = getRobotHealthValues();
-        encounter.robotMaxHealth = getRobotMaxHealthValues();
-        encounter.robotAgility = getRobotAgilityValues();
-        encounter.robotStrength = getRobotStrengthValues();
-        encounter.robotIntelligence = getRobotIntelligenceValues();
-        encounter.robotStamina = getRobotStaminaValues();
+        List<Integer> activeSlots = getActiveRobotSlotIndices();
+        encounter.robotNames = new String[activeSlots.size()];
+        encounter.robotPartySlots = new int[activeSlots.size()];
+        encounter.robotHealth = new float[activeSlots.size()];
+        encounter.robotMaxHealth = new float[activeSlots.size()];
+        encounter.robotAgility = new float[activeSlots.size()];
+        encounter.robotStrength = new float[activeSlots.size()];
+        encounter.robotIntelligence = new float[activeSlots.size()];
+        encounter.robotStamina = new float[activeSlots.size()];
+        for (int i = 0; i < activeSlots.size(); i++) {
+            int slotIndex = activeSlots.get(i);
+            RobotStatBlock robotStats = getRobotStats(slotIndex);
+            encounter.robotNames[i] = getRobotName(slotIndex);
+            encounter.robotPartySlots[i] = slotIndex;
+            encounter.robotHealth[i] = robots[slotIndex].health;
+            encounter.robotMaxHealth[i] = robotStats.maxHealth;
+            encounter.robotAgility[i] = robotStats.agility;
+            encounter.robotStrength[i] = robotStats.strength;
+            encounter.robotIntelligence[i] = robotStats.intelligence;
+            encounter.robotStamina[i] = robotStats.stamina;
+        }
         encounter.healingPotions = healingPotions;
         return encounter;
     }
@@ -1411,7 +1456,7 @@ public class GameScreen implements Screen {
         battleActive = false;
         playerHealth = Math.max(0f, Math.min(getPlayerStats().maxHealth, result.playerHealth));
         healingPotions = result.healingPotions;
-        applyRobotHealth(result.robotHealth);
+        applyRobotHealth(result.robotHealth, result.robotPartySlots);
         if (result.enemyReferences != null && result.enemyHealth != null) {
             int totalGoldEarned = 0;
             int totalExperienceEarned = 0;
@@ -1512,12 +1557,16 @@ public class GameScreen implements Screen {
         }
     }
 
-    private void applyRobotHealth(float[] values) {
+    private void applyRobotHealth(float[] values, int[] slotIndices) {
         if (values == null) {
             return;
         }
-        for (int i = 0; i < ROBOT_COUNT && i < values.length; i++) {
-            robots[i].health = Math.max(0f, Math.min(getRobotStats(i).maxHealth, values[i]));
+        for (int i = 0; i < values.length; i++) {
+            int slotIndex = slotIndices != null && i < slotIndices.length ? slotIndices[i] : i;
+            if (slotIndex < 0 || slotIndex >= ROBOT_COUNT || !hasActiveRobotAt(slotIndex)) {
+                continue;
+            }
+            robots[slotIndex].health = Math.max(0f, Math.min(getRobotStats(slotIndex).maxHealth, values[i]));
         }
     }
 
@@ -1534,8 +1583,8 @@ public class GameScreen implements Screen {
         if (playerHealth > 0f) {
             return true;
         }
-        for (RobotCompanion robot : robots) {
-            if (robot.health > 0f) {
+        for (int i = 0; i < ROBOT_COUNT; i++) {
+            if (hasActiveRobotAt(i) && robots[i].health > 0f) {
                 return true;
             }
         }
@@ -1543,11 +1592,43 @@ public class GameScreen implements Screen {
     }
 
     private String[] getRobotNames() {
-        String[] names = new String[ROBOT_COUNT];
+        List<String> names = new ArrayList<>();
         for (int i = 0; i < ROBOT_COUNT; i++) {
-            names[i] = getRobotName(i);
+            if (hasActiveRobotAt(i)) {
+                names.add(getRobotName(i));
+            }
         }
-        return names;
+        return names.toArray(new String[0]);
+    }
+
+    private void normalizeActiveRobotSlots() {
+        List<String> normalized = new ArrayList<>();
+        for (String robotId : activeRobotIds) {
+            normalized.add(robotId != null && !robotId.isEmpty() ? robotId : null);
+        }
+        while (normalized.size() < ROBOT_COUNT) {
+            normalized.add(null);
+        }
+        if (normalized.size() > ROBOT_COUNT) {
+            normalized = new ArrayList<>(normalized.subList(0, ROBOT_COUNT));
+        }
+        activeRobotIds = normalized;
+    }
+
+    public boolean hasActiveRobotAt(int index) {
+        return index >= 0 && index < activeRobotIds.size()
+            && activeRobotIds.get(index) != null
+            && !activeRobotIds.get(index).isEmpty();
+    }
+
+    private List<Integer> getActiveRobotSlotIndices() {
+        List<Integer> indices = new ArrayList<>();
+        for (int i = 0; i < ROBOT_COUNT; i++) {
+            if (hasActiveRobotAt(i)) {
+                indices.add(i);
+            }
+        }
+        return indices;
     }
 
     private String formatZoneName(String zoneId) {
@@ -1637,6 +1718,14 @@ public class GameScreen implements Screen {
         }
 
         for (TmxWorldLoader.NpcData npcData : currentZone.npcs) {
+            if (npcData.hiddenUntilFlag != null && !npcData.hiddenUntilFlag.isEmpty()
+                && !worldStateManager.isFlagActive(gameState, npcData.hiddenUntilFlag)) {
+                continue;
+            }
+            if (npcData.requiredWorldFlag != null && !npcData.requiredWorldFlag.isEmpty()
+                && !worldStateManager.isFlagActive(gameState, npcData.requiredWorldFlag)) {
+                continue;
+            }
             npcs.add(new Npc(npcData.id, npcData.name, new Vector2(npcData.position), ""));
         }
 
@@ -1654,7 +1743,9 @@ public class GameScreen implements Screen {
 
     private void positionRobotsBehindPlayer() {
         for (int i = 0; i < ROBOT_COUNT; i++) {
-            robots[i].pos.set(playerPos.x, playerPos.y - ((i + 1) * ROBOT_FOLLOW_GAP));
+            if (hasActiveRobotAt(i)) {
+                robots[i].pos.set(playerPos.x, playerPos.y - ((i + 1) * ROBOT_FOLLOW_GAP));
+            }
         }
     }
 
@@ -1691,6 +1782,18 @@ public class GameScreen implements Screen {
         openedChestStates.put(chestStateKey(zoneId, houseId, chestId), true);
     }
 
+    public void onInteriorChestOpened(String chestId) {
+        if (chestId == null || chestId.isEmpty()) {
+            return;
+        }
+        if ("herbalist_hidden".equals(chestId)) {
+            worldStateManager.setFlag(gameState, "chest.herbalist_hidden.opened", true);
+            worldStateManager.setFlag(gameState, "recruit.medic_frame_found", true);
+        }
+        questManager.syncProgress(gameState, worldStateManager);
+        refreshHud();
+    }
+
     private boolean hasQuestFlag(String flag) {
         return gameState.hasQuestFlag(flag);
     }
@@ -1705,7 +1808,7 @@ public class GameScreen implements Screen {
     }
 
     private boolean hasWorkshopPassAccess() {
-        return hasKeyItem("workshop_pass") || hasQuestFlag("quest_shard_started");
+        return hasKeyItem("workshop_pass") || worldStateManager.isFlagActive(gameState, "access.workshop_pass");
     }
 
     private void addKeyItem(String keyItem) {
@@ -1716,80 +1819,93 @@ public class GameScreen implements Screen {
     }
 
     private String getCurrentObjective() {
-        if (!hasQuestFlag("quest_shard_started")) {
-            return "Speak with Mira in Verdant Fields.";
-        }
-        if (!hasQuestFlag("quest_shard_completed")) {
-            return hasKeyItem("luminous_shard")
-                ? "Return the Luminous Shard to Mira."
-                : "Search Shadow Caves for the Luminous Shard.";
-        }
-        if (!hasQuestFlag("quest_core_started")) {
-            return "Travel to Dragon Peak and speak with Edda.";
-        }
-        if (!hasQuestFlag("quest_core_completed")) {
-            return hasKeyItem("sun_core")
-                ? "Return the Sun Core to Edda."
-                : "Search Dragon Peak for the Sun Core.";
-        }
-        return "Explore the frontier and strengthen your crew.";
+        questManager.syncProgress(gameState, worldStateManager);
+        return questManager.getCurrentObjective(gameState);
     }
 
-    private NpcConversation buildNpcConversation(Npc npc) {
-        NpcConversation conversation = new NpcConversation();
-        if ("mira".equals(npc.id)) {
-            if (!hasQuestFlag("quest_shard_started")) {
-                setQuestFlag("quest_shard_started", true);
-                addKeyItem("workshop_pass");
-                conversation.dialog = "Take this Workshop Pass and search Shadow Caves for the Luminous Shard. Bring it back and I'll stabilize the lift to Dragon Peak. You received the Workshop Pass.";
-            } else if (hasQuestFlag("quest_shard_found") && !hasQuestFlag("quest_shard_completed")) {
-                setQuestFlag("quest_shard_completed", true);
-                addKeyItem("peak_sigil");
-                conversation.rewardGold = 120;
-                conversation.rewardPotions = 2;
-                conversation.rewardExperience = 90;
-                conversation.dialog = "You found it. With this shard tuned, the peak lift will answer your sigil. Take these supplies and keep climbing.";
-            } else if (!hasQuestFlag("quest_shard_completed")) {
-                conversation.dialog = "The cave gate will open for the Workshop Pass. Find the Luminous Shard and watch for old scout caches.";
-            } else {
-                conversation.dialog = "Your bots are carrying real momentum now. The lift to Dragon Peak should answer the sigil I tuned for you.";
-            }
-        } else if ("tor".equals(npc.id)) {
-            conversation.dialog = hasQuestFlag("quest_shard_completed")
-                ? "The frontier opens in layers. Keep one eye on your party order and the other on the sky."
-                : "Mira's pass should get you into the caves. Once you're inside, keep right at the broken pillars.";
-        } else if ("edda_town".equals(npc.id)) {
-            conversation.dialog = hasQuestFlag("quest_shard_completed")
-                ? "The mountain lift is humming again. When you're ready, Dragon Peak is waiting."
-                : "Mira won't let anyone near the lift until the cave shard is secured.";
-        } else if ("cave_scout".equals(npc.id)) {
-            conversation.dialog = hasKeyItem("luminous_shard")
-                ? "That glow in your pack means you found the cache. Head back before the tunnels shift."
-                : "I saw a strange cache deeper in. It was tucked beyond the central pillar where the cave forks east.";
-        } else if ("edda_peak".equals(npc.id)) {
-            if (!hasQuestFlag("quest_shard_completed")) {
-                conversation.dialog = "The lift should not have carried you here without Mira's calibration. Strange.";
-            } else if (!hasQuestFlag("quest_core_started")) {
-                setQuestFlag("quest_core_started", true);
-                conversation.dialog = "Dragon Peak's reactors are starving. Search the ridge for a Sun Core and we'll relight the old warding pylons.";
-            } else if (hasQuestFlag("quest_core_found") && !hasQuestFlag("quest_core_completed")) {
-                setQuestFlag("quest_core_completed", true);
-                conversation.rewardGold = 220;
-                conversation.rewardPotions = 3;
-                conversation.rewardExperience = 140;
-                conversation.dialog = "Perfect. The Sun Core is stable. Take this reward and keep pushing outward. The whole frontier is starting to wake up.";
-            } else if (!hasQuestFlag("quest_core_completed")) {
-                conversation.dialog = "The Sun Core should be stashed past the wind-broken ridge on the eastern path.";
-            } else {
-                conversation.dialog = "You've done more than reopen the lift. The frontier feels alive again.";
-            }
-        } else {
-            conversation.dialog = npc.dialog != null && !npc.dialog.isEmpty()
-                ? npc.dialog
-                : "The road keeps changing, but a good crew still finds its way.";
+    private DialogueSystem.DialogueResult resolveNpcDialogue(String npcId, String speakerName) {
+        questManager.syncProgress(gameState, worldStateManager);
+        DialogueSystem.DialogueResult result = dialogueSystem.resolve(
+            npcId,
+            currentZoneId,
+            gameState,
+            questManager,
+            worldStateManager
+        );
+        if (result == null) {
+            result = new DialogueSystem.DialogueResult();
+            result.speaker = speakerName;
+            result.text = "The road keeps changing, but a good crew still finds its way.";
         }
+        applyDialogueResult(result);
         refreshHud();
-        return conversation;
+        return result;
+    }
+
+    private void applyDialogueResult(DialogueSystem.DialogueResult result) {
+        if (result == null) {
+            return;
+        }
+        if (result.setQuestId != null && !result.setQuestId.isEmpty()) {
+            if ("NOT_STARTED".equals(questManager.getQuestState(gameState, result.setQuestId))) {
+                questManager.startQuest(gameState, result.setQuestId);
+            }
+            if (result.setQuestStep != null && !result.setQuestStep.isEmpty()) {
+                questManager.setQuestStep(gameState, result.setQuestId, result.setQuestStep);
+            }
+        }
+        if (result.completeQuestId != null && !result.completeQuestId.isEmpty()) {
+            questManager.completeQuest(gameState, result.completeQuestId);
+        }
+        if (result.addKeyItem != null && !result.addKeyItem.isEmpty()) {
+            addKeyItem(result.addKeyItem);
+        }
+        if (result.setWorldFlag != null && !result.setWorldFlag.isEmpty()) {
+            worldStateManager.setFlag(gameState, result.setWorldFlag, true);
+        }
+        if (result.settlementUpgradeId != null && !result.settlementUpgradeId.isEmpty()) {
+            applySettlementUpgrade(result.settlementUpgradeId);
+        }
+        if (result.recruitEventId != null && !result.recruitEventId.isEmpty()) {
+            applyRecruitment(result.recruitEventId);
+        }
+        questManager.syncProgress(gameState, worldStateManager);
+    }
+
+    private void applyRecruitment(String eventId) {
+        RobotRecruitmentManager.RecruitmentResult recruitment = recruitmentManager.apply(eventId, collectedRobotIds, activeRobotIds);
+        if (recruitment == null) {
+            return;
+        }
+        gameState.setCollectedRobotIds(collectedRobotIds);
+        gameState.setActiveRobotIds(activeRobotIds);
+        ensureRobotProgressionStates();
+        if (recruitment.joinedWorldFlag != null && !recruitment.joinedWorldFlag.isEmpty()) {
+            worldStateManager.setFlag(gameState, recruitment.joinedWorldFlag, true);
+        }
+        if (recruitment.message != null && !recruitment.message.isEmpty()) {
+            activeDialog = recruitment.message;
+        }
+    }
+
+    private void applySettlementUpgrade(String upgradeId) {
+        SettlementState state = gameState.getSettlementUpgrade(upgradeId);
+        if (state == null) {
+            state = new SettlementState(upgradeId, 0);
+        }
+        state.setLevel(state.getLevel() + 1);
+        gameState.putSettlementUpgrade(state);
+        SettlementManager settlement = settlementManager;
+        if (settlement.get(upgradeId) != null) {
+            if (settlement.get(upgradeId).getRewardEquipmentId() != null
+                && !settlement.get(upgradeId).getRewardEquipmentId().isEmpty()) {
+                unlockEquipment(settlement.get(upgradeId).getRewardEquipmentId());
+            }
+            if (settlement.get(upgradeId).getRewardPotions() > 0) {
+                addHealingPotions(settlement.get(upgradeId).getRewardPotions());
+            }
+        }
+        worldStateManager.setFlag(gameState, "settlement." + upgradeId, true);
     }
 
     private void initializeRobotStats(RobotCompanion robot, int index) {
@@ -1853,7 +1969,33 @@ public class GameScreen implements Screen {
     }
 
     private String getRobotId(int index) {
+        if (index < 0 || index >= activeRobotIds.size()) {
+            return null;
+        }
+        String robotId = activeRobotIds.get(index);
+        return (robotId != null && !robotId.isEmpty()) ? robotId : null;
+    }
+
+    private String getLegacyRobotSlotKey(int index) {
         return "bot_" + index;
+    }
+
+    private Map<String, String> getEquippedItemsForPartyIndex(int index) {
+        String robotId = getRobotId(index);
+        if (robotId != null) {
+            Map<String, String> equipped = robotEquipment.get(robotId);
+            if (equipped != null) {
+                return equipped;
+            }
+            String legacyKey = getLegacyRobotSlotKey(index);
+            Map<String, String> legacy = robotEquipment.remove(legacyKey);
+            if (legacy != null) {
+                robotEquipment.put(robotId, new HashMap<>(legacy));
+                gameState.setRobotEquipment(robotEquipment);
+                return robotEquipment.get(robotId);
+            }
+        }
+        return new HashMap<>();
     }
 
     private RobotProgressionState getRobotProgressionStateForPartyIndex(int index) {
@@ -1942,6 +2084,11 @@ public class GameScreen implements Screen {
             state.setDisplayName(evolvedDefinition.getName());
             mergeDefinitionAbilities(state, evolvedDefinition);
         }
+        Map<String, String> equipment = robotEquipment.remove(oldRobotId);
+        if (equipment != null) {
+            robotEquipment.put(evolvedRobotId, equipment);
+            gameState.setRobotEquipment(robotEquipment);
+        }
         gameState.setActiveRobotIds(activeRobotIds);
         gameState.setCollectedRobotIds(collectedRobotIds);
         gameState.removeRobotProgressionState(oldRobotId);
@@ -1964,7 +2111,7 @@ public class GameScreen implements Screen {
         if (partyIndex < 0 || partyIndex >= activeRobotIds.size()) {
             return WeaponType.NONE;
         }
-        Map<String, String> equipped = robotEquipment.get(getRobotId(partyIndex));
+        Map<String, String> equipped = getEquippedItemsForPartyIndex(partyIndex);
         if (equipped == null) {
             return WeaponType.NONE;
         }
@@ -2009,7 +2156,7 @@ public class GameScreen implements Screen {
 
     private EquipmentTotals getEquipmentTotals(int index) {
         EquipmentTotals totals = new EquipmentTotals();
-        Map<String, String> equipped = robotEquipment.get(getRobotId(index));
+        Map<String, String> equipped = getEquippedItemsForPartyIndex(index);
         if (equipped == null) {
             return totals;
         }
@@ -2144,9 +2291,9 @@ public class GameScreen implements Screen {
         }
 
         if (nearbyNpc != null) {
-            NpcConversation conversation = buildNpcConversation(nearbyNpc);
-            activeSpeaker = nearbyNpc.name;
-            activeDialog = conversation.dialog;
+            DialogueSystem.DialogueResult conversation = resolveNpcDialogue(nearbyNpc.id, nearbyNpc.name);
+            activeSpeaker = conversation.speaker != null ? conversation.speaker : nearbyNpc.name;
+            activeDialog = conversation.text;
             if (conversation.rewardGold > 0) {
                 addGold(conversation.rewardGold);
             }
@@ -2160,6 +2307,20 @@ public class GameScreen implements Screen {
             activeSpeaker = null;
             activeDialog = null;
         }
+    }
+
+    public DialogueSystem.DialogueResult interactWithInteriorNpc(String npcId, String speakerName) {
+        DialogueSystem.DialogueResult result = resolveNpcDialogue(npcId, speakerName);
+        if (result.rewardGold > 0) {
+            addGold(result.rewardGold);
+        }
+        if (result.rewardPotions > 0) {
+            addHealingPotions(result.rewardPotions);
+        }
+        if (result.rewardExperience > 0) {
+            addExperience(result.rewardExperience);
+        }
+        return result;
     }
 
     private boolean tryEnterHouse() {
@@ -2205,11 +2366,21 @@ public class GameScreen implements Screen {
                     ? door.lockMessage + " You can still press through if you're ready."
                     : "This route is dangerous for an unprepared party.";
             }
-            if (door.lockedByFlag != null && !hasQuestFlag(door.lockedByFlag)) {
+            if (door.lockedByFlag != null
+                && !hasQuestFlag(door.lockedByFlag)
+                && !worldStateManager.isFlagActive(gameState, door.lockedByFlag)) {
                 activeSpeaker = "Warning";
                 activeDialog = door.lockMessage != null && !door.lockMessage.isEmpty()
                     ? door.lockMessage + " The frontier won't stop you, but it may punish you."
                     : "You have not completed the local objective yet.";
+            }
+            if (door.requiredWorldFlag != null && !door.requiredWorldFlag.isEmpty()
+                && !worldStateManager.isFlagActive(gameState, door.requiredWorldFlag)) {
+                activeSpeaker = "Warning";
+                activeDialog = door.lockMessage != null && !door.lockMessage.isEmpty()
+                    ? door.lockMessage
+                    : "The route is dormant for now.";
+                return true;
             }
             if (door.targetZoneId != null) {
                 loadZone(door.targetZoneId, door.targetSpawnId, true);
@@ -2265,6 +2436,14 @@ public class GameScreen implements Screen {
             return false;
         }
         for (TmxWorldLoader.ChestData chest : currentZone.chests) {
+            if (chest.hiddenUntilFlag != null && !chest.hiddenUntilFlag.isEmpty()
+                && !worldStateManager.isFlagActive(gameState, chest.hiddenUntilFlag)) {
+                continue;
+            }
+            if (chest.requiredWorldFlag != null && !chest.requiredWorldFlag.isEmpty()
+                && !worldStateManager.isFlagActive(gameState, chest.requiredWorldFlag)) {
+                continue;
+            }
             Rectangle chestRect = new Rectangle(chest.position.x - 18f, chest.position.y - 18f, 36f, 36f);
             if (distanceToRect(playerPos, chestRect) > 42f || isChestOpened(currentZoneId, -1, chest.id)) {
                 continue;
@@ -2281,7 +2460,13 @@ public class GameScreen implements Screen {
             }
             if (chest.questFlag != null && !chest.questFlag.isEmpty()) {
                 setQuestFlag(chest.questFlag, true);
+                worldStateManager.setFlag(gameState, chest.questFlag, true);
             }
+            if ("herbalist_hidden".equals(chest.id)) {
+                worldStateManager.setFlag(gameState, "chest.herbalist_hidden.opened", true);
+                worldStateManager.setFlag(gameState, "recruit.medic_frame_found", true);
+            }
+            questManager.syncProgress(gameState, worldStateManager);
             activeSpeaker = "Chest";
             activeDialog = chest.message;
             refreshHud();
@@ -2406,7 +2591,100 @@ public class GameScreen implements Screen {
         return ROBOT_COUNT;
     }
 
+    public List<String> getReserveRobotLines() {
+        List<String> lines = new ArrayList<>();
+        for (String robotId : getReserveRobotIds()) {
+            RobotProgressionState state = getOrCreateRobotProgressionState(robotId);
+            String name = state != null && state.getDisplayName() != null && !state.getDisplayName().isEmpty()
+                ? state.getDisplayName()
+                : robotId;
+            int level = state != null ? state.getLevel() : 1;
+            int tier = state != null ? state.getEvolutionTier() : 1;
+            lines.add(name + " Lv." + level + " Evo " + tier);
+        }
+        return lines;
+    }
+
+    public List<String> getReserveRobotIds() {
+        List<String> reserveIds = new ArrayList<>();
+        for (String robotId : collectedRobotIds) {
+            if (!activeRobotIds.contains(robotId)) {
+                reserveIds.add(robotId);
+            }
+        }
+        return reserveIds;
+    }
+
+    public List<String> getQuestJournalLines() {
+        List<String> lines = new ArrayList<>();
+        lines.addAll(questManager.getActiveQuestLines(gameState, true));
+        lines.addAll(questManager.getActiveQuestLines(gameState, false));
+        return lines;
+    }
+
+    public List<String> getSettlementUpgradeLines() {
+        List<String> lines = new ArrayList<>();
+        for (com.rogueforge.game.world.SettlementUpgradeDefinition definition : settlementManager.getAll()) {
+            SettlementState state = gameState.getSettlementUpgrade(definition.getId());
+            if (state == null || state.getLevel() <= 0) {
+                continue;
+            }
+            lines.add(definition.getName() + " Lv." + state.getLevel());
+        }
+        return lines;
+    }
+
+    public String deployReserveRobotToSlot(int partyIndex, int reserveIndex) {
+        if (partyIndex < 0 || partyIndex >= activeRobotIds.size()) {
+            return "Choose a robot slot first.";
+        }
+        List<String> reserveIds = getReserveRobotIds();
+        if (reserveIndex < 0 || reserveIndex >= reserveIds.size()) {
+            return "That reserve frame is unavailable.";
+        }
+
+        String incomingRobotId = reserveIds.get(reserveIndex);
+        String outgoingRobotId = activeRobotIds.get(partyIndex);
+        if (incomingRobotId == null || incomingRobotId.equals(outgoingRobotId)) {
+            return "That frame is already deployed.";
+        }
+
+        activeRobotIds.set(partyIndex, incomingRobotId);
+        gameState.setActiveRobotIds(activeRobotIds);
+        ensureRobotProgressionStates();
+        robots[partyIndex].health = Math.min(getRobotStats(partyIndex).maxHealth, Math.max(1f, robots[partyIndex].health));
+        refreshHud();
+
+        String incomingName = getRobotName(partyIndex);
+        RobotProgressionState outgoingState = getOrCreateRobotProgressionState(outgoingRobotId);
+        String outgoingName = outgoingState != null && outgoingState.getDisplayName() != null && !outgoingState.getDisplayName().isEmpty()
+            ? outgoingState.getDisplayName()
+            : outgoingRobotId;
+        if (outgoingRobotId == null || outgoingRobotId.isEmpty()) {
+            return incomingName + " deployed to slot " + (partyIndex + 1) + ".";
+        }
+        return incomingName + " deployed to slot " + (partyIndex + 1) + ", replacing " + outgoingName + ".";
+    }
+
+    public String moveRobotToReserve(int partyIndex) {
+        if (!hasActiveRobotAt(partyIndex)) {
+            return "That slot is already empty.";
+        }
+        String outgoingRobotId = activeRobotIds.get(partyIndex);
+        RobotProgressionState outgoingState = getOrCreateRobotProgressionState(outgoingRobotId);
+        String outgoingName = outgoingState != null && outgoingState.getDisplayName() != null && !outgoingState.getDisplayName().isEmpty()
+            ? outgoingState.getDisplayName()
+            : outgoingRobotId;
+        activeRobotIds.set(partyIndex, null);
+        gameState.setActiveRobotIds(activeRobotIds);
+        refreshHud();
+        return outgoingName + " moved to reserve. Slot " + (partyIndex + 1) + " is now empty.";
+    }
+
     public String getRobotName(int index) {
+        if (!hasActiveRobotAt(index)) {
+            return "Empty Slot";
+        }
         RobotProgressionState progressionState = getRobotProgressionStateForPartyIndex(index);
         if (progressionState != null && progressionState.getDisplayName() != null && !progressionState.getDisplayName().isEmpty()) {
             return progressionState.getDisplayName();
@@ -2420,20 +2698,32 @@ public class GameScreen implements Screen {
     }
 
     public String getRobotGrade(int index) {
+        if (!hasActiveRobotAt(index)) {
+            return "-";
+        }
         return robots[index].grade;
     }
 
     public int getRobotLevel(int index) {
+        if (!hasActiveRobotAt(index)) {
+            return 0;
+        }
         RobotProgressionState progressionState = getRobotProgressionStateForPartyIndex(index);
         return progressionState != null ? progressionState.getLevel() : 1;
     }
 
     public int getRobotExperience(int index) {
+        if (!hasActiveRobotAt(index)) {
+            return 0;
+        }
         RobotProgressionState progressionState = getRobotProgressionStateForPartyIndex(index);
         return progressionState != null ? progressionState.getExperience() : 0;
     }
 
     public int getRobotEvolutionTier(int index) {
+        if (!hasActiveRobotAt(index)) {
+            return 0;
+        }
         RobotProgressionState progressionState = getRobotProgressionStateForPartyIndex(index);
         return progressionState != null ? progressionState.getEvolutionTier() : 1;
     }
@@ -2471,6 +2761,9 @@ public class GameScreen implements Screen {
     }
 
     public RobotStatBlock getRobotStats(int index) {
+        if (!hasActiveRobotAt(index)) {
+            return new RobotStatBlock(0f, 0f, 0f, 0f, 0f, 0f);
+        }
         RobotCompanion robot = robots[index];
         EquipmentTotals equipmentTotals = getEquipmentTotals(index);
         RobotProgressionState progressionState = getRobotProgressionStateForPartyIndex(index);
@@ -2553,12 +2846,18 @@ public class GameScreen implements Screen {
     }
 
     public Map<String, String> getRobotEquipmentSlots(int index) {
-        String robotId = getRobotId(index);
-        return gameState.getRobotEquipmentSlots(robotId);
+        if (!hasActiveRobotAt(index)) {
+            return new HashMap<>();
+        }
+        return new HashMap<>(getEquippedItemsForPartyIndex(index));
     }
 
     public boolean equipRobotItem(int index, EquipmentItem item) {
-        if (!gameState.equipRobotItem(getRobotId(index), robots[index].grade, item)) {
+        if (!hasActiveRobotAt(index)) {
+            return false;
+        }
+        String robotId = getRobotId(index);
+        if (robotId == null || !gameState.equipRobotItem(robotId, robots[index].grade, item)) {
             return false;
         }
         robotEquipment = copyRobotEquipment(gameState.getRobotEquipment());
@@ -2620,6 +2919,14 @@ public class GameScreen implements Screen {
         }
         for (ShopEntryDefinition entry : definition.getEntries()) {
             if (entry == null) {
+                continue;
+            }
+            if (entry.getRequiredWorldFlag() != null && !entry.getRequiredWorldFlag().isEmpty()
+                && !worldStateManager.isFlagActive(gameState, entry.getRequiredWorldFlag())) {
+                continue;
+            }
+            if (entry.getBlockedWorldFlag() != null && !entry.getBlockedWorldFlag().isEmpty()
+                && worldStateManager.isFlagActive(gameState, entry.getBlockedWorldFlag())) {
                 continue;
             }
             if ("healing".equals(entry.getType())) {
@@ -2851,7 +3158,7 @@ public class GameScreen implements Screen {
 
         static House createWorkshop(int id, String name, float x, float y, float width, float height) {
             List<InteriorNpc> npcs = new ArrayList<>();
-            npcs.add(new InteriorNpc("Toma", new Vector2(220f, 250f),
+            npcs.add(new InteriorNpc("toma", "Toma", new Vector2(220f, 250f),
                 "If you find old parts in the wild, bring them here and I can rebuild them.", "workshop"));
             List<Chest> chests = new ArrayList<>();
             chests.add(new Chest("workshop_cache", new Vector2(120f, 128f), 30, 0, true));
@@ -2860,9 +3167,9 @@ public class GameScreen implements Screen {
 
         static House createLodge(int id, String name, float x, float y, float width, float height) {
             List<InteriorNpc> npcs = new ArrayList<>();
-            npcs.add(new InteriorNpc("Nia", new Vector2(245f, 215f),
+            npcs.add(new InteriorNpc("nia", "Nia", new Vector2(245f, 215f),
                 "Travelers leave rumors behind. One says there is a buried vault east of town."));
-            npcs.add(new InteriorNpc("Bram", new Vector2(150f, 250f),
+            npcs.add(new InteriorNpc("bram", "Bram", new Vector2(150f, 250f),
                 "Rest when you can. Even machines need a rhythm."));
             List<Chest> chests = new ArrayList<>();
             chests.add(new Chest("lodge_stash", new Vector2(300f, 122f), 15, 1, false));
@@ -2871,7 +3178,7 @@ public class GameScreen implements Screen {
 
         static House createHerbalist(int id, String name, float x, float y, float width, float height) {
             List<InteriorNpc> npcs = new ArrayList<>();
-            npcs.add(new InteriorNpc("Iris", new Vector2(210f, 238f),
+            npcs.add(new InteriorNpc("iris", "Iris", new Vector2(210f, 238f),
                 "Hidden chests react to careful eyes. Walk close and watch the outline flicker.", "apothecary"));
             List<Chest> chests = new ArrayList<>();
             chests.add(new Chest("herbalist_hidden", new Vector2(92f, 238f), 10, 2, true));
@@ -2898,16 +3205,18 @@ public class GameScreen implements Screen {
     }
 
     static class InteriorNpc {
+        String id;
         String name;
         Vector2 pos;
         String dialog;
         String shopId;
 
-        InteriorNpc(String name, Vector2 pos, String dialog) {
-            this(name, pos, dialog, null);
+        InteriorNpc(String id, String name, Vector2 pos, String dialog) {
+            this(id, name, pos, dialog, null);
         }
 
-        InteriorNpc(String name, Vector2 pos, String dialog, String shopId) {
+        InteriorNpc(String id, String name, Vector2 pos, String dialog, String shopId) {
+            this.id = id;
             this.name = name;
             this.pos = pos;
             this.dialog = dialog;
