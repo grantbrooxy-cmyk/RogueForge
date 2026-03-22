@@ -14,6 +14,7 @@ public class RobotProgressionState {
     private int level = 1;
     private int experience = 0;
     private int evolutionTier = 1;
+    private float currentHealth = -1f;
     private List<String> knownAbilityIds = new ArrayList<>();
     private Map<String, AbilityProgressionState> abilityProgression = new HashMap<>();
     private Map<String, WeaponProficiencyState> weaponProficiencies = new HashMap<>();
@@ -64,6 +65,14 @@ public class RobotProgressionState {
 
     public void setEvolutionTier(int evolutionTier) {
         this.evolutionTier = Math.max(1, evolutionTier);
+    }
+
+    public float getCurrentHealth() {
+        return currentHealth;
+    }
+
+    public void setCurrentHealth(float currentHealth) {
+        this.currentHealth = currentHealth < 0f ? -1f : currentHealth;
     }
 
     public List<String> getKnownAbilityIds() {

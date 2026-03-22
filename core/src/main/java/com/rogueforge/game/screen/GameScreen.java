@@ -244,6 +244,7 @@ public class GameScreen implements Screen {
         loadMonsterDefinitions();
         loadShopDefinitions();
         ensureRobotProgressionStates();
+        initializeActiveRobotHealthForNewRun();
         loadZone(currentZoneId, "town_square", true);
 
         hudOverlay.setPlayerHealth(playerHealth, playerMaxHealth);
@@ -255,9 +256,30 @@ public class GameScreen implements Screen {
         }
     }
 
+    private void initializeActiveRobotHealthForNewRun() {
+        for (int i = 0; i < ROBOT_COUNT; i++) {
+            if (!hasActiveRobotAt(i)) {
+                robots[i].health = 0f;
+                continue;
+            }
+            RobotProgressionState state = getRobotProgressionStateForPartyIndex(i);
+            float maxHealth = getRobotEffectiveMaxHealth(getRobotId(i), state);
+            robots[i].health = maxHealth;
+            if (state != null) {
+                state.setCurrentHealth(maxHealth);
+            }
+        }
+    }
+
     @Override
     public void show() {
-        gameInputProcessor = new GameInputProcessor(this);
+        ensureGameInputProcessor();
+    }
+
+    private void ensureGameInputProcessor() {
+        if (gameInputProcessor == null) {
+            gameInputProcessor = new GameInputProcessor(this);
+        }
         Gdx.input.setInputProcessor(gameInputProcessor);
     }
 
@@ -325,6 +347,17 @@ public class GameScreen implements Screen {
 
     @Override
     public void render(float delta) {
+        if (!isPaused && !battleActive) {
+            if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+                pauseGame();
+                return;
+            }
+            if (Gdx.input.isKeyJustPressed(Input.Keys.I)) {
+                openWorkshop();
+                return;
+            }
+        }
+
         if (!isPaused) {
             gameLoop.update(delta);
             updatePlayer(delta);
@@ -605,8 +638,10 @@ public class GameScreen implements Screen {
         if (Gdx.input.isKeyJustPressed(Input.Keys.E)) {
             if (!tryInteractWithDoor()) {
                 if (!tryReadHouseSign()) {
-                    if (!tryOpenWorldChest()) {
-                        interactWithNpc();
+                    if (!tryInteractWithWorldFeature()) {
+                        if (!tryOpenWorldChest()) {
+                            interactWithNpc();
+                        }
                     }
                 }
             }
@@ -797,7 +832,7 @@ public class GameScreen implements Screen {
         batch.begin();
         if (currentZone != null) {
             for (TmxWorldLoader.Feature feature : currentZone.features) {
-                if (!"house".equals(feature.kind)) {
+                if (!"house".equals(feature.kind) && isFeatureVisible(feature)) {
                     drawFeature(feature);
                 }
             }
@@ -812,6 +847,7 @@ public class GameScreen implements Screen {
             batch.draw(doorTexture, house.x + house.width * 0.4f, house.y, house.width * 0.2f, house.height * 0.38f);
             batch.setColor(Color.WHITE);
         }
+        drawSettlementTownProps(batch);
         drawWorldChests();
         for (House house : houses) {
             drawHouseSign(batch, house);
@@ -838,6 +874,59 @@ public class GameScreen implements Screen {
         batch.end();
     }
 
+    private void drawSettlementTownProps(SpriteBatch spriteBatch) {
+        if (!isHubTownZone()) {
+            return;
+        }
+
+        House workshop = findHouseById(0);
+        House lodge = findHouseById(1);
+        House herbalist = findHouseById(2);
+
+        if (worldStateManager.isFlagActive(gameState, "settlement.workshop_tools") && workshop != null) {
+            spriteBatch.setColor(0.85f, 0.58f, 0.22f, 1f);
+            spriteBatch.draw(wallTileTexture, workshop.x + workshop.width + 10f, workshop.y + 8f, 20f, 20f);
+            spriteBatch.draw(wallTileTexture, workshop.x + workshop.width + 32f, workshop.y + 8f, 20f, 20f);
+            spriteBatch.setColor(1f, 0.85f, 0.45f, 1f);
+            spriteBatch.draw(wallTileTexture, workshop.x + workshop.width + 18f, workshop.y + 32f, 28f, 6f);
+            spriteBatch.setColor(Color.WHITE);
+            font.draw(spriteBatch, "Forge Rail Online", workshop.x + workshop.width - 18f, workshop.y + workshop.height + 18f);
+        }
+
+        if (worldStateManager.isFlagActive(gameState, "settlement.apothecary_stock") && herbalist != null) {
+            spriteBatch.setColor(0.34f, 0.68f, 0.42f, 1f);
+            spriteBatch.draw(wallTileTexture, herbalist.x - 18f, herbalist.y + 6f, 14f, 26f);
+            spriteBatch.draw(wallTileTexture, herbalist.x - 2f, herbalist.y + 6f, 14f, 26f);
+            spriteBatch.setColor(0.76f, 0.9f, 0.78f, 1f);
+            spriteBatch.draw(wallTileTexture, herbalist.x - 18f, herbalist.y + 32f, 30f, 8f);
+            spriteBatch.setColor(Color.WHITE);
+            font.draw(spriteBatch, "Supply Stall", herbalist.x - 18f, herbalist.y + herbalist.height + 18f);
+        }
+
+        if (worldStateManager.isFlagActive(gameState, "settlement.watchtower_network") && lodge != null) {
+            float poleX = lodge.x + lodge.width + 12f;
+            float poleY = lodge.y + 4f;
+            spriteBatch.setColor(0.4f, 0.3f, 0.22f, 1f);
+            spriteBatch.draw(wallTileTexture, poleX, poleY, 10f, 52f);
+            spriteBatch.setColor(1f, 0.86f, 0.35f, 1f);
+            spriteBatch.draw(wallTileTexture, poleX - 6f, poleY + 46f, 22f, 16f);
+            spriteBatch.setColor(Color.WHITE);
+            font.draw(spriteBatch, "Watchtower Link", poleX - 20f, poleY + 76f);
+        }
+
+        if (worldStateManager.isFlagActive(gameState, "settlement.survey_drones") && workshop != null) {
+            float padX = workshop.x - 40f;
+            float padY = workshop.y + workshop.height + 6f;
+            spriteBatch.setColor(0.18f, 0.62f, 0.82f, 1f);
+            spriteBatch.draw(wallTileTexture, padX, padY, 18f, 18f);
+            spriteBatch.draw(wallTileTexture, padX + 22f, padY, 18f, 18f);
+            spriteBatch.setColor(0.82f, 0.92f, 1f, 1f);
+            spriteBatch.draw(wallTileTexture, padX + 9f, padY + 24f, 24f, 6f);
+            spriteBatch.setColor(Color.WHITE);
+            font.draw(spriteBatch, "Drone Pad", padX - 8f, padY + 48f);
+        }
+    }
+
     private void drawHouseSign(SpriteBatch spriteBatch, House house) {
         Rectangle sign = house.getSignBounds();
         spriteBatch.setColor(new Color(0.48f, 0.34f, 0.2f, 1f));
@@ -849,7 +938,13 @@ public class GameScreen implements Screen {
 
     private void drawFeature(TmxWorldLoader.Feature feature) {
         Color tint;
-        if ("cliff".equals(feature.kind)) {
+        if ("scan_hidden_path".equals(feature.interactionType)) {
+            tint = new Color(0.28f, 0.6f, 0.88f, 0.92f);
+        } else if ("burn_barrier".equals(feature.interactionType)) {
+            tint = new Color(0.9f, 0.44f, 0.2f, 0.92f);
+        } else if ("strength_boulder".equals(feature.interactionType)) {
+            tint = new Color(0.54f, 0.46f, 0.36f, 1f);
+        } else if ("cliff".equals(feature.kind)) {
             tint = new Color(0.36f, 0.36f, 0.42f, 1f);
         } else if ("gate".equals(feature.kind)) {
             tint = new Color(0.62f, 0.62f, 0.72f, 1f);
@@ -865,6 +960,9 @@ public class GameScreen implements Screen {
         batch.setColor(Color.WHITE);
         if (feature.label != null && !feature.label.isEmpty()) {
             font.draw(batch, feature.label, feature.bounds.x + 8f, feature.bounds.y + feature.bounds.height + 26f);
+        }
+        if (isFeatureInteractable(feature) && isFacingInteractionRect(feature.bounds)) {
+            font.draw(batch, "E: " + getFeatureActionLabel(feature), feature.bounds.x + 8f, feature.bounds.y - 10f);
         }
     }
 
@@ -928,7 +1026,7 @@ public class GameScreen implements Screen {
             float barHeight = 3f;
             float barX = robot.pos.x - barWidth / 2;
             float barY = robot.pos.y + ROBOT_SIZE / 2 + 4f;
-            float hpPercent = robot.health / robot.maxHealth;
+            float hpPercent = robot.health / Math.max(1f, getRobotStats(i).maxHealth);
 
             shapeRenderer.setColor(0.2f, 0.2f, 0.2f, 0.8f);
             shapeRenderer.rect(barX, barY, barWidth, barHeight);
@@ -1163,12 +1261,16 @@ public class GameScreen implements Screen {
         }
     }
 
-    public void resumeGame() { isPaused = false; }
+    public void resumeGame() {
+        isPaused = false;
+        ensureGameInputProcessor();
+    }
     public boolean isPaused() { return isPaused; }
     public GameLoop getGameLoop() { return gameLoop; }
     public HUDOverlay getHUDOverlay() { return hudOverlay; }
 
     public SaveFile buildSaveFile(int slot) {
+        syncActiveRobotHealthToProgression();
         SaveFile sf = new SaveFile();
         sf.setPlayerName(playerName);
         sf.setPlayerHp((int) playerHealth);
@@ -1283,6 +1385,7 @@ public class GameScreen implements Screen {
             saveFile.getRobotAngleDeg(),
             saveFile.getRobotAttackTimers()
         );
+        syncActiveRobotHealthToProgression();
         restoreEnemyState(saveFile.getEnemies());
         restoreChestState(saveFile.getChests());
 
@@ -1568,6 +1671,7 @@ public class GameScreen implements Screen {
             }
             robots[slotIndex].health = Math.max(0f, Math.min(getRobotStats(slotIndex).maxHealth, values[i]));
         }
+        syncActiveRobotHealthToProgression();
     }
 
     private void refreshHud() {
@@ -1613,6 +1717,31 @@ public class GameScreen implements Screen {
             normalized = new ArrayList<>(normalized.subList(0, ROBOT_COUNT));
         }
         activeRobotIds = normalized;
+    }
+
+    private void syncActiveRobotHealthToProgression() {
+        for (int i = 0; i < ROBOT_COUNT; i++) {
+            if (!hasActiveRobotAt(i)) {
+                continue;
+            }
+            RobotProgressionState state = getRobotProgressionStateForPartyIndex(i);
+            if (state == null) {
+                continue;
+            }
+            state.setCurrentHealth(Math.max(0f, Math.min(getRobotStats(i).maxHealth, robots[i].health)));
+        }
+    }
+
+    private float getStoredRobotHealth(String robotId, float fallbackMaxHealth) {
+        RobotProgressionState state = getOrCreateRobotProgressionState(robotId);
+        if (state == null) {
+            return Math.max(1f, fallbackMaxHealth);
+        }
+        float stored = state.getCurrentHealth();
+        if (stored < 0f) {
+            stored = fallbackMaxHealth;
+        }
+        return Math.max(0f, Math.min(fallbackMaxHealth, stored));
     }
 
     public boolean hasActiveRobotAt(int index) {
@@ -1704,6 +1833,7 @@ public class GameScreen implements Screen {
         gameState.setCurrentZoneId(zoneId);
         currentZoneDefinition = definition;
         currentZone = worldLoader.load(definition);
+        addStarterTownUpgradeChest();
         houses.clear();
         npcs.clear();
 
@@ -1729,6 +1859,8 @@ public class GameScreen implements Screen {
             npcs.add(new Npc(npcData.id, npcData.name, new Vector2(npcData.position), ""));
         }
 
+        addSettlementTownContent();
+
         if (spawnId != null && currentZone.playerSpawns.containsKey(spawnId)) {
             playerPos.set(currentZone.playerSpawns.get(spawnId));
             positionRobotsBehindPlayer();
@@ -1741,11 +1873,67 @@ public class GameScreen implements Screen {
         autosave();
     }
 
+    private void addStarterTownUpgradeChest() {
+        if (currentZone == null || !isHubTownZone()) {
+            return;
+        }
+        if (worldStateManager.isFlagActive(gameState, "settlement.workshop_tools")) {
+            return;
+        }
+        for (TmxWorldLoader.ChestData chest : currentZone.chests) {
+            if ("starter_workshop_tools".equals(chest.id)) {
+                return;
+            }
+        }
+
+        TmxWorldLoader.ChestData chest = new TmxWorldLoader.ChestData();
+        chest.id = "starter_workshop_tools";
+        Vector2 spawn = currentZone.playerSpawns.containsKey("town_square")
+            ? currentZone.playerSpawns.get("town_square")
+            : new Vector2(220f, 220f);
+        chest.position = new Vector2(spawn.x + 72f, spawn.y + 28f);
+        chest.goldReward = 0;
+        chest.potionReward = 0;
+        chest.hidden = false;
+        chest.message = "You found a sealed crate of restored forge tools. Ironhaven's workshop line can run again.";
+        currentZone.chests.add(chest);
+    }
+
+    private boolean isHubTownZone() {
+        return "town".equals(currentZoneId) || "verdant_fields".equals(currentZoneId);
+    }
+
     private void positionRobotsBehindPlayer() {
         for (int i = 0; i < ROBOT_COUNT; i++) {
             if (hasActiveRobotAt(i)) {
                 robots[i].pos.set(playerPos.x, playerPos.y - ((i + 1) * ROBOT_FOLLOW_GAP));
             }
+        }
+    }
+
+    private void addSettlementTownContent() {
+        if (!isHubTownZone()) {
+            return;
+        }
+
+        House workshop = findHouseById(0);
+        House lodge = findHouseById(1);
+        House herbalist = findHouseById(2);
+
+        if (worldStateManager.isFlagActive(gameState, "settlement.workshop_tools")) {
+            npcs.add(new Npc("quartermaster", "Quartermaster",
+                workshop != null ? new Vector2(workshop.x + workshop.width + 22f, workshop.y + 22f) : new Vector2(280f, 210f),
+                "The forge rail is live again. Toma's workshop can finally stock heavy chassis parts."));
+        }
+        if (worldStateManager.isFlagActive(gameState, "settlement.watchtower_network")) {
+            npcs.add(new Npc("lookout", "Lookout",
+                lodge != null ? new Vector2(lodge.x + lodge.width + 18f, lodge.y + lodge.height - 6f) : new Vector2(190f, 270f),
+                "The watchtower lamps are sweeping farther every night. Routes that used to vanish now stay marked."));
+        }
+        if (worldStateManager.isFlagActive(gameState, "settlement.survey_drones")) {
+            npcs.add(new Npc("dispatcher", "Dispatcher",
+                workshop != null ? new Vector2(workshop.x - 18f, workshop.y + workshop.height - 4f) : new Vector2(235f, 250f),
+                "Survey drones are airborne again. Bring me fresh route intel and I'll keep Ironhaven's map board honest."));
         }
     }
 
@@ -2011,6 +2199,7 @@ public class GameScreen implements Screen {
         }
         RobotProgressionState state = gameState.getRobotProgressionState(robotId);
         if (state != null) {
+            initializeRobotProgressionHealthIfNeeded(state);
             return state;
         }
 
@@ -2023,6 +2212,7 @@ public class GameScreen implements Screen {
                 state.getOrCreateAbilityProgression(abilityId);
             }
         }
+        initializeRobotProgressionHealthIfNeeded(state);
         gameState.putRobotProgressionState(state);
         return state;
     }
@@ -2034,6 +2224,26 @@ public class GameScreen implements Screen {
         for (String robotId : activeRobotIds) {
             getOrCreateRobotProgressionState(robotId);
         }
+    }
+
+    private void initializeRobotProgressionHealthIfNeeded(RobotProgressionState state) {
+        if (state == null || state.getCurrentHealth() >= 0f) {
+            return;
+        }
+        state.setCurrentHealth(getRobotEffectiveMaxHealth(state.getRobotId(), state));
+    }
+
+    private float getRobotEffectiveMaxHealth(String robotId, RobotProgressionState state) {
+        RobotDefinition definition = robotId != null ? robotDefinitions.get(robotId) : null;
+        float baseMaxHealth = definition != null && definition.getBaseHp() > 0
+            ? definition.getBaseHp()
+            : ROBOT_MAX_HEALTH;
+        int level = state != null ? state.getLevel() : 1;
+        int evolutionTier = state != null ? state.getEvolutionTier() : 1;
+        float levelBonus = Math.max(0f, (level - 1) * RobotEvolutionManager.levelBonusPerLevel());
+        float evolutionMultiplier = RobotEvolutionManager.statMultiplier(evolutionTier);
+        EquipmentTotals equipmentTotals = getEquipmentTotals(robotId);
+        return (baseMaxHealth + (levelBonus * 4f)) * evolutionMultiplier + equipmentTotals.hpBonus;
     }
 
     private int robotExperienceRequirementForLevel(int level) {
@@ -2172,6 +2382,25 @@ public class GameScreen implements Screen {
         return totals;
     }
 
+    private EquipmentTotals getEquipmentTotals(String robotId) {
+        EquipmentTotals totals = new EquipmentTotals();
+        if (robotId == null || robotId.isEmpty()) {
+            return totals;
+        }
+        Map<String, String> equipped = robotEquipment.get(robotId);
+        if (equipped == null) {
+            return totals;
+        }
+        for (String itemId : equipped.values()) {
+            EquipmentItem item = findEquipmentItem(itemId);
+            if (item == null) {
+                continue;
+            }
+            applyEquipmentToTotals(totals, item);
+        }
+        return totals;
+    }
+
     private void applyEquipmentToTotals(EquipmentTotals totals, EquipmentItem item) {
         totals.hpBonus += item.getHpBonus();
         totals.strengthBonus += item.getAttackBonus();
@@ -2250,6 +2479,14 @@ public class GameScreen implements Screen {
             Rectangle candidate = new Rectangle(x - half, y - half, size, size);
             for (Rectangle collision : currentZone.collisions) {
                 if (candidate.overlaps(collision)) {
+                    return true;
+                }
+            }
+            for (TmxWorldLoader.Feature feature : currentZone.features) {
+                if (!feature.blocksMovement || !isFeatureVisible(feature)) {
+                    continue;
+                }
+                if (candidate.overlaps(feature.bounds)) {
                     return true;
                 }
             }
@@ -2462,6 +2699,9 @@ public class GameScreen implements Screen {
                 setQuestFlag(chest.questFlag, true);
                 worldStateManager.setFlag(gameState, chest.questFlag, true);
             }
+            if ("starter_workshop_tools".equals(chest.id)) {
+                applySettlementUpgrade("workshop_tools");
+            }
             if ("herbalist_hidden".equals(chest.id)) {
                 worldStateManager.setFlag(gameState, "chest.herbalist_hidden.opened", true);
                 worldStateManager.setFlag(gameState, "recruit.medic_frame_found", true);
@@ -2471,6 +2711,115 @@ public class GameScreen implements Screen {
             activeDialog = chest.message;
             refreshHud();
             return true;
+        }
+        return false;
+    }
+
+    private boolean tryInteractWithWorldFeature() {
+        if (currentZone == null) {
+            return false;
+        }
+        for (TmxWorldLoader.Feature feature : currentZone.features) {
+            if (!isFeatureInteractable(feature) || !isFacingInteractionRect(feature.bounds)) {
+                continue;
+            }
+            if (hasWorldInteractionCapability(feature.interactionType)) {
+                if (feature.completionWorldFlag != null && !feature.completionWorldFlag.isEmpty()) {
+                    worldStateManager.setFlag(gameState, feature.completionWorldFlag, true);
+                }
+                questManager.syncProgress(gameState, worldStateManager);
+                activeSpeaker = feature.label != null && !feature.label.isEmpty() ? feature.label : "Frontier";
+                activeDialog = feature.interactionMessage != null && !feature.interactionMessage.isEmpty()
+                    ? feature.interactionMessage
+                    : "Your crew clears the obstruction and opens the route ahead.";
+                refreshHud();
+                return true;
+            }
+            activeSpeaker = feature.label != null && !feature.label.isEmpty() ? feature.label : "Frontier";
+            activeDialog = feature.blockedMessage != null && !feature.blockedMessage.isEmpty()
+                ? feature.blockedMessage
+                : "Your current crew can't clear this obstacle yet.";
+            return true;
+        }
+        return false;
+    }
+
+    private boolean isFeatureVisible(TmxWorldLoader.Feature feature) {
+        if (feature == null) {
+            return false;
+        }
+        if (feature.hiddenUntilFlag != null && !feature.hiddenUntilFlag.isEmpty()
+            && !worldStateManager.isFlagActive(gameState, feature.hiddenUntilFlag)) {
+            return false;
+        }
+        if (feature.requiredWorldFlag != null && !feature.requiredWorldFlag.isEmpty()
+            && !worldStateManager.isFlagActive(gameState, feature.requiredWorldFlag)) {
+            return false;
+        }
+        return !isFeatureCompleted(feature);
+    }
+
+    private boolean isFeatureCompleted(TmxWorldLoader.Feature feature) {
+        return feature != null
+            && feature.completionWorldFlag != null
+            && !feature.completionWorldFlag.isEmpty()
+            && worldStateManager.isFlagActive(gameState, feature.completionWorldFlag);
+    }
+
+    private boolean isFeatureInteractable(TmxWorldLoader.Feature feature) {
+        return feature != null
+            && feature.interactionType != null
+            && !feature.interactionType.isEmpty()
+            && isFeatureVisible(feature);
+    }
+
+    private String getFeatureActionLabel(TmxWorldLoader.Feature feature) {
+        if (feature == null || feature.interactionType == null) {
+            return "Interact";
+        }
+        switch (feature.interactionType) {
+            case "scan_hidden_path":
+                return "Scan";
+            case "burn_barrier":
+                return "Burn Away";
+            case "strength_boulder":
+                return "Clear";
+            default:
+                return "Interact";
+        }
+    }
+
+    private boolean hasWorldInteractionCapability(String interactionType) {
+        switch (interactionType) {
+            case "scan_hidden_path":
+                return hasAnyActiveAbility("scan", "deep_scan");
+            case "burn_barrier":
+                return hasAnyActiveAbility("rapid_fire", "storm_barrage", "limit_breaker");
+            case "strength_boulder":
+                return hasAnyActiveAbility("power_strike", "seismic_break", "limit_breaker", "shield_wall", "bulwark_matrix");
+            default:
+                return false;
+        }
+    }
+
+    private boolean hasAnyActiveAbility(String... abilityIds) {
+        if (abilityIds == null || abilityIds.length == 0) {
+            return false;
+        }
+        List<String> required = Arrays.asList(abilityIds);
+        for (int i = 0; i < ROBOT_COUNT; i++) {
+            if (!hasActiveRobotAt(i)) {
+                continue;
+            }
+            RobotProgressionState progressionState = getRobotProgressionStateForPartyIndex(i);
+            if (progressionState == null || progressionState.getKnownAbilityIds() == null) {
+                continue;
+            }
+            for (String knownAbilityId : progressionState.getKnownAbilityIds()) {
+                if (required.contains(knownAbilityId)) {
+                    return true;
+                }
+            }
         }
         return false;
     }
@@ -2634,6 +2983,40 @@ public class GameScreen implements Screen {
         return lines;
     }
 
+    public List<String> getUnlockedServiceLines() {
+        List<String> lines = new ArrayList<>();
+        if (worldStateManager.isFlagActive(gameState, "settlement.workshop_tools")) {
+            lines.add("Workshop stocks advanced forge components.");
+        }
+        if (worldStateManager.isFlagActive(gameState, "settlement.apothecary_stock")) {
+            lines.add("Apothecary keeps expanded repair-kit stock.");
+        }
+        if (worldStateManager.isFlagActive(gameState, "settlement.watchtower_network")) {
+            lines.add("Watchtower scouts mark safer frontier routes.");
+        }
+        if (worldStateManager.isFlagActive(gameState, "settlement.survey_drones")) {
+            lines.add("Survey drones unlock higher-tier town inventory.");
+        }
+        return lines;
+    }
+
+    public List<String> getTownChangeLines() {
+        List<String> lines = new ArrayList<>();
+        if (worldStateManager.isFlagActive(gameState, "settlement.workshop_tools")) {
+            lines.add("Forge rail crates and workshop signage are now visible.");
+        }
+        if (worldStateManager.isFlagActive(gameState, "settlement.apothecary_stock")) {
+            lines.add("A supply stall now stands outside the herbalist.");
+        }
+        if (worldStateManager.isFlagActive(gameState, "settlement.watchtower_network")) {
+            lines.add("A lit watchtower link beacon now marks the lodge road.");
+        }
+        if (worldStateManager.isFlagActive(gameState, "settlement.survey_drones")) {
+            lines.add("Survey drone pads now line the workshop yard.");
+        }
+        return lines;
+    }
+
     public String deployReserveRobotToSlot(int partyIndex, int reserveIndex) {
         if (partyIndex < 0 || partyIndex >= activeRobotIds.size()) {
             return "Choose a robot slot first.";
@@ -2652,11 +3035,15 @@ public class GameScreen implements Screen {
         activeRobotIds.set(partyIndex, incomingRobotId);
         gameState.setActiveRobotIds(activeRobotIds);
         ensureRobotProgressionStates();
-        robots[partyIndex].health = Math.min(getRobotStats(partyIndex).maxHealth, Math.max(1f, robots[partyIndex].health));
+        robots[partyIndex].health = getStoredRobotHealth(incomingRobotId, getRobotStats(partyIndex).maxHealth);
+        syncActiveRobotHealthToProgression();
         refreshHud();
 
         String incomingName = getRobotName(partyIndex);
         RobotProgressionState outgoingState = getOrCreateRobotProgressionState(outgoingRobotId);
+        if (outgoingState != null) {
+            outgoingState.setCurrentHealth(Math.max(0f, Math.min(getRobotStats(partyIndex).maxHealth, robots[partyIndex].health)));
+        }
         String outgoingName = outgoingState != null && outgoingState.getDisplayName() != null && !outgoingState.getDisplayName().isEmpty()
             ? outgoingState.getDisplayName()
             : outgoingRobotId;
@@ -2765,15 +3152,16 @@ public class GameScreen implements Screen {
             return new RobotStatBlock(0f, 0f, 0f, 0f, 0f, 0f);
         }
         RobotCompanion robot = robots[index];
-        EquipmentTotals equipmentTotals = getEquipmentTotals(index);
         RobotProgressionState progressionState = getRobotProgressionStateForPartyIndex(index);
+        EquipmentTotals equipmentTotals = getEquipmentTotals(index);
         int robotLevel = progressionState != null ? progressionState.getLevel() : 1;
         int evolutionTier = progressionState != null ? progressionState.getEvolutionTier() : 1;
         float levelBonus = Math.max(0f, (robotLevel - 1) * RobotEvolutionManager.levelBonusPerLevel());
         float evolutionMultiplier = RobotEvolutionManager.statMultiplier(evolutionTier);
+        float maxHealth = getRobotEffectiveMaxHealth(getRobotId(index), progressionState);
         return new RobotStatBlock(
             robot.health,
-            (robot.maxHealth + (levelBonus * 4f)) * evolutionMultiplier + equipmentTotals.hpBonus,
+            maxHealth,
             (robot.agility + levelBonus) * evolutionMultiplier + equipmentTotals.agilityBonus,
             (robot.strength + levelBonus) * evolutionMultiplier + equipmentTotals.strengthBonus,
             (robot.intelligence + levelBonus) * evolutionMultiplier + equipmentTotals.intelligenceBonus,

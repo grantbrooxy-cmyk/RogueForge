@@ -6,6 +6,7 @@ import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -22,7 +23,7 @@ import java.util.Map;
  * In-game roster and equipment menu opened with I.
  */
 public class WorkshopScreen implements Screen {
-    private static final String[] TAB_LABELS = {"Roster", "Equipment"};
+    private static final String[] TAB_LABELS = {"Roster", "Equipment", "Hub"};
     private static final float TAB_W = 150f;
     private static final float TAB_H = 42f;
     private static final float TAB_GAP = 10f;
@@ -30,8 +31,10 @@ public class WorkshopScreen implements Screen {
     private static final float EXIT_H = 42f;
     private static final float RESERVE_BUTTON_W = 220f;
     private static final float RESERVE_BUTTON_H = 42f;
-    private static final float RESERVE_PANEL_X = 650f;
-    private static final float RESERVE_PANEL_Y = 500f;
+    private static final float RESERVE_PANEL_X = 720f;
+    private static final float RESERVE_PANEL_Y = 470f;
+    private static final float RESERVE_DROPDOWN_W = 280f;
+    private static final float RESERVE_DROPDOWN_H = 42f;
 
     private final RogueForgeGame game;
     private final ScreenManager screenManager;
@@ -44,8 +47,7 @@ public class WorkshopScreen implements Screen {
     private final GlyphLayout layout;
     private final OrthographicCamera camera;
     private final Texture backgroundTexture;
-    private final Texture panelTexture;
-    private final Texture buttonTexture;
+    private final Texture uiTexture;
 
     private int currentTab = 0;
     private int selectedPartyMember = 0;
@@ -54,9 +56,12 @@ public class WorkshopScreen implements Screen {
     private int hoveredEquipment = -1;
     private int hoveredReserve = -1;
     private boolean hoveredMoveToReserve;
+    private boolean hoveredReserveDropdown;
     private boolean hoveredExit;
     private String statusMessage;
     private float closeInputBlockTimer;
+    private boolean showDetailView;
+    private boolean reserveDropdownOpen;
 
     public WorkshopScreen(RogueForgeGame game, ScreenManager screenManager, GameScreen gameScreen) {
         this.game = game;
@@ -71,8 +76,7 @@ public class WorkshopScreen implements Screen {
         this.camera = new OrthographicCamera();
         this.camera.setToOrtho(false, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         this.backgroundTexture = loadTexture("Backgrounds/background 2/orig_big.png");
-        this.panelTexture = loadTexture("4 GUI/1 Frames/Interface windows.png");
-        this.buttonTexture = loadTexture("4 GUI/6 Buttons/ButtonMap4.png");
+        this.uiTexture = createUiTexture();
         this.titleFont.getData().setScale(3f);
         this.bodyFont.getData().setScale(1.2f);
         this.buttonFont.getData().setScale(1.15f);
@@ -81,6 +85,16 @@ public class WorkshopScreen implements Screen {
     private Texture loadTexture(String relativePath) {
         Texture texture = new Texture(Gdx.files.internal(relativePath));
         texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
+        return texture;
+    }
+
+    private Texture createUiTexture() {
+        Pixmap pm = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
+        pm.setColor(Color.WHITE);
+        pm.fill();
+        Texture texture = new Texture(pm);
+        texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
+        pm.dispose();
         return texture;
     }
 
@@ -106,8 +120,8 @@ public class WorkshopScreen implements Screen {
         batch.begin();
         batch.setColor(1f, 1f, 1f, 1f);
         batch.draw(backgroundTexture, 0f, 0f, w, h);
-        batch.setColor(0.14f, 0.14f, 0.18f, 0.68f);
-        batch.draw(buttonTexture, 28f, 24f, w - 56f, h - 48f);
+        batch.setColor(0.08f, 0.1f, 0.14f, 0.9f);
+        batch.draw(uiTexture, 28f, 24f, w - 56f, h - 48f);
         batch.setColor(Color.WHITE);
         batch.end();
 
@@ -120,13 +134,16 @@ public class WorkshopScreen implements Screen {
         }
         hoveredExit = isExitButtonHit(mx, my, w, h);
         hoveredMoveToReserve = isMoveToReserveButtonHit(mx, my, w, h);
+        hoveredReserveDropdown = isReserveDropdownHit(mx, my, w, h);
 
         drawTabs(h);
         drawRosterPanel(h, mx, my);
         if (currentTab == 0) {
             drawStatsPanel(w, h);
-        } else {
+        } else if (currentTab == 1) {
             drawEquipmentPanel(w, h, mx, my);
+        } else {
+            drawHubPanel(w, h);
         }
     }
 
@@ -135,6 +152,14 @@ public class WorkshopScreen implements Screen {
         if (closeInputBlockTimer <= 0f
             && (Gdx.input.isKeyJustPressed(Input.Keys.I) || Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE))) {
             closeMenu();
+            return;
+        }
+        if (currentTab == 0 && Gdx.input.isKeyJustPressed(Input.Keys.D)) {
+            showDetailView = !showDetailView;
+            return;
+        }
+        if (currentTab == 0 && Gdx.input.isKeyJustPressed(Input.Keys.R)) {
+            reserveDropdownOpen = !reserveDropdownOpen;
             return;
         }
 
@@ -181,7 +206,11 @@ public class WorkshopScreen implements Screen {
                         return;
                     }
                 }
-            } else {
+            } else if (currentTab == 0) {
+                if (isReserveDropdownHit(mx, my, width, h)) {
+                    reserveDropdownOpen = !reserveDropdownOpen;
+                    return;
+                }
                 if (isMoveToReserveButtonHit(mx, my, width, h)) {
                     if (selectedPartyMember == 0) {
                         statusMessage = "The player always stays in the active party.";
@@ -190,7 +219,7 @@ public class WorkshopScreen implements Screen {
                     }
                     return;
                 }
-                int reserveIndex = reserveIndexAt(mx, my, width, h);
+                int reserveIndex = reserveDropdownOpen ? reserveIndexAt(mx, my, width, h) : -1;
                 if (reserveIndex >= 0) {
                     if (selectedPartyMember == 0) {
                         statusMessage = "Select a robot slot before deploying a reserve frame.";
@@ -208,13 +237,14 @@ public class WorkshopScreen implements Screen {
         batch.begin();
         for (int i = 0; i < TAB_LABELS.length; i++) {
             float tx = 48f + i * (TAB_W + TAB_GAP);
-            batch.setColor(i == currentTab ? Color.WHITE : (i == hoveredTab ? new Color(0.9f, 0.9f, 0.9f, 1f) : new Color(0.78f, 0.78f, 0.78f, 1f)));
-            batch.draw(buttonTexture, tx, h - 140f, TAB_W, TAB_H);
+            batch.setColor(i == currentTab ? new Color(0.74f, 0.48f, 0.2f, 1f)
+                : (i == hoveredTab ? new Color(0.34f, 0.38f, 0.5f, 1f) : new Color(0.2f, 0.22f, 0.3f, 1f)));
+            batch.draw(uiTexture, tx, h - 140f, TAB_W, TAB_H);
         }
         float exitX = exitButtonX(w());
         float exitY = h - 140f;
-        batch.setColor(hoveredExit ? Color.WHITE : new Color(0.78f, 0.78f, 0.78f, 1f));
-        batch.draw(buttonTexture, exitX, exitY, EXIT_W, EXIT_H);
+        batch.setColor(hoveredExit ? new Color(0.68f, 0.28f, 0.24f, 1f) : new Color(0.32f, 0.18f, 0.18f, 1f));
+        batch.draw(uiTexture, exitX, exitY, EXIT_W, EXIT_H);
         batch.setColor(Color.WHITE);
         titleFont.setColor(1f, 0.88f, 0.55f, 1f);
         titleFont.draw(batch, "PARTY MENU", 48f, h - 50f);
@@ -248,15 +278,17 @@ public class WorkshopScreen implements Screen {
     private void drawRosterPanel(float h, float mx, float my) {
         hoveredRobot = -1;
         batch.begin();
-        batch.draw(panelTexture, 40f, 80f, 250f, h - 250f);
+        batch.setColor(0.12f, 0.14f, 0.2f, 0.96f);
+        batch.draw(uiTexture, 40f, 80f, 250f, h - 250f);
 
         for (int i = 0; i < gameScreen.getRobotCount() + 1; i++) {
             float ry = h - 214f - (i * 62f);
             if (mx >= 52f && mx <= 280f && my >= ry && my <= ry + 52f) {
                 hoveredRobot = i;
             }
-            batch.setColor(i == selectedPartyMember ? Color.WHITE : (i == hoveredRobot ? new Color(0.92f, 0.92f, 0.92f, 1f) : new Color(0.8f, 0.8f, 0.8f, 1f)));
-            batch.draw(buttonTexture, 52f, ry, 228f, 52f);
+            batch.setColor(i == selectedPartyMember ? new Color(0.7f, 0.46f, 0.2f, 1f)
+                : (i == hoveredRobot ? new Color(0.3f, 0.34f, 0.46f, 1f) : new Color(0.18f, 0.2f, 0.28f, 1f)));
+            batch.draw(uiTexture, 52f, ry, 228f, 52f);
         }
         batch.setColor(Color.WHITE);
         for (int i = 0; i < gameScreen.getRobotCount() + 1; i++) {
@@ -271,16 +303,19 @@ public class WorkshopScreen implements Screen {
     }
 
     private void drawStatsPanel(float w, float h) {
+        if (showDetailView) {
+            drawDetailPanel(w, h);
+            return;
+        }
+
         boolean playerSelected = selectedPartyMember == 0;
         GameScreen.RobotStatBlock stats = playerSelected
             ? gameScreen.getPlayerStats()
             : gameScreen.getRobotStats(selectedPartyMember - 1);
-        Map<String, String> equipped = playerSelected
-            ? gameScreen.getPlayerEquipmentSlots()
-            : gameScreen.getRobotEquipmentSlots(selectedPartyMember - 1);
-
         batch.begin();
-        batch.draw(panelTexture, 320f, 80f, w - 360f, h - 250f);
+        batch.setColor(0.12f, 0.14f, 0.2f, 0.96f);
+        batch.draw(uiTexture, 320f, 80f, w - 360f, h - 250f);
+        batch.setColor(Color.WHITE);
         bodyFont.setColor(Color.WHITE);
         float x = 350f;
         float y = h - 190f;
@@ -294,130 +329,181 @@ public class WorkshopScreen implements Screen {
         boolean activeRobotSelected = !playerSelected && gameScreen.hasActiveRobotAt(selectedPartyMember - 1);
         if (!playerSelected && !activeRobotSelected) {
             bodyFont.draw(batch, "This party slot is currently empty.", x, y - 58f);
-            bodyFont.draw(batch, "Choose a reserve frame on the right to deploy it here.", x, y - 93f);
+            bodyFont.draw(batch, "Use the reserve dropdown on the right to deploy a robot here.", x, y - 93f);
         } else {
             bodyFont.draw(batch, "HP: " + (int) stats.currentHealth + "/" + (int) stats.maxHealth, x, y - 58f);
             bodyFont.draw(batch, "Agility: " + (int) stats.agility, x, y - 93f);
             bodyFont.draw(batch, "Strength: " + (int) stats.strength, x, y - 128f);
             bodyFont.draw(batch, "Intelligence: " + (int) stats.intelligence, x, y - 163f);
-            bodyFont.draw(batch, "Stamina: " + (int) stats.stamina, x, y - 198f);
         }
         if (playerSelected) {
             bodyFont.draw(batch, "XP: " + gameScreen.getPlayerExperience() + "/" + gameScreen.getExperienceForNextLevel(), x, y - 233f);
         } else if (activeRobotSelected) {
-            bodyFont.draw(batch, "Robot XP: " + gameScreen.getRobotExperience(selectedPartyMember - 1), x, y - 233f);
+            bodyFont.draw(batch, "Robot XP: " + gameScreen.getRobotExperience(selectedPartyMember - 1), x, y - 198f);
         }
 
-        bodyFont.draw(batch, "Equipped:", x, y - 280f);
-        int row = 0;
-        for (Map.Entry<String, String> entry : equipped.entrySet()) {
-            EquipmentItem item = gameScreen.findEquipmentItem(entry.getValue());
-            String itemName = item != null ? item.getName() : entry.getValue();
-            bodyFont.draw(batch, entry.getKey() + ": " + itemName, x, y - 315f - (row * 28f));
-            row++;
-        }
-        if (equipped.isEmpty()) {
-            bodyFont.draw(batch, activeRobotSelected ? "No equipment assigned." : "Empty slots have no equipment.", x, y - 315f);
-        }
-
-        if (!playerSelected && activeRobotSelected) {
-            List<String> abilityLines = gameScreen.getRobotAbilityProgressionLines(selectedPartyMember - 1);
-            List<String> weaponLines = gameScreen.getRobotWeaponProgressionLines(selectedPartyMember - 1);
-            float abilityX = x + 300f;
-            bodyFont.draw(batch, "Abilities:", abilityX, y - 280f);
-            if (abilityLines.isEmpty()) {
-                bodyFont.draw(batch, "No learned abilities.", abilityX, y - 315f);
-            } else {
-                for (int i = 0; i < abilityLines.size() && i < 6; i++) {
-                    bodyFont.draw(batch, abilityLines.get(i), abilityX, y - 315f - (i * 28f));
-                }
-            }
-            float weaponY = y - 315f - (Math.min(6, abilityLines.size()) * 28f) - 20f;
-            bodyFont.draw(batch, "Weapons:", abilityX, weaponY);
-            if (weaponLines.isEmpty()) {
-                bodyFont.draw(batch, "No weapon proficiency yet.", abilityX, weaponY - 28f);
-            } else {
-                for (int i = 0; i < weaponLines.size() && i < 4; i++) {
-                    bodyFont.draw(batch, weaponLines.get(i), abilityX, weaponY - 28f - (i * 28f));
-                }
-            }
-        }
+        bodyFont.setColor(Color.LIGHT_GRAY);
+        bodyFont.draw(batch, "Press D for detailed stats and progression.", x, 150f);
+        bodyFont.draw(batch, "Press R to open or close the reserve list.", x, 122f);
 
         if (!playerSelected && activeRobotSelected) {
             float buttonX = x;
-            float buttonY = 112f;
-            batch.setColor(hoveredMoveToReserve ? Color.WHITE : new Color(0.82f, 0.82f, 0.82f, 1f));
-            batch.draw(buttonTexture, buttonX, buttonY, RESERVE_BUTTON_W, RESERVE_BUTTON_H);
+            float buttonY = 176f;
+            batch.setColor(hoveredMoveToReserve ? new Color(0.7f, 0.42f, 0.2f, 1f) : new Color(0.24f, 0.26f, 0.36f, 1f));
+            batch.draw(uiTexture, buttonX, buttonY, RESERVE_BUTTON_W, RESERVE_BUTTON_H);
             batch.setColor(Color.WHITE);
             layout.setText(buttonFont, "Move To Reserve");
             buttonFont.setColor(Color.WHITE);
             buttonFont.draw(batch, "Move To Reserve", buttonX + (RESERVE_BUTTON_W - layout.width) / 2f, buttonY + 28f);
         }
 
-        List<String> questLines = gameScreen.getQuestJournalLines();
-        List<String> settlementLines = gameScreen.getSettlementUpgradeLines();
         List<String> reserveLines = gameScreen.getReserveRobotLines();
-        hoveredReserve = reserveIndexAt(Gdx.input.getX(), h - Gdx.input.getY(), w, h);
-        float journalX = x;
-        float journalY = y - 470f;
-        bodyFont.draw(batch, "Journal:", journalX, journalY);
-        if (questLines.isEmpty()) {
-            bodyFont.draw(batch, "No active objectives.", journalX, journalY - 28f);
-        } else {
-            for (int i = 0; i < questLines.size() && i < 3; i++) {
-                bodyFont.draw(batch, questLines.get(i), journalX, journalY - 28f - (i * 28f));
-            }
-        }
-        float settlementY = journalY - 28f - (Math.min(3, questLines.size()) * 28f) - 18f;
-        bodyFont.draw(batch, "Settlement:", journalX, settlementY);
-        if (settlementLines.isEmpty()) {
-            bodyFont.draw(batch, "Ironhaven remains unchanged.", journalX, settlementY - 28f);
-        } else {
-            for (int i = 0; i < settlementLines.size() && i < 3; i++) {
-                bodyFont.draw(batch, settlementLines.get(i), journalX, settlementY - 28f - (i * 28f));
-            }
-        }
         float reserveX = RESERVE_PANEL_X;
         float reserveY = Math.min(h - 220f, RESERVE_PANEL_Y);
+        hoveredReserve = reserveDropdownOpen ? reserveIndexAt(Gdx.input.getX(), h - Gdx.input.getY(), w, h) : -1;
         bodyFont.setColor(Color.WHITE);
-        bodyFont.draw(batch, "Reserve Frames:", reserveX, reserveY);
+        batch.setColor(hoveredReserveDropdown ? new Color(0.3f, 0.34f, 0.46f, 1f) : new Color(0.18f, 0.2f, 0.28f, 1f));
+        batch.draw(uiTexture, reserveX, reserveY - 34f, RESERVE_DROPDOWN_W, RESERVE_DROPDOWN_H);
+        batch.setColor(Color.WHITE);
+        String dropdownLabel = reserveLines.isEmpty()
+            ? "Reserve: none"
+            : ("Reserve Frames (" + reserveLines.size() + ")" + (reserveDropdownOpen ? " -" : " +"));
+        buttonFont.draw(batch, dropdownLabel, reserveX + 16f, reserveY - 6f);
         bodyFont.setColor(Color.LIGHT_GRAY);
-        if (playerSelected) {
-            bodyFont.draw(batch, "Select one of the robot slots on the left to manage deployment.", reserveX, reserveY - 28f);
-        } else {
-            bodyFont.draw(batch, "Selected slot: " + gameScreen.getRobotName(selectedPartyMember - 1), reserveX, reserveY - 28f);
-            bodyFont.draw(batch, "Click a reserve frame below to swap it into this slot.", reserveX, reserveY - 56f);
-            bodyFont.draw(batch, "The current active robot will move to reserve automatically.", reserveX, reserveY - 84f);
-        }
-        float reserveListY = reserveY - (playerSelected ? 56f : 112f);
-        if (reserveLines.isEmpty()) {
-            bodyFont.draw(batch, "No reserve robots collected yet.", reserveX, reserveListY);
-            bodyFont.draw(batch, "Recruit additional frames through quests and world events.", reserveX, reserveListY - 28f);
-        } else {
-            for (int i = 0; i < reserveLines.size() && i < 3; i++) {
-                bodyFont.setColor(i == hoveredReserve ? new Color(1f, 0.9f, 0.55f, 1f) : Color.WHITE);
-                bodyFont.draw(batch, reserveLines.get(i), reserveX, reserveListY - (i * 28f));
+        bodyFont.draw(batch, playerSelected
+            ? "Select a robot slot, then choose a reserve robot."
+            : "Selected slot: " + gameScreen.getRobotName(selectedPartyMember - 1),
+            reserveX, reserveY - 58f);
+
+        if (reserveDropdownOpen) {
+            batch.setColor(new Color(0.08f, 0.1f, 0.16f, 0.98f));
+            batch.draw(uiTexture, reserveX, reserveY - 190f, RESERVE_DROPDOWN_W, 132f);
+            batch.setColor(Color.WHITE);
+            float reserveListY = reserveY - 90f;
+            if (reserveLines.isEmpty()) {
+                bodyFont.draw(batch, "No reserve robots collected yet.", reserveX + 12f, reserveListY);
+                bodyFont.draw(batch, "Recruit additional frames through quests and world events.", reserveX + 12f, reserveListY - 28f);
+            } else {
+                for (int i = 0; i < reserveLines.size() && i < 3; i++) {
+                    bodyFont.setColor(i == hoveredReserve ? new Color(1f, 0.9f, 0.55f, 1f) : Color.WHITE);
+                    bodyFont.draw(batch, reserveLines.get(i), reserveX + 12f, reserveListY - (i * 28f));
+                }
             }
         }
         bodyFont.setColor(Color.WHITE);
         batch.end();
     }
 
+    private void drawDetailPanel(float w, float h) {
+        boolean playerSelected = selectedPartyMember == 0;
+        boolean activeRobotSelected = !playerSelected && gameScreen.hasActiveRobotAt(selectedPartyMember - 1);
+        GameScreen.RobotStatBlock stats = playerSelected
+            ? gameScreen.getPlayerStats()
+            : gameScreen.getRobotStats(selectedPartyMember - 1);
+        Map<String, String> equipped = playerSelected
+            ? gameScreen.getPlayerEquipmentSlots()
+            : gameScreen.getRobotEquipmentSlots(selectedPartyMember - 1);
+        List<String> questLines = gameScreen.getQuestJournalLines();
+        List<String> settlementLines = gameScreen.getSettlementUpgradeLines();
+
+        batch.begin();
+        batch.setColor(0.12f, 0.14f, 0.2f, 0.96f);
+        batch.draw(uiTexture, 320f, 80f, w - 360f, h - 250f);
+        batch.setColor(Color.WHITE);
+        bodyFont.setColor(Color.WHITE);
+        float leftX = 350f;
+        float topY = h - 170f;
+        bodyFont.draw(batch, playerSelected ? gameScreen.getPlayerName() : gameScreen.getRobotName(selectedPartyMember - 1), leftX, topY);
+        bodyFont.setColor(Color.LIGHT_GRAY);
+        bodyFont.draw(batch, "Press D to return to party management.", leftX, topY - 28f);
+        bodyFont.setColor(Color.WHITE);
+
+        if (playerSelected || activeRobotSelected) {
+            bodyFont.draw(batch, "HP: " + (int) stats.currentHealth + "/" + (int) stats.maxHealth, leftX, topY - 70f);
+            bodyFont.draw(batch, "Agility: " + (int) stats.agility, leftX, topY - 100f);
+            bodyFont.draw(batch, "Strength: " + (int) stats.strength, leftX, topY - 130f);
+            bodyFont.draw(batch, "Intelligence: " + (int) stats.intelligence, leftX, topY - 160f);
+            bodyFont.draw(batch, "Stamina: " + (int) stats.stamina, leftX, topY - 190f);
+        } else {
+            bodyFont.draw(batch, "This slot is empty.", leftX, topY - 70f);
+        }
+
+        bodyFont.draw(batch, "Equipment:", leftX, topY - 240f);
+        if (equipped.isEmpty()) {
+            bodyFont.draw(batch, "No equipment assigned.", leftX, topY - 270f);
+        } else {
+            int row = 0;
+            for (Map.Entry<String, String> entry : equipped.entrySet()) {
+                EquipmentItem item = gameScreen.findEquipmentItem(entry.getValue());
+                String itemName = item != null ? item.getName() : entry.getValue();
+                bodyFont.draw(batch, entry.getKey() + ": " + itemName, leftX, topY - 270f - (row * 26f));
+                row++;
+            }
+        }
+
+        float rightX = 690f;
+        if (!playerSelected && activeRobotSelected) {
+            List<String> abilityLines = gameScreen.getRobotAbilityProgressionLines(selectedPartyMember - 1);
+            List<String> weaponLines = gameScreen.getRobotWeaponProgressionLines(selectedPartyMember - 1);
+            bodyFont.draw(batch, "Abilities:", rightX, topY - 40f);
+            for (int i = 0; i < abilityLines.size() && i < 5; i++) {
+                bodyFont.draw(batch, abilityLines.get(i), rightX, topY - 70f - (i * 26f));
+            }
+            float weaponY = topY - 220f;
+            bodyFont.draw(batch, "Weapons:", rightX, weaponY);
+            if (weaponLines.isEmpty()) {
+                bodyFont.draw(batch, "No weapon proficiency yet.", rightX, weaponY - 30f);
+            } else {
+                for (int i = 0; i < weaponLines.size() && i < 4; i++) {
+                    bodyFont.draw(batch, weaponLines.get(i), rightX, weaponY - 30f - (i * 26f));
+                }
+            }
+        }
+
+        bodyFont.draw(batch, "Journal:", rightX, topY - 360f);
+        if (questLines.isEmpty()) {
+            bodyFont.draw(batch, "No active objectives.", rightX, topY - 390f);
+        } else {
+            for (int i = 0; i < questLines.size() && i < 3; i++) {
+                bodyFont.draw(batch, questLines.get(i), rightX, topY - 390f - (i * 26f));
+            }
+        }
+        float settlementY = topY - 500f;
+        bodyFont.draw(batch, "Settlement:", rightX, settlementY);
+        if (settlementLines.isEmpty()) {
+            bodyFont.draw(batch, "Ironhaven remains unchanged.", rightX, settlementY - 30f);
+        } else {
+            for (int i = 0; i < settlementLines.size() && i < 3; i++) {
+                bodyFont.draw(batch, settlementLines.get(i), rightX, settlementY - 30f - (i * 26f));
+            }
+        }
+        batch.end();
+    }
+
     private int reserveIndexAt(float mx, float my, float width, float height) {
-        if (currentTab != 0) {
+        if (currentTab != 0 || !reserveDropdownOpen) {
             return -1;
         }
         float x = RESERVE_PANEL_X;
         List<String> reserveLines = gameScreen.getReserveRobotLines();
         float reserveY = Math.min(height - 220f, RESERVE_PANEL_Y);
-        float reserveListY = reserveY - (selectedPartyMember == 0 ? 56f : 112f);
+        float reserveListY = reserveY - 90f;
         for (int i = 0; i < reserveLines.size() && i < 3; i++) {
             float lineY = reserveListY - (i * 28f);
-            if (mx >= x && mx <= width - 80f && my >= lineY - 20f && my <= lineY + 8f) {
+            if (mx >= x && mx <= x + RESERVE_DROPDOWN_W && my >= lineY - 20f && my <= lineY + 8f) {
                 return i;
             }
         }
         return -1;
+    }
+
+    private boolean isReserveDropdownHit(float mx, float my, float width, float height) {
+        if (currentTab != 0) {
+            return false;
+        }
+        float x = RESERVE_PANEL_X;
+        float y = Math.min(height - 220f, RESERVE_PANEL_Y) - 34f;
+        return mx >= x && mx <= x + RESERVE_DROPDOWN_W && my >= y && my <= y + RESERVE_DROPDOWN_H;
     }
 
     private boolean isMoveToReserveButtonHit(float mx, float my, float width, float height) {
@@ -425,7 +511,7 @@ public class WorkshopScreen implements Screen {
             return false;
         }
         float x = 350f;
-        float y = 112f;
+        float y = 176f;
         return mx >= x && mx <= x + RESERVE_BUTTON_W && my >= y && my <= y + RESERVE_BUTTON_H;
     }
 
@@ -438,7 +524,8 @@ public class WorkshopScreen implements Screen {
         hoveredEquipment = -1;
 
         batch.begin();
-        batch.draw(panelTexture, 320f, 80f, w - 360f, h - 250f);
+        batch.setColor(0.12f, 0.14f, 0.2f, 0.96f);
+        batch.draw(uiTexture, 320f, 80f, w - 360f, h - 250f);
         batch.setColor(Color.WHITE);
         bodyFont.setColor(Color.WHITE);
         String targetName = playerSelected ? gameScreen.getPlayerName() : gameScreen.getRobotName(selectedPartyMember - 1);
@@ -461,13 +548,84 @@ public class WorkshopScreen implements Screen {
                 hoveredEquipment = i;
             }
             boolean equippedNow = item.getId().equals(equipped.get(item.getSlotType()));
-            batch.setColor(i == hoveredEquipment ? Color.WHITE : new Color(0.82f, 0.82f, 0.82f, 1f));
-            batch.draw(buttonTexture, cardX, cardY, cardW, 64f);
+            batch.setColor(i == hoveredEquipment ? new Color(0.3f, 0.34f, 0.46f, 1f) : new Color(0.18f, 0.2f, 0.28f, 1f));
+            batch.draw(uiTexture, cardX, cardY, cardW, 64f);
             batch.setColor(Color.WHITE);
             bodyFont.draw(batch, item.getName() + "  [" + item.getSlotType() + "]", cardX + 12f, cardY + 48f);
             bodyFont.draw(batch, "Grade " + item.getGradeRequirement()
                 + (equippedNow ? "  EQUIPPED" : ""), cardX + 12f, cardY + 28f);
             bodyFont.draw(batch, compactStatLine(item), cardX + 12f, cardY + 10f);
+        }
+        batch.end();
+    }
+
+    private void drawHubPanel(float w, float h) {
+        List<String> settlementLines = gameScreen.getSettlementUpgradeLines();
+        List<String> serviceLines = gameScreen.getUnlockedServiceLines();
+        List<String> townChangeLines = gameScreen.getTownChangeLines();
+        List<String> questLines = gameScreen.getQuestJournalLines();
+        List<String> reserveLines = gameScreen.getReserveRobotLines();
+
+        batch.begin();
+        batch.setColor(0.12f, 0.14f, 0.2f, 0.96f);
+        batch.draw(uiTexture, 320f, 80f, w - 360f, h - 250f);
+        batch.setColor(Color.WHITE);
+        bodyFont.setColor(Color.WHITE);
+
+        float leftX = 350f;
+        float topY = h - 170f;
+        bodyFont.draw(batch, "Ironhaven Hub", leftX, topY);
+        bodyFont.setColor(Color.LIGHT_GRAY);
+        bodyFont.draw(batch, "Town growth, unlocked services, and current projects.", leftX, topY - 28f);
+        bodyFont.setColor(Color.WHITE);
+
+        bodyFont.draw(batch, "Settlement Upgrades:", leftX, topY - 74f);
+        if (settlementLines.isEmpty()) {
+            bodyFont.draw(batch, "No town upgrades secured yet.", leftX, topY - 104f);
+        } else {
+            for (int i = 0; i < settlementLines.size() && i < 5; i++) {
+                bodyFont.draw(batch, settlementLines.get(i), leftX, topY - 104f - (i * 26f));
+            }
+        }
+
+        float serviceY = topY - 250f;
+        bodyFont.draw(batch, "Unlocked Services:", leftX, serviceY);
+        if (serviceLines.isEmpty()) {
+            bodyFont.draw(batch, "Ironhaven services are still basic.", leftX, serviceY - 30f);
+        } else {
+            for (int i = 0; i < serviceLines.size() && i < 4; i++) {
+                bodyFont.draw(batch, serviceLines.get(i), leftX, serviceY - 30f - (i * 26f));
+            }
+        }
+
+        float rightX = 720f;
+        bodyFont.draw(batch, "Visible Town Changes:", rightX, topY - 10f);
+        if (townChangeLines.isEmpty()) {
+            bodyFont.draw(batch, "The town still looks unchanged.", rightX, topY - 40f);
+        } else {
+            for (int i = 0; i < townChangeLines.size() && i < 4; i++) {
+                bodyFont.draw(batch, townChangeLines.get(i), rightX, topY - 40f - (i * 26f));
+            }
+        }
+
+        float questY = topY - 200f;
+        bodyFont.draw(batch, "Current Projects:", rightX, questY);
+        if (questLines.isEmpty()) {
+            bodyFont.draw(batch, "No active projects.", rightX, questY - 30f);
+        } else {
+            for (int i = 0; i < questLines.size() && i < 4; i++) {
+                bodyFont.draw(batch, questLines.get(i), rightX, questY - 30f - (i * 26f));
+            }
+        }
+
+        float reserveY = topY - 390f;
+        bodyFont.draw(batch, "Reserve Frames:", rightX, reserveY);
+        if (reserveLines.isEmpty()) {
+            bodyFont.draw(batch, "No reserve robots recruited yet.", rightX, reserveY - 30f);
+        } else {
+            for (int i = 0; i < reserveLines.size() && i < 4; i++) {
+                bodyFont.draw(batch, reserveLines.get(i), rightX, reserveY - 30f - (i * 26f));
+            }
         }
         batch.end();
     }
@@ -548,7 +706,6 @@ public class WorkshopScreen implements Screen {
         bodyFont.dispose();
         buttonFont.dispose();
         backgroundTexture.dispose();
-        panelTexture.dispose();
-        buttonTexture.dispose();
+        uiTexture.dispose();
     }
 }

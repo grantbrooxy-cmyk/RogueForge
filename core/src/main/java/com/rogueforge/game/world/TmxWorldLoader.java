@@ -117,6 +117,13 @@ public class TmxWorldLoader {
         feature.kind = readProperty(object, "kind", "wall");
         feature.label = readProperty(object, "label", feature.id);
         feature.bounds = readRectangle(zone, object);
+        feature.requiredWorldFlag = readProperty(object, "requiredWorldFlag", null);
+        feature.hiddenUntilFlag = readProperty(object, "hiddenUntilFlag", null);
+        feature.interactionType = readProperty(object, "interactionType", null);
+        feature.completionWorldFlag = readProperty(object, "completionWorldFlag", null);
+        feature.interactionMessage = readProperty(object, "interactionMessage", null);
+        feature.blockedMessage = readProperty(object, "blockedMessage", null);
+        feature.blocksMovement = Boolean.parseBoolean(readProperty(object, "blocksMovement", "false"));
         String houseIdText = readProperty(object, "houseId", null);
         feature.houseId = houseIdText != null && !houseIdText.isEmpty() ? Integer.parseInt(houseIdText) : -1;
         return feature;
@@ -230,6 +237,13 @@ public class TmxWorldLoader {
         public String kind;
         public String label;
         public Rectangle bounds;
+        public String requiredWorldFlag;
+        public String hiddenUntilFlag;
+        public String interactionType;
+        public String completionWorldFlag;
+        public String interactionMessage;
+        public String blockedMessage;
+        public boolean blocksMovement;
         public int houseId = -1;
     }
 

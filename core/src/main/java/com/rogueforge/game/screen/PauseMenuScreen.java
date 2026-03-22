@@ -1,6 +1,7 @@
 package com.rogueforge.game.screen;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
@@ -35,8 +36,7 @@ public class PauseMenuScreen implements Screen {
     private final GlyphLayout layout;
     private Texture overlayTexture;
     private final Texture backgroundTexture;
-    private final Texture panelTexture;
-    private final Texture buttonTexture;
+    private final Texture uiTexture;
 
     private static final String[] BUTTON_LABELS = {"Resume", "Save", "Options", "Quit to Menu"};
     private static final float BTN_W = 240f;
@@ -46,10 +46,14 @@ public class PauseMenuScreen implements Screen {
     private static final float SAVE_SLOT_BTN_W = 300f;
     private static final float SAVE_SLOT_BTN_H = 50f;
     private static final float SAVE_SLOT_BTN_GAP = 16f;
+    private static final float BACK_W = 180f;
+    private static final float BACK_H = 44f;
 
     private int hoveredButton = -1;
     private boolean showingSaveSlots = false;
     private int hoveredSaveSlot = -1;
+    private boolean hoveredBack;
+    private float closeInputBlockTimer;
 
     public PauseMenuScreen(RogueForgeGame game, ScreenManager screenManager, GameScreen gameScreen) {
         this.game = game;
@@ -62,8 +66,7 @@ public class PauseMenuScreen implements Screen {
         this.camera.setToOrtho(false, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         this.layout = new GlyphLayout();
         this.backgroundTexture = loadTexture("Backgrounds/background 2/orig_big.png");
-        this.panelTexture = loadTexture("4 GUI/1 Frames/Interface windows.png");
-        this.buttonTexture = loadTexture("4 GUI/6 Buttons/ButtonMap2.png");
+        this.uiTexture = createUiTexture();
 
         // Create semi-transparent overlay texture
         Pixmap pm = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
@@ -88,12 +91,25 @@ public class PauseMenuScreen implements Screen {
         return texture;
     }
 
+    private Texture createUiTexture() {
+        Pixmap pm = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
+        pm.setColor(Color.WHITE);
+        pm.fill();
+        Texture texture = new Texture(pm);
+        texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
+        pm.dispose();
+        return texture;
+    }
+
     @Override
     public void show() {
+        Gdx.input.setInputProcessor(null);
+        closeInputBlockTimer = 0.18f;
     }
 
     @Override
     public void render(float delta) {
+        closeInputBlockTimer = Math.max(0f, closeInputBlockTimer - delta);
         float w = Gdx.graphics.getWidth();
         float h = Gdx.graphics.getHeight();
 
@@ -106,6 +122,17 @@ public class PauseMenuScreen implements Screen {
         // Mouse position (flip Y for our camera)
         float mx = Gdx.input.getX();
         float my = h - Gdx.input.getY();
+
+        if (closeInputBlockTimer <= 0f && Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+            if (showingSaveSlots) {
+                showingSaveSlots = false;
+                hoveredSaveSlot = -1;
+            } else {
+                gameScreen.resumeGame();
+                screenManager.pop();
+            }
+            return;
+        }
 
         if (showingSaveSlots) {
             renderSaveSlotPicker(w, h, mx, my);
@@ -137,12 +164,13 @@ public class PauseMenuScreen implements Screen {
         // Draw buttons
         batch.setProjectionMatrix(camera.combined);
         batch.begin();
-        batch.draw(panelTexture, (w - 420f) / 2f, startY - 50f, 420f, totalBtnHeight + 180f);
+        batch.setColor(0.08f, 0.1f, 0.15f, 0.95f);
+        batch.draw(uiTexture, (w - 420f) / 2f, startY - 50f, 420f, totalBtnHeight + 180f);
         for (int i = 0; i < BUTTON_LABELS.length; i++) {
             float bx = (w - BTN_W) / 2f;
             float by = startY + (BUTTON_LABELS.length - 1 - i) * (BTN_H + BTN_GAP);
-            batch.setColor(i == hoveredButton ? Color.WHITE : new Color(0.82f, 0.82f, 0.82f, 1f));
-            batch.draw(buttonTexture, bx, by, BTN_W, BTN_H);
+            batch.setColor(i == hoveredButton ? new Color(0.72f, 0.46f, 0.2f, 1f) : new Color(0.2f, 0.22f, 0.3f, 1f));
+            batch.draw(uiTexture, bx, by, BTN_W, BTN_H);
         }
         batch.setColor(Color.WHITE);
 
@@ -172,6 +200,7 @@ public class PauseMenuScreen implements Screen {
 
         // Detect hover
         hoveredSaveSlot = -1;
+        hoveredBack = isSaveBackHit(mx, my, w, h);
         for (int i = 0; i < numSlots; i++) {
             float bx = (w - SAVE_SLOT_BTN_W) / 2f;
             float by = startY + (numSlots - 1 - i) * (SAVE_SLOT_BTN_H + SAVE_SLOT_BTN_GAP);
@@ -181,6 +210,11 @@ public class PauseMenuScreen implements Screen {
         }
 
         // Handle click
+        if (Gdx.input.justTouched() && hoveredBack) {
+            showingSaveSlots = false;
+            hoveredSaveSlot = -1;
+            return;
+        }
         if (Gdx.input.justTouched() && hoveredSaveSlot >= 0) {
             onSaveSlotClicked(hoveredSaveSlot);
         }
@@ -194,13 +228,19 @@ public class PauseMenuScreen implements Screen {
         // Draw slot buttons
         batch.setProjectionMatrix(camera.combined);
         batch.begin();
-        batch.draw(panelTexture, (w - 500f) / 2f, startY - 50f, 500f, totalSlotHeight + 180f);
+        batch.setColor(0.08f, 0.1f, 0.15f, 0.95f);
+        batch.draw(uiTexture, (w - 500f) / 2f, startY - 50f, 500f, totalSlotHeight + 180f);
         for (int i = 0; i < numSlots; i++) {
             float bx = (w - SAVE_SLOT_BTN_W) / 2f;
             float by = startY + (numSlots - 1 - i) * (SAVE_SLOT_BTN_H + SAVE_SLOT_BTN_GAP);
-            batch.setColor(i == hoveredSaveSlot ? Color.WHITE : new Color(0.82f, 0.82f, 0.82f, 1f));
-            batch.draw(buttonTexture, bx, by, SAVE_SLOT_BTN_W, SAVE_SLOT_BTN_H);
+            batch.setColor(i == hoveredSaveSlot ? new Color(0.72f, 0.46f, 0.2f, 1f) : new Color(0.2f, 0.22f, 0.3f, 1f));
+            batch.draw(uiTexture, bx, by, SAVE_SLOT_BTN_W, SAVE_SLOT_BTN_H);
         }
+        batch.setColor(Color.WHITE);
+        float backX = (w - BACK_W) / 2f;
+        float backY = startY - 32f;
+        batch.setColor(hoveredBack ? new Color(0.68f, 0.28f, 0.24f, 1f) : new Color(0.2f, 0.22f, 0.3f, 1f));
+        batch.draw(uiTexture, backX, backY, BACK_W, BACK_H);
         batch.setColor(Color.WHITE);
 
         // Title
@@ -219,8 +259,22 @@ public class PauseMenuScreen implements Screen {
                 bx + (SAVE_SLOT_BTN_W - layout.width) / 2f,
                 by + (SAVE_SLOT_BTN_H + layout.height) / 2f);
         }
+        layout.setText(buttonFont, "Back");
+        buttonFont.draw(batch, "Back", backX + (BACK_W - layout.width) / 2f, backY + 28f);
 
         batch.end();
+    }
+
+    private boolean isSaveBackHit(float mx, float my, float width, float height) {
+        if (!showingSaveSlots) {
+            return false;
+        }
+        int numSlots = SaveManager.MAX_SLOTS + 1;
+        float totalSlotHeight = numSlots * SAVE_SLOT_BTN_H + (numSlots - 1) * SAVE_SLOT_BTN_GAP;
+        float startY = (height - totalSlotHeight) / 2f - 30f;
+        float backX = (width - BACK_W) / 2f;
+        float backY = startY - 32f;
+        return mx >= backX && mx <= backX + BACK_W && my >= backY && my <= backY + BACK_H;
     }
 
     private String buildSlotLabel(int slot) {
@@ -298,7 +352,6 @@ public class PauseMenuScreen implements Screen {
             overlayTexture.dispose();
         }
         backgroundTexture.dispose();
-        panelTexture.dispose();
-        buttonTexture.dispose();
+        uiTexture.dispose();
     }
 }

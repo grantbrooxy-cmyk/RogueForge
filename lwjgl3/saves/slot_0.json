@@ -2,7 +2,7 @@
 playerName: Player
 playerHp: 100
 playerMaxHp: 100
-playerX: 380
+playerX: 1490
 playerY: 580
 currentZoneId: verdant_fields
 healingPotions: 3
@@ -13,13 +13,16 @@ ownedEquipmentIds: [
 ]
 worldStateFlags: {
 	class: java.util.HashMap
+	frontier.cave_hidden_path_open: false
 	settlement.watchtower_network: false
+	frontier.boulder_path_cleared: false
+	settlement.survey_drones: false
+	chest.herbalist_hidden.opened: false
+	frontier.herbalist_brambles_cleared: false
 	recruit.medic_joined: false
 	settlement.apothecary_stock: false
 	access.workshop_pass: false
-	settlement.survey_drones: false
 	recruit.artificer_joined: false
-	chest.herbalist_hidden.opened: false
 	frontier.warding_pylons_online: false
 	settlement.workshop_tools: false
 	recruit.medic_frame_found: false
@@ -31,22 +34,23 @@ collectedRobotIds: [
 	striker_mk1
 ]
 activeRobotIds: [
-	scout_mk1
-	guardian_mk1
-	striker_mk1
+	null
+	null
+	null
 ]
-robotHealth: [ 75, 75, 75 ]
-robotMaxHealth: [ 75, 75, 75 ]
+robotHealth: [ 0, 0, 0 ]
+robotMaxHealth: [ 0, 0, 0 ]
 robotBaseMaxHealth: [ 75, 75, 75 ]
-robotX: [ 380, 380, 380 ]
-robotY: [ 528, 476, 424 ]
-robotAngleDeg: [ 180, 180, 180 ]
+robotX: [ 1171.9382, 1120.4424, 1068.4766 ]
+robotY: [ 644.98596, 652.209, 650.3234 ]
+robotAngleDeg: [ 344.29364, 352.01663, 2.0795782 ]
 robotAttackTimers: [ 0, 0, 0 ]
 robotProgressionStates: {
 	class: java.util.HashMap
 	striker_mk1: {
 		robotId: striker_mk1
 		displayName: Striker MK-I
+		currentHealth: 80
 		knownAbilityIds: [
 			power_strike
 			rapid_fire
@@ -64,6 +68,7 @@ robotProgressionStates: {
 	guardian_mk1: {
 		robotId: guardian_mk1
 		displayName: Guardian MK-I
+		currentHealth: 120
 		knownAbilityIds: [
 			shield_wall
 			taunt
@@ -81,6 +86,7 @@ robotProgressionStates: {
 	scout_mk1: {
 		robotId: scout_mk1
 		displayName: Scout MK-I
+		currentHealth: 60
 		knownAbilityIds: [
 			dash
 			scan
@@ -98,5 +104,6 @@ robotProgressionStates: {
 }
 enemies: []
 chests: []
-saveTimestamp: 2026-03-22 12:10
+playTimeSeconds: 37
+saveTimestamp: 2026-03-22 20:55
 }

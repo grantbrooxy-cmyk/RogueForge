@@ -6,6 +6,7 @@ import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -24,6 +25,8 @@ import com.rogueforge.game.persistence.SettingsManager;
  */
 public class MainMenuScreen implements Screen {
     private static final String[] DIFFICULTY_OPTIONS = {"Easy", "Normal", "Hard", "Hell"};
+    private static final float BACK_W = 180f;
+    private static final float BACK_H = 44f;
     private final RogueForgeGame game;
     private final ScreenManager screenManager;
     private final SpriteBatch batch;
@@ -35,9 +38,7 @@ public class MainMenuScreen implements Screen {
     private final SaveManager saveManager;
     private final SettingsManager settingsManager;
     private final Texture backgroundTexture;
-    private final Texture panelTexture;
-    private final Texture buttonTexture;
-    private final Texture logoTexture;
+    private final Texture uiTexture;
 
     private static final String[] BUTTON_LABELS = {"New Game", "Continue", "Options", "Quit"};
     private static final float BTN_W = 240f;
@@ -46,6 +47,7 @@ public class MainMenuScreen implements Screen {
 
     private int hoveredButton = -1;
     private int hoveredDifficulty = -1;
+    private boolean hoveredDifficultyBack;
     private boolean selectingDifficulty = false;
 
     public MainMenuScreen(RogueForgeGame game, ScreenManager screenManager) {
@@ -60,9 +62,7 @@ public class MainMenuScreen implements Screen {
         this.settingsManager = new SettingsManager();
         this.settingsManager.load();
         this.backgroundTexture = loadTexture("Backgrounds/background 1/orig_big.png");
-        this.panelTexture = loadTexture("4 GUI/1 Frames/Interface windows.png");
-        this.buttonTexture = loadTexture("4 GUI/6 Buttons/ButtonMap1.png");
-        this.logoTexture = loadTexture("4 GUI/5 Logo/Logo1.png");
+        this.uiTexture = createUiTexture();
 
         titleFont = new BitmapFont();
         titleFont.getData().setScale(3.5f);
@@ -76,6 +76,16 @@ public class MainMenuScreen implements Screen {
     private Texture loadTexture(String relativePath) {
         Texture texture = new Texture(Gdx.files.internal(relativePath));
         texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
+        return texture;
+    }
+
+    private Texture createUiTexture() {
+        Pixmap pm = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
+        pm.setColor(Color.WHITE);
+        pm.fill();
+        Texture texture = new Texture(pm);
+        texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
+        pm.dispose();
         return texture;
     }
 
@@ -100,6 +110,7 @@ public class MainMenuScreen implements Screen {
 
         hoveredButton = -1;
         hoveredDifficulty = -1;
+        hoveredDifficultyBack = false;
         if (selectingDifficulty) {
             for (int i = 0; i < DIFFICULTY_OPTIONS.length; i++) {
                 float bx = (w - BTN_W) / 2f;
@@ -108,6 +119,9 @@ public class MainMenuScreen implements Screen {
                     hoveredDifficulty = i;
                 }
             }
+            float backX = (w - BACK_W) / 2f;
+            float backY = startY - 54f;
+            hoveredDifficultyBack = mx >= backX && mx <= backX + BACK_W && my >= backY && my <= backY + BACK_H;
         } else {
             for (int i = 0; i < BUTTON_LABELS.length; i++) {
                 float bx = (w - BTN_W) / 2f;
@@ -125,6 +139,8 @@ public class MainMenuScreen implements Screen {
         if (Gdx.input.justTouched()) {
             if (selectingDifficulty && hoveredDifficulty >= 0) {
                 startNewGameWithDifficulty(DIFFICULTY_OPTIONS[hoveredDifficulty]);
+            } else if (selectingDifficulty && hoveredDifficultyBack) {
+                selectingDifficulty = false;
             } else if (!selectingDifficulty && hoveredButton >= 0) {
                 onButtonClicked(hoveredButton);
             }
@@ -134,29 +150,32 @@ public class MainMenuScreen implements Screen {
         batch.begin();
         batch.setColor(1f, 1f, 1f, 1f);
         batch.draw(backgroundTexture, 0f, 0f, w, h);
-        batch.setColor(1f, 1f, 1f, 0.92f);
-        batch.draw(panelTexture, (w - 440f) / 2f, startY - 50f, 440f, totalBtnHeight + 200f);
+        batch.setColor(0.08f, 0.1f, 0.15f, 0.92f);
+        batch.draw(uiTexture, (w - 440f) / 2f, startY - 50f, 440f, totalBtnHeight + 200f);
         if (selectingDifficulty) {
             batch.setColor(0.08f, 0.08f, 0.12f, 0.9f);
-            batch.draw(panelTexture, (w - 440f) / 2f, startY - 50f, 440f, DIFFICULTY_OPTIONS.length * (BTN_H + BTN_GAP) + 190f);
+            batch.draw(uiTexture, (w - 440f) / 2f, startY - 50f, 440f, DIFFICULTY_OPTIONS.length * (BTN_H + BTN_GAP) + 190f);
             for (int i = 0; i < DIFFICULTY_OPTIONS.length; i++) {
                 float bx = (w - BTN_W) / 2f;
                 float by = startY + (DIFFICULTY_OPTIONS.length - 1 - i) * (BTN_H + BTN_GAP);
-                batch.setColor(i == hoveredDifficulty ? Color.WHITE : new Color(0.82f, 0.82f, 0.82f, 1f));
-                batch.draw(buttonTexture, bx, by, BTN_W, BTN_H);
+                batch.setColor(i == hoveredDifficulty ? new Color(0.72f, 0.46f, 0.2f, 1f) : new Color(0.2f, 0.22f, 0.3f, 1f));
+                batch.draw(uiTexture, bx, by, BTN_W, BTN_H);
             }
+            float backX = (w - BACK_W) / 2f;
+            float backY = startY - 54f;
+            batch.setColor(hoveredDifficultyBack ? new Color(0.68f, 0.28f, 0.24f, 1f) : new Color(0.2f, 0.22f, 0.3f, 1f));
+            batch.draw(uiTexture, backX, backY, BACK_W, BACK_H);
         } else {
             for (int i = 0; i < BUTTON_LABELS.length; i++) {
                 float bx = (w - BTN_W) / 2f;
                 float by = startY + (BUTTON_LABELS.length - 1 - i) * (BTN_H + BTN_GAP);
-                batch.setColor(i == hoveredButton ? Color.WHITE : new Color(0.82f, 0.82f, 0.82f, 1f));
-                batch.draw(buttonTexture, bx, by, BTN_W, BTN_H);
+                batch.setColor(i == hoveredButton ? new Color(0.72f, 0.46f, 0.2f, 1f) : new Color(0.2f, 0.22f, 0.3f, 1f));
+                batch.draw(uiTexture, bx, by, BTN_W, BTN_H);
             }
         }
         batch.setColor(Color.WHITE);
 
         // Title
-        batch.draw(logoTexture, (w - 260f) / 2f, startY + totalBtnHeight + 24f, 260f, 120f);
         layout.setText(titleFont, "ROGUE FORGE");
         titleFont.setColor(1f, 0.85f, 0.4f, 1f);
         titleFont.draw(batch, "ROGUE FORGE", (w - layout.width) / 2f, startY + totalBtnHeight + 160f);
@@ -175,6 +194,8 @@ public class MainMenuScreen implements Screen {
                     bx + (BTN_W - layout.width) / 2f,
                     by + (BTN_H + layout.height) / 2f);
             }
+            layout.setText(buttonFont, "Back");
+            buttonFont.draw(batch, "Back", (w - layout.width) / 2f, startY - 24f - BACK_H / 2f + 22f);
         } else {
             for (int i = 0; i < BUTTON_LABELS.length; i++) {
                 float bx = (w - BTN_W) / 2f;
@@ -232,8 +253,6 @@ public class MainMenuScreen implements Screen {
         titleFont.dispose();
         buttonFont.dispose();
         backgroundTexture.dispose();
-        panelTexture.dispose();
-        buttonTexture.dispose();
-        logoTexture.dispose();
+        uiTexture.dispose();
     }
 }

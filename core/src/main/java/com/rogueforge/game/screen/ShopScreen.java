@@ -6,6 +6,7 @@ import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.Texture.TextureFilter;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
@@ -23,6 +24,8 @@ import java.util.List;
  */
 public class ShopScreen implements Screen {
     private static final String[] TABS = {"Buy", "Sell"};
+    private static final float BACK_W = 140f;
+    private static final float BACK_H = 42f;
 
     private final RogueForgeGame game;
     private final ScreenManager screenManager;
@@ -36,11 +39,12 @@ public class ShopScreen implements Screen {
     private final BitmapFont bodyFont;
     private final GlyphLayout layout;
     private final Texture backgroundTexture;
-    private final Texture buttonTexture;
+    private final Texture uiTexture;
 
     private int currentTab = 0;
     private int hoveredTab = -1;
     private int hoveredRow = -1;
+    private boolean hoveredBack;
     private String statusMessage = "Welcome.";
 
     public ShopScreen(RogueForgeGame game, ScreenManager screenManager, GameScreen gameScreen, String shopName, ShopInventory inventory) {
@@ -57,7 +61,7 @@ public class ShopScreen implements Screen {
         this.bodyFont = new BitmapFont();
         this.layout = new GlyphLayout();
         this.backgroundTexture = loadTexture("Backgrounds/background 2/orig_big.png");
-        this.buttonTexture = loadTexture("4 GUI/6 Buttons/ButtonMap4.png");
+        this.uiTexture = createUiTexture();
         this.titleFont.getData().setScale(2.4f);
         this.bodyFont.getData().setScale(1.1f);
     }
@@ -68,8 +72,19 @@ public class ShopScreen implements Screen {
         return texture;
     }
 
+    private Texture createUiTexture() {
+        Pixmap pm = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
+        pm.setColor(Color.WHITE);
+        pm.fill();
+        Texture texture = new Texture(pm);
+        texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
+        pm.dispose();
+        return texture;
+    }
+
     @Override
     public void show() {
+        Gdx.input.setInputProcessor(null);
     }
 
     @Override
@@ -87,7 +102,7 @@ public class ShopScreen implements Screen {
         batch.begin();
         batch.draw(backgroundTexture, 0f, 0f, w, h);
         batch.setColor(0f, 0f, 0f, 0.5f);
-        batch.draw(buttonTexture, 20f, 20f, w - 40f, h - 40f);
+        batch.draw(uiTexture, 20f, 20f, w - 40f, h - 40f);
         batch.setColor(Color.WHITE);
         titleFont.setColor(1f, 0.88f, 0.55f, 1f);
         titleFont.draw(batch, shopName, 48f, h - 42f);
@@ -108,6 +123,7 @@ public class ShopScreen implements Screen {
 
         hoveredTab = -1;
         hoveredRow = -1;
+        hoveredBack = isBackButtonHit(mx, my, w, h);
 
         for (int i = 0; i < TABS.length; i++) {
             float tx = 48f + i * 150f;
@@ -125,7 +141,7 @@ public class ShopScreen implements Screen {
         }
 
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) || Gdx.input.isKeyJustPressed(Input.Keys.I)) {
-            screenManager.pop();
+            closeMenu();
             return;
         }
         if (Gdx.input.isKeyJustPressed(Input.Keys.TAB)) {
@@ -134,6 +150,10 @@ public class ShopScreen implements Screen {
         }
 
         if (Gdx.input.justTouched()) {
+            if (hoveredBack) {
+                closeMenu();
+                return;
+            }
             if (hoveredTab >= 0) {
                 currentTab = hoveredTab;
                 return;
@@ -173,12 +193,20 @@ public class ShopScreen implements Screen {
         batch.begin();
         for (int i = 0; i < TABS.length; i++) {
             float tx = 48f + i * 150f;
-            batch.setColor(i == currentTab ? Color.WHITE : (i == hoveredTab ? new Color(0.92f, 0.92f, 0.92f, 1f) : new Color(0.78f, 0.78f, 0.78f, 1f)));
-            batch.draw(buttonTexture, tx, h - 148f, 130f, 44f);
+            batch.setColor(i == currentTab ? new Color(0.72f, 0.46f, 0.2f, 1f)
+                : (i == hoveredTab ? new Color(0.3f, 0.34f, 0.46f, 1f) : new Color(0.18f, 0.2f, 0.28f, 1f)));
+            batch.draw(uiTexture, tx, h - 148f, 130f, 44f);
             batch.setColor(Color.WHITE);
             layout.setText(bodyFont, TABS[i]);
             bodyFont.draw(batch, TABS[i], tx + (130f - layout.width) / 2f, h - 118f);
         }
+        float backX = backButtonX(w);
+        float backY = h - 148f;
+        batch.setColor(hoveredBack ? new Color(0.68f, 0.28f, 0.24f, 1f) : new Color(0.32f, 0.18f, 0.18f, 1f));
+        batch.draw(uiTexture, backX, backY, BACK_W, BACK_H);
+        batch.setColor(Color.WHITE);
+        layout.setText(bodyFont, "Back");
+        bodyFont.draw(batch, "Back", backX + (BACK_W - layout.width) / 2f, h - 118f);
         batch.end();
     }
 
@@ -213,8 +241,8 @@ public class ShopScreen implements Screen {
     }
 
     private void drawRowBackground(float w, float rowY, boolean hovered) {
-        batch.setColor(hovered ? Color.WHITE : new Color(0.82f, 0.82f, 0.82f, 1f));
-        batch.draw(buttonTexture, 48f, rowY, w - 96f, 44f);
+        batch.setColor(hovered ? new Color(0.3f, 0.34f, 0.46f, 1f) : new Color(0.18f, 0.2f, 0.28f, 1f));
+        batch.draw(uiTexture, 48f, rowY, w - 96f, 44f);
         batch.setColor(Color.WHITE);
     }
 
@@ -233,8 +261,22 @@ public class ShopScreen implements Screen {
         batch.begin();
         bodyFont.setColor(Color.WHITE);
         bodyFont.draw(batch, statusMessage, 52f, 74f);
-        bodyFont.draw(batch, "Tab: switch buy/sell   Esc: close", w - 290f, 74f);
+        bodyFont.draw(batch, "Tab: switch buy/sell   Esc: back", w - 290f, 74f);
         batch.end();
+    }
+
+    private float backButtonX(float width) {
+        return width - 48f - BACK_W;
+    }
+
+    private boolean isBackButtonHit(float mx, float my, float width, float height) {
+        float x = backButtonX(width);
+        float y = height - 148f;
+        return mx >= x && mx <= x + BACK_W && my >= y && my <= y + BACK_H;
+    }
+
+    private void closeMenu() {
+        screenManager.pop();
     }
 
     @Override
@@ -253,6 +295,6 @@ public class ShopScreen implements Screen {
         titleFont.dispose();
         bodyFont.dispose();
         backgroundTexture.dispose();
-        buttonTexture.dispose();
+        uiTexture.dispose();
     }
 }

@@ -1,6 +1,7 @@
 package com.rogueforge.game.screen;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
@@ -83,6 +84,7 @@ public class OptionsScreen implements Screen {
 
     @Override
     public void show() {
+        Gdx.input.setInputProcessor(null);
     }
 
     @Override
@@ -122,6 +124,10 @@ public class OptionsScreen implements Screen {
         }
 
         // Handle click
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+            onBack();
+            return;
+        }
         if (Gdx.input.justTouched()) {
             if (hoveredButton == 0) {
                 onBack();

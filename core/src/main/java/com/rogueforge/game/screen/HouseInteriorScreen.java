@@ -86,6 +86,7 @@ public class HouseInteriorScreen implements Screen {
 
     @Override
     public void show() {
+        Gdx.input.setInputProcessor(null);
     }
 
     @Override
@@ -101,6 +102,14 @@ public class HouseInteriorScreen implements Screen {
     }
 
     private void update(float delta) {
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+            gameScreen.pauseGame();
+            return;
+        }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.I)) {
+            gameScreen.openWorkshop();
+            return;
+        }
         if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) {
             activeSpeaker = null;
             activeDialog = null;
@@ -234,6 +243,7 @@ public class HouseInteriorScreen implements Screen {
         batch.draw(playerSprite, playerPos.x - PLAYER_SIZE / 2f, playerPos.y - PLAYER_SIZE / 2f, PLAYER_SIZE, PLAYER_SIZE);
         font.setColor(Color.WHITE);
         font.draw(batch, house.name, 34f, 286f);
+        font.draw(batch, "I: Roster  Esc: Pause", 226f, 286f);
         font.draw(batch, "Exit", 192f, 54f);
         for (GameScreen.InteriorNpc npc : house.interiorNpcs) {
             font.draw(batch, npc.name, npc.pos.x - 18f, npc.pos.y + 30f);
