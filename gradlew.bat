@@ -73,11 +73,11 @@ set CLASSPATH=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar
 "%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.gradle.appname=%APP_BASE_NAME%" -classpath "%CLASSPATH%" org.gradle.wrapper.GradleWrapperMain %*
 
 :end
-@endlocal & set ERROR_CODE=%ERRORCODE%
+@endlocal & set ERROR_CODE=%ERRORLEVEL%
 
-if not "%ERRORCODE%"=="0" goto fail
+if not "%ERROR_CODE%"=="0" goto fail
 
-exit /b %ERRORCODE%
+exit /b %ERROR_CODE%
 
 :fail
 exit /b 1
