@@ -15,6 +15,7 @@ if not defined JAVA_CMD (
     if errorlevel 1 (
         echo ERROR: Java not found.
         echo Install JDK 17+ and make sure either JAVA_HOME or PATH points to it.
+        pause
         exit /b 1
     )
     set "JAVA_CMD=java"
@@ -61,6 +62,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
 if errorlevel 1 (
     echo ERROR: Failed to download the Gradle wrapper JAR.
     echo Please install Gradle and run: gradle wrapper --gradle-version 8.5
+    pause
     exit /b 1
 )
 echo Gradle wrapper downloaded.
@@ -68,4 +70,8 @@ echo Gradle wrapper downloaded.
 :run_game
 echo Building and launching Rogue Forge...
 call "%~dp0gradlew.bat" :lwjgl3:run %*
-exit /b %errorlevel%
+set "EXIT_CODE=%errorlevel%"
+echo.
+echo Rogue Forge exited with code %EXIT_CODE%.
+pause
+exit /b %EXIT_CODE%
