@@ -1,5 +1,0 @@
-[
-  { "id": "verdant_fields", "name": "Verdant Fields", "tilemapPath": "maps/verdant_fields.tmx", "rankFloor": "G", "rankCeiling": "F", "bossId": null, "monsterIds": ["slime_g", "goblin_f"] },
-  { "id": "shadow_caves", "name": "Shadow Caves", "tilemapPath": "maps/shadow_caves.tmx", "rankFloor": "E", "rankCeiling": "D", "bossId": null, "monsterIds": ["skeleton_e", "mage_d"] },
-  { "id": "dragon_peak", "name": "Dragon Peak", "tilemapPath": "maps/dragon_peak.tmx", "rankFloor": "C", "rankCeiling": "B", "bossId": "dragon_boss_b", "monsterIds": ["golem_c", "dragon_boss_b"] }
-]

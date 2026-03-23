@@ -31,10 +31,18 @@ jar {
 
 def os = OperatingSystem.current()
 def packageOutputDir = layout.buildDirectory.dir('package')
+def appImageOutputDir = layout.buildDirectory.dir('app-image')
 def jpackageExecutable = new File(System.getProperty('java.home'), "bin/jpackage${os.isWindows() ? '.exe' : ''}")
 def jpackageCommand = jpackageExecutable.exists() ? jpackageExecutable.absolutePath : 'jpackage'
 def mainJarName = 'rogue-forge.jar'
 def launcherClass = 'com.rogueforge.game.lwjgl3.Lwjgl3Launcher'
+
+def baseJpackageArgs = [
+    '--name', 'RogueForge',
+    '--input', file("$buildDir/libs").absolutePath,
+    '--main-jar', mainJarName,
+    '--main-class', launcherClass
+]
 
 tasks.register('packageDmg', Exec) {
     group = 'distribution'
@@ -54,12 +62,31 @@ tasks.register('packageDmg', Exec) {
     workingDir projectDir
     commandLine jpackageCommand,
         '--type', 'dmg',
-        '--name', 'RogueForge',
-        '--input', file("$buildDir/libs").absolutePath,
         '--dest', packageOutputDir.get().asFile.absolutePath,
-        '--main-jar', mainJarName,
-        '--main-class', launcherClass,
+        *baseJpackageArgs,
         '--java-options', '-XstartOnFirstThread'
+}
+
+tasks.register('packageAppImage', Exec) {
+    group = 'distribution'
+    description = 'Builds a portable Windows app image with bundled runtime.'
+    dependsOn jar
+    outputs.dir(appImageOutputDir)
+
+    doFirst {
+        if (!os.isWindows()) {
+            throw new GradleException('packageAppImage must be run on Windows.')
+        }
+        if (!new File(jpackageCommand).exists() && jpackageCommand == 'jpackage') {
+            logger.lifecycle('Using jpackage from PATH.')
+        }
+    }
+
+    workingDir projectDir
+    commandLine jpackageCommand,
+        '--type', 'app-image',
+        '--dest', appImageOutputDir.get().asFile.absolutePath,
+        *baseJpackageArgs
 }
 
 tasks.register('packageExe', Exec) {
@@ -80,9 +107,6 @@ tasks.register('packageExe', Exec) {
     workingDir projectDir
     commandLine jpackageCommand,
         '--type', 'exe',
-        '--name', 'RogueForge',
-        '--input', file("$buildDir/libs").absolutePath,
         '--dest', packageOutputDir.get().asFile.absolutePath,
-        '--main-jar', mainJarName,
-        '--main-class', launcherClass
+        *baseJpackageArgs
 }

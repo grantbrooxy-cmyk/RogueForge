@@ -1,0 +1,13 @@
+.gradle/
+.gradle-user-home/
+build/
+*/build/
+RogueForge/
+*.exe
+tools/wix/
+tools/*.zip
+lwjgl3/saves/
+*.class
+*.jar
+*.lock
+.DS_Store

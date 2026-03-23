@@ -3,6 +3,17 @@ setlocal EnableExtensions EnableDelayedExpansion
 
 cd /d "%~dp0"
 
+if not defined GRADLE_USER_HOME (
+    set "GRADLE_USER_HOME=%~dp0.gradle-user-home"
+)
+if not exist "%GRADLE_USER_HOME%" (
+    mkdir "%GRADLE_USER_HOME%" >nul 2>nul
+)
+if not exist "%GRADLE_USER_HOME%" (
+    echo ERROR: Failed to create Gradle user home at "%GRADLE_USER_HOME%".
+    exit /b 1
+)
+
 set "JAVA_CMD="
 if defined JAVA_HOME (
     if exist "%JAVA_HOME%\bin\java.exe" (
@@ -14,7 +25,7 @@ if not defined JAVA_CMD (
     where java >nul 2>nul
     if errorlevel 1 (
         echo ERROR: Java not found.
-        echo Install JDK 17+ and make sure either JAVA_HOME or PATH points to it.
+        echo Install Java 11+ and make sure either JAVA_HOME or PATH points to it.
         exit /b 1
     )
     set "JAVA_CMD=java"
@@ -38,14 +49,14 @@ for /f "tokens=1 delims=.-_" %%v in ("!JAVA_VER!") do (
 if defined JAVA_VER (
     2>nul set /a JAVA_VER_NUM=!JAVA_VER!
     if not errorlevel 1 (
-        if !JAVA_VER_NUM! LSS 17 (
-            echo WARNING: JDK 17+ is recommended. Detected Java !JAVA_VER_NUM!.
+        if !JAVA_VER_NUM! LSS 11 (
+            echo WARNING: Java 11+ is required. Detected Java !JAVA_VER_NUM!.
         )
     )
 )
 
 set "WRAPPER_JAR=gradle\wrapper\gradle-wrapper.jar"
-set "JAR_URL=https://raw.githubusercontent.com/gradle/gradle/v8.5.0/gradle/wrapper/gradle-wrapper.jar"
+set "JAR_URL=https://raw.githubusercontent.com/gradle/gradle/v8.10.1/gradle/wrapper/gradle-wrapper.jar"
 
 if not exist "%WRAPPER_JAR%" goto download_wrapper
 for %%A in ("%WRAPPER_JAR%") do set "WRAPPER_SIZE=%%~zA"
@@ -60,7 +71,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "try { Invoke-WebRequest -UseBasicParsing '%JAR_URL%' -OutFile '%WRAPPER_JAR%' } catch { exit 1 }"
 if errorlevel 1 (
     echo ERROR: Failed to download the Gradle wrapper JAR.
-    echo Please install Gradle and run: gradle wrapper --gradle-version 8.5
+    echo Please install Gradle and run: gradle wrapper --gradle-version 8.10.1
     exit /b 1
 )
 echo Gradle wrapper downloaded.
