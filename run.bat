@@ -25,7 +25,14 @@ if not defined JAVA_CMD (
     where java >nul 2>nul
     if errorlevel 1 (
         echo ERROR: Java not found.
+<<<<<<< HEAD
         echo Install Java 11+ and make sure either JAVA_HOME or PATH points to it.
+||||||| eb16971
+        echo Install JDK 17+ and make sure either JAVA_HOME or PATH points to it.
+=======
+        echo Install JDK 17+ and make sure either JAVA_HOME or PATH points to it.
+        pause
+>>>>>>> cd5d7a18f861bc60c9c97c19dc12741e838304fd
         exit /b 1
     )
     set "JAVA_CMD=java"
@@ -71,7 +78,14 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "try { Invoke-WebRequest -UseBasicParsing '%JAR_URL%' -OutFile '%WRAPPER_JAR%' } catch { exit 1 }"
 if errorlevel 1 (
     echo ERROR: Failed to download the Gradle wrapper JAR.
+<<<<<<< HEAD
     echo Please install Gradle and run: gradle wrapper --gradle-version 8.10.1
+||||||| eb16971
+    echo Please install Gradle and run: gradle wrapper --gradle-version 8.5
+=======
+    echo Please install Gradle and run: gradle wrapper --gradle-version 8.5
+    pause
+>>>>>>> cd5d7a18f861bc60c9c97c19dc12741e838304fd
     exit /b 1
 )
 echo Gradle wrapper downloaded.
@@ -79,4 +93,8 @@ echo Gradle wrapper downloaded.
 :run_game
 echo Building and launching Rogue Forge...
 call "%~dp0gradlew.bat" :lwjgl3:run %*
-exit /b %errorlevel%
+set "EXIT_CODE=%errorlevel%"
+echo.
+echo Rogue Forge exited with code %EXIT_CODE%.
+pause
+exit /b %EXIT_CODE%
