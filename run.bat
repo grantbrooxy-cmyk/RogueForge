@@ -1,23 +1,46 @@
 @echo off
-setlocal enabledelayedexpansion
+setlocal EnableExtensions EnableDelayedExpansion
 
 cd /d "%~dp0"
 
-where java >nul 2>nul
-if errorlevel 1 (
-    echo ERROR: Java not found. Install JDK 17+ and make sure "java" is on your PATH.
-    exit /b 1
+set "JAVA_CMD="
+if defined JAVA_HOME (
+    if exist "%JAVA_HOME%\bin\java.exe" (
+        set "JAVA_CMD=%JAVA_HOME%\bin\java.exe"
+    )
+)
+
+if not defined JAVA_CMD (
+    where java >nul 2>nul
+    if errorlevel 1 (
+        echo ERROR: Java not found.
+        echo Install JDK 17+ and make sure either JAVA_HOME or PATH points to it.
+        exit /b 1
+    )
+    set "JAVA_CMD=java"
+)
+
+set "JAVA_VERSION_LINE="
+for /f "usebackq delims=" %%v in (`"%JAVA_CMD%" -version 2^>^&1`) do (
+    if not defined JAVA_VERSION_LINE (
+        set "JAVA_VERSION_LINE=%%v"
+    )
 )
 
 set "JAVA_VER="
-for /f "tokens=3 delims=.\" %%v in ('java -version 2^>^&1 ^| findstr /i "version"') do (
-    if not defined JAVA_VER set "JAVA_VER=%%v"
+for /f "tokens=2 delims=\" %%v in ("!JAVA_VERSION_LINE!") do (
+    set "JAVA_VER=%%v"
+)
+for /f "tokens=1 delims=.-_" %%v in ("!JAVA_VER!") do (
+    set "JAVA_VER=%%v"
 )
 
 if defined JAVA_VER (
-    set /a JAVA_VER_NUM=%JAVA_VER% >nul 2>nul
-    if !JAVA_VER_NUM! LSS 11 (
-        echo WARNING: Java 11+ required ^(detected version !JAVA_VER_NUM!^). The build may fail.
+    2>nul set /a JAVA_VER_NUM=!JAVA_VER!
+    if not errorlevel 1 (
+        if !JAVA_VER_NUM! LSS 17 (
+            echo WARNING: JDK 17+ is recommended. Detected Java !JAVA_VER_NUM!.
+        )
     )
 )
 
@@ -34,7 +57,7 @@ goto run_game
 echo Gradle wrapper JAR missing or invalid. Downloading...
 if not exist "gradle\wrapper" mkdir "gradle\wrapper"
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-    "try { Invoke-WebRequest -UseBasicParsing '%JAR_URL%' -OutFile '%WRAPPER_JAR%' } catch { exit 1 }"
+  "try { Invoke-WebRequest -UseBasicParsing '%JAR_URL%' -OutFile '%WRAPPER_JAR%' } catch { exit 1 }"
 if errorlevel 1 (
     echo ERROR: Failed to download the Gradle wrapper JAR.
     echo Please install Gradle and run: gradle wrapper --gradle-version 8.5
@@ -44,5 +67,5 @@ echo Gradle wrapper downloaded.
 
 :run_game
 echo Building and launching Rogue Forge...
-call gradlew.bat :lwjgl3:run %*
+call "%~dp0gradlew.bat" :lwjgl3:run %*
 exit /b %errorlevel%
