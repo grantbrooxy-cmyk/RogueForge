@@ -1,0 +1,16 @@
+[
+  {
+    "eventId": "medic_join",
+    "robotId": "medic_mk1",
+    "autoDeploySlot": 2,
+    "message": "Medic MK-I joins the crew and takes the third deployment slot.",
+    "joinedWorldFlag": "recruit.medic_joined"
+  },
+  {
+    "eventId": "artificer_join",
+    "robotId": "artificer_mk1",
+    "autoDeploySlot": -1,
+    "message": "Artificer MK-I is restored and added to your reserve roster.",
+    "joinedWorldFlag": "recruit.artificer_joined"
+  }
+]

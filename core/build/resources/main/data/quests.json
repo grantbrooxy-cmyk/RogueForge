@@ -1,0 +1,83 @@
+[
+  {
+    "id": "shard_hunt",
+    "title": "Luminous Shard",
+    "mainQuest": true,
+    "autoStart": false,
+    "startStepId": "talk_mira",
+    "steps": [
+      { "id": "talk_mira", "objective": "Speak with Mira in Verdant Fields." },
+      { "id": "search_shard", "objective": "Search Shadow Caves for the Luminous Shard.", "completionKeyItem": "luminous_shard" },
+      { "id": "return_shard", "objective": "Return the Luminous Shard to Mira." }
+    ]
+  },
+  {
+    "id": "core_ascent",
+    "title": "Sun Core",
+    "mainQuest": true,
+    "autoStart": false,
+    "startStepId": "talk_edda",
+    "steps": [
+      { "id": "talk_edda", "objective": "Travel to Dragon Peak and speak with Edda." },
+      { "id": "search_core", "objective": "Search Dragon Peak for the Sun Core.", "completionKeyItem": "sun_core" },
+      { "id": "return_core", "objective": "Return the Sun Core to Edda." }
+    ]
+  },
+  {
+    "id": "field_medic",
+    "title": "Field Medic",
+    "mainQuest": false,
+    "autoStart": false,
+    "startStepId": "speak_iris",
+    "steps": [
+      { "id": "speak_iris", "objective": "Speak with Iris about salvage-worthy support frames." },
+      { "id": "recruit_medic", "objective": "Recruit the Medic frame into your active crew.", "completionWorldFlag": "recruit.medic_joined" }
+    ]
+  },
+  {
+    "id": "vault_rumor",
+    "title": "Vault Rumor",
+    "mainQuest": false,
+    "autoStart": false,
+    "startStepId": "hear_rumor",
+    "steps": [
+      { "id": "hear_rumor", "objective": "Follow Nia's rumor about a hidden stash." },
+      { "id": "find_stash", "objective": "Search for the hidden chest in the herbalist's house.", "completionWorldFlag": "chest.herbalist_hidden.opened" }
+    ]
+  },
+  {
+    "id": "workshop_tools",
+    "title": "Workshop Tools",
+    "mainQuest": false,
+    "autoStart": false,
+    "startStepId": "speak_toma",
+    "steps": [
+      { "id": "speak_toma", "objective": "Help Toma restore the workshop line after the shard is returned." },
+      { "id": "upgrade_workshop", "objective": "Secure the workshop tool upgrade.", "completionWorldFlag": "settlement.workshop_tools" }
+    ]
+  },
+  {
+    "id": "watchtower_links",
+    "title": "Watchtower Links",
+    "mainQuest": false,
+    "autoStart": false,
+    "startStepId": "speak_bram",
+    "steps": [
+      { "id": "speak_bram", "objective": "Speak with Bram about relighting the town watchtower." },
+      { "id": "report_tor", "objective": "Carry Bram's repair notes to Tor." },
+      { "id": "return_bram", "objective": "Return to Bram so the watchtower can come online.", "completionWorldFlag": "settlement.watchtower_network" }
+    ]
+  },
+  {
+    "id": "survey_drones",
+    "title": "Survey Drones",
+    "mainQuest": false,
+    "autoStart": false,
+    "startStepId": "speak_nia",
+    "steps": [
+      { "id": "speak_nia", "objective": "Speak with Nia about the frontier survey drones." },
+      { "id": "speak_toma", "objective": "Ask Toma to restore the old survey relay." },
+      { "id": "return_nia", "objective": "Return to Nia once the relay is rebuilt.", "completionWorldFlag": "settlement.survey_drones" }
+    ]
+  }
+]

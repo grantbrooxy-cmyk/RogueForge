@@ -1,13 +1,8 @@
 .gradle/
 .gradle-user-home/
-build/
-*/build/
-RogueForge/
-*.exe
 tools/wix/
 tools/*.zip
 lwjgl3/saves/
-*.class
-*.jar
+lwjgl3/build/app-image/RogueForge/runtime/lib/modules
 *.lock
 .DS_Store

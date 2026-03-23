@@ -1,0 +1,26 @@
+[
+  {
+    "id": "workshop_tools",
+    "name": "Workshop Tools",
+    "rewardEquipmentId": "copper_core",
+    "rewardPotions": 0
+  },
+  {
+    "id": "apothecary_stock",
+    "name": "Apothecary Stock",
+    "rewardEquipmentId": "",
+    "rewardPotions": 2
+  },
+  {
+    "id": "watchtower_network",
+    "name": "Watchtower Network",
+    "rewardEquipmentId": "tactics_lens",
+    "rewardPotions": 1
+  },
+  {
+    "id": "survey_drones",
+    "name": "Survey Drones",
+    "rewardEquipmentId": "mentor_sigil",
+    "rewardPotions": 1
+  }
+]
