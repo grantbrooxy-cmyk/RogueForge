@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ActiveStatusEffect.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core</a> &gt; <a href="index.source.html" class="el_package">com.rogueforge.game.combat</a> &gt; <span class="el_source">ActiveStatusEffect.java</span></div><h1>ActiveStatusEffect.java</h1><pre class="source lang-java linenums">package com.rogueforge.game.combat;
+
+/**
+ * Runtime status effect entry.
+ */
+public class ActiveStatusEffect {
+    private final StatusEffectType type;
+    private int remainingTurns;
+    private final float magnitude;
+
+<span class="fc" id="L11">    public ActiveStatusEffect(StatusEffectType type, int remainingTurns, float magnitude) {</span>
+<span class="fc" id="L12">        this.type = type;</span>
+<span class="fc" id="L13">        this.remainingTurns = Math.max(1, remainingTurns);</span>
+<span class="fc" id="L14">        this.magnitude = magnitude;</span>
+<span class="fc" id="L15">    }</span>
+
+    public StatusEffectType getType() {
+<span class="fc" id="L18">        return type;</span>
+    }
+
+    public int getRemainingTurns() {
+<span class="nc" id="L22">        return remainingTurns;</span>
+    }
+
+    public float getMagnitude() {
+<span class="nc" id="L26">        return magnitude;</span>
+    }
+
+    public void refresh(int turns) {
+<span class="nc" id="L30">        remainingTurns = Math.max(remainingTurns, turns);</span>
+<span class="nc" id="L31">    }</span>
+
+    public void setRemainingTurns(int remainingTurns) {
+<span class="nc" id="L34">        this.remainingTurns = Math.max(0, remainingTurns);</span>
+<span class="nc" id="L35">    }</span>
+
+    public boolean tickDown() {
+<span class="fc" id="L38">        remainingTurns--;</span>
+<span class="pc bpc" id="L39" title="1 of 2 branches missed.">        return remainingTurns &lt;= 0;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

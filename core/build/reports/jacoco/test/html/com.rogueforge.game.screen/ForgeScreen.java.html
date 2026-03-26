@@ -1,0 +1,311 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ForgeScreen.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core</a> &gt; <a href="index.source.html" class="el_package">com.rogueforge.game.screen</a> &gt; <span class="el_source">ForgeScreen.java</span></div><h1>ForgeScreen.java</h1><pre class="source lang-java linenums">package com.rogueforge.game.screen;
+
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
+import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.Pixmap;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.GlyphLayout;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.Texture.TextureFilter;
+import com.rogueforge.game.core.RogueForgeGame;
+import com.rogueforge.game.core.ScreenManager;
+import com.rogueforge.game.data.ForgeRecipeDefinition;
+import java.util.List;
+
+/**
+ * Dedicated town forge screen for crafting weapons and robot parts.
+ */
+public class ForgeScreen implements Screen {
+    private static final float EXIT_W = 140f;
+    private static final float EXIT_H = 42f;
+
+    private final ScreenManager screenManager;
+    private final GameScreen gameScreen;
+    private final SpriteBatch batch;
+    private final BitmapFont titleFont;
+    private final BitmapFont bodyFont;
+    private final BitmapFont buttonFont;
+    private final GlyphLayout layout;
+    private final OrthographicCamera camera;
+    private final Texture backgroundTexture;
+    private final Texture uiTexture;
+
+<span class="nc" id="L38">    private int hoveredRecipe = -1;</span>
+<span class="nc" id="L39">    private int hoveredShard = -1;</span>
+<span class="nc" id="L40">    private int hoveredComponent = -1;</span>
+    private boolean hoveredExit;
+    private String statusMessage;
+    private float closeInputBlockTimer;
+
+<span class="nc" id="L45">    public ForgeScreen(RogueForgeGame game, ScreenManager screenManager, GameScreen gameScreen) {</span>
+<span class="nc" id="L46">        this.screenManager = screenManager;</span>
+<span class="nc" id="L47">        this.gameScreen = gameScreen;</span>
+<span class="nc" id="L48">        this.batch = new SpriteBatch();</span>
+<span class="nc" id="L49">        this.titleFont = new BitmapFont();</span>
+<span class="nc" id="L50">        this.bodyFont = new BitmapFont();</span>
+<span class="nc" id="L51">        this.buttonFont = new BitmapFont();</span>
+<span class="nc" id="L52">        this.layout = new GlyphLayout();</span>
+<span class="nc" id="L53">        this.camera = new OrthographicCamera();</span>
+<span class="nc" id="L54">        this.camera.setToOrtho(false, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());</span>
+<span class="nc" id="L55">        this.backgroundTexture = loadTexture(&quot;Backgrounds/background 2/orig_big.png&quot;);</span>
+<span class="nc" id="L56">        this.uiTexture = createUiTexture();</span>
+<span class="nc" id="L57">        this.titleFont.getData().setScale(3f);</span>
+<span class="nc" id="L58">        this.bodyFont.getData().setScale(1.2f);</span>
+<span class="nc" id="L59">        this.buttonFont.getData().setScale(1.15f);</span>
+<span class="nc" id="L60">    }</span>
+
+    private Texture loadTexture(String relativePath) {
+<span class="nc" id="L63">        Texture texture = new Texture(Gdx.files.internal(relativePath));</span>
+<span class="nc" id="L64">        texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);</span>
+<span class="nc" id="L65">        return texture;</span>
+    }
+
+    private Texture createUiTexture() {
+<span class="nc" id="L69">        Pixmap pm = new Pixmap(1, 1, Pixmap.Format.RGBA8888);</span>
+<span class="nc" id="L70">        pm.setColor(Color.WHITE);</span>
+<span class="nc" id="L71">        pm.fill();</span>
+<span class="nc" id="L72">        Texture texture = new Texture(pm);</span>
+<span class="nc" id="L73">        texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);</span>
+<span class="nc" id="L74">        pm.dispose();</span>
+<span class="nc" id="L75">        return texture;</span>
+    }
+
+    @Override
+    public void show() {
+<span class="nc" id="L80">        closeInputBlockTimer = 0.18f;</span>
+<span class="nc" id="L81">    }</span>
+
+    @Override
+    public void render(float delta) {
+<span class="nc" id="L85">        handleInput();</span>
+
+<span class="nc" id="L87">        float w = Gdx.graphics.getWidth();</span>
+<span class="nc" id="L88">        float h = Gdx.graphics.getHeight();</span>
+<span class="nc" id="L89">        float mx = Gdx.input.getX();</span>
+<span class="nc" id="L90">        float my = h - Gdx.input.getY();</span>
+<span class="nc" id="L91">        hoveredExit = isExitButtonHit(mx, my, w, h);</span>
+
+<span class="nc" id="L93">        Gdx.gl.glClearColor(0.07f, 0.08f, 0.12f, 1f);</span>
+<span class="nc" id="L94">        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);</span>
+
+<span class="nc" id="L96">        batch.setProjectionMatrix(camera.combined);</span>
+<span class="nc" id="L97">        batch.begin();</span>
+<span class="nc" id="L98">        batch.setColor(1f, 1f, 1f, 1f);</span>
+<span class="nc" id="L99">        batch.draw(backgroundTexture, 0f, 0f, w, h);</span>
+<span class="nc" id="L100">        batch.setColor(0.09f, 0.09f, 0.12f, 0.92f);</span>
+<span class="nc" id="L101">        batch.draw(uiTexture, 28f, 24f, w - 56f, h - 48f);</span>
+<span class="nc" id="L102">        batch.setColor(Color.WHITE);</span>
+<span class="nc" id="L103">        drawHeader(w, h);</span>
+<span class="nc" id="L104">        drawForgeContent(w, h, mx, my);</span>
+<span class="nc" id="L105">        batch.end();</span>
+<span class="nc" id="L106">    }</span>
+
+    private void handleInput() {
+<span class="nc" id="L109">        closeInputBlockTimer = Math.max(0f, closeInputBlockTimer - Gdx.graphics.getDeltaTime());</span>
+<span class="nc bnc" id="L110" title="All 2 branches missed.">        if (closeInputBlockTimer &lt;= 0f</span>
+<span class="nc bnc" id="L111" title="All 4 branches missed.">            &amp;&amp; (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) || Gdx.input.isKeyJustPressed(Input.Keys.I))) {</span>
+<span class="nc" id="L112">            close();</span>
+<span class="nc" id="L113">            return;</span>
+        }
+
+<span class="nc bnc" id="L116" title="All 2 branches missed.">        if (!Gdx.input.justTouched()) {</span>
+<span class="nc" id="L117">            return;</span>
+        }
+
+<span class="nc" id="L120">        float w = Gdx.graphics.getWidth();</span>
+<span class="nc" id="L121">        float h = Gdx.graphics.getHeight();</span>
+<span class="nc" id="L122">        float mx = Gdx.input.getX();</span>
+<span class="nc" id="L123">        float my = h - Gdx.input.getY();</span>
+
+<span class="nc bnc" id="L125" title="All 2 branches missed.">        if (isExitButtonHit(mx, my, w, h)) {</span>
+<span class="nc" id="L126">            close();</span>
+<span class="nc" id="L127">            return;</span>
+        }
+
+<span class="nc" id="L130">        List&lt;ForgeRecipeDefinition&gt; recipes = gameScreen.getForgeRecipes();</span>
+<span class="nc" id="L131">        String[] sellableGrades = visibleShardGrades();</span>
+<span class="nc" id="L132">        String[] sellableComponents = gameScreen.getForgeSellableComponentIds().toArray(new String[0]);</span>
+<span class="nc bnc" id="L133" title="All 2 branches missed.">        for (int i = 0; i &lt; recipes.size(); i++) {</span>
+<span class="nc" id="L134">            float cardX = recipeCardX();</span>
+<span class="nc" id="L135">            float cardY = recipeCardY(h, i);</span>
+<span class="nc" id="L136">            float cardW = recipeCardWidth(w);</span>
+<span class="nc bnc" id="L137" title="All 8 branches missed.">            if (mx &gt;= cardX &amp;&amp; mx &lt;= cardX + cardW &amp;&amp; my &gt;= cardY &amp;&amp; my &lt;= cardY + 78f) {</span>
+<span class="nc" id="L138">                statusMessage = gameScreen.forgeRecipe(i);</span>
+<span class="nc" id="L139">                return;</span>
+            }
+        }
+<span class="nc bnc" id="L142" title="All 2 branches missed.">        for (int i = 0; i &lt; sellableGrades.length; i++) {</span>
+<span class="nc" id="L143">            float lineY = shardLineY(h, i);</span>
+<span class="nc bnc" id="L144" title="All 8 branches missed.">            if (mx &gt;= 56f &amp;&amp; mx &lt;= 328f &amp;&amp; my &gt;= lineY - 18f &amp;&amp; my &lt;= lineY + 6f) {</span>
+<span class="nc" id="L145">                statusMessage = gameScreen.sellShard(sellableGrades[i]);</span>
+<span class="nc" id="L146">                return;</span>
+            }
+        }
+<span class="nc bnc" id="L149" title="All 2 branches missed.">        for (int i = 0; i &lt; sellableComponents.length; i++) {</span>
+<span class="nc" id="L150">            float lineY = componentLineY(h, i);</span>
+<span class="nc bnc" id="L151" title="All 8 branches missed.">            if (mx &gt;= 56f &amp;&amp; mx &lt;= 328f &amp;&amp; my &gt;= lineY - 18f &amp;&amp; my &lt;= lineY + 6f) {</span>
+<span class="nc" id="L152">                statusMessage = gameScreen.sellForgeComponent(sellableComponents[i]);</span>
+<span class="nc" id="L153">                return;</span>
+            }
+        }
+<span class="nc" id="L156">    }</span>
+
+    private void drawHeader(float w, float h) {
+<span class="nc" id="L159">        float exitX = exitButtonX(w);</span>
+<span class="nc" id="L160">        float exitY = h - 140f;</span>
+<span class="nc bnc" id="L161" title="All 2 branches missed.">        batch.setColor(hoveredExit ? new Color(0.68f, 0.28f, 0.24f, 1f) : new Color(0.32f, 0.18f, 0.18f, 1f));</span>
+<span class="nc" id="L162">        batch.draw(uiTexture, exitX, exitY, EXIT_W, EXIT_H);</span>
+<span class="nc" id="L163">        batch.setColor(Color.WHITE);</span>
+<span class="nc" id="L164">        titleFont.setColor(1f, 0.88f, 0.55f, 1f);</span>
+<span class="nc" id="L165">        titleFont.draw(batch, &quot;TOWN FORGE&quot;, 48f, h - 52f);</span>
+<span class="nc" id="L166">        bodyFont.setColor(Color.WHITE);</span>
+<span class="nc" id="L167">        bodyFont.draw(batch, &quot;Toma can rebuild enemy salvage into weapons and frame parts.&quot;, 48f, h - 86f);</span>
+<span class="nc" id="L168">        layout.setText(buttonFont, &quot;Exit&quot;);</span>
+<span class="nc" id="L169">        buttonFont.draw(batch, &quot;Exit&quot;, exitX + (EXIT_W - layout.width) / 2f, h - 112f);</span>
+<span class="nc" id="L170">    }</span>
+
+    private void drawForgeContent(float w, float h, float mx, float my) {
+<span class="nc" id="L173">        List&lt;String&gt; shardLines = gameScreen.getShardInventoryLines();</span>
+<span class="nc" id="L174">        String[] sellableGrades = visibleShardGrades();</span>
+<span class="nc" id="L175">        List&lt;String&gt; componentLines = gameScreen.getForgeInventoryLines();</span>
+<span class="nc" id="L176">        String[] sellableComponents = gameScreen.getForgeSellableComponentIds().toArray(new String[0]);</span>
+<span class="nc" id="L177">        List&lt;ForgeRecipeDefinition&gt; recipes = gameScreen.getForgeRecipes();</span>
+<span class="nc" id="L178">        hoveredRecipe = -1;</span>
+<span class="nc" id="L179">        hoveredShard = -1;</span>
+<span class="nc" id="L180">        hoveredComponent = -1;</span>
+
+<span class="nc" id="L182">        float leftX = 56f;</span>
+<span class="nc" id="L183">        float topY = h - 190f;</span>
+
+<span class="nc" id="L185">        batch.setColor(new Color(0.12f, 0.14f, 0.2f, 0.96f));</span>
+<span class="nc" id="L186">        batch.draw(uiTexture, 44f, 80f, 300f, h - 260f);</span>
+<span class="nc" id="L187">        batch.draw(uiTexture, 370f, 80f, w - 414f, h - 260f);</span>
+<span class="nc" id="L188">        batch.setColor(Color.WHITE);</span>
+
+<span class="nc" id="L190">        bodyFont.setColor(Color.WHITE);</span>
+<span class="nc" id="L191">        bodyFont.draw(batch, &quot;Shard Stock&quot;, leftX, topY);</span>
+<span class="nc" id="L192">        bodyFont.draw(batch, &quot;Gold: &quot; + gameScreen.getGold(), leftX, topY - 30f);</span>
+<span class="nc bnc" id="L193" title="All 4 branches missed.">        for (int i = 0; i &lt; shardLines.size() &amp;&amp; i &lt; 8; i++) {</span>
+<span class="nc" id="L194">            float lineY = shardLineY(h, i);</span>
+<span class="nc bnc" id="L195" title="All 10 branches missed.">            if (i &lt; sellableGrades.length &amp;&amp; mx &gt;= 56f &amp;&amp; mx &lt;= 328f &amp;&amp; my &gt;= lineY - 18f &amp;&amp; my &lt;= lineY + 6f) {</span>
+<span class="nc" id="L196">                hoveredShard = i;</span>
+            }
+<span class="nc bnc" id="L198" title="All 2 branches missed.">            bodyFont.setColor(i == hoveredShard ? new Color(1f, 0.9f, 0.55f, 1f) : Color.WHITE);</span>
+<span class="nc" id="L199">            bodyFont.draw(batch, shardLines.get(i), leftX, lineY);</span>
+        }
+<span class="nc" id="L201">        bodyFont.setColor(Color.WHITE);</span>
+<span class="nc" id="L202">        float componentTitleY = topY - 280f;</span>
+<span class="nc" id="L203">        bodyFont.draw(batch, &quot;Forge Components&quot;, leftX, componentTitleY);</span>
+<span class="nc bnc" id="L204" title="All 4 branches missed.">        for (int i = 0; i &lt; componentLines.size() &amp;&amp; i &lt; 8; i++) {</span>
+<span class="nc" id="L205">            float lineY = componentLineY(h, i);</span>
+<span class="nc bnc" id="L206" title="All 10 branches missed.">            if (i &lt; sellableComponents.length &amp;&amp; mx &gt;= 56f &amp;&amp; mx &lt;= 328f &amp;&amp; my &gt;= lineY - 18f &amp;&amp; my &lt;= lineY + 6f) {</span>
+<span class="nc" id="L207">                hoveredComponent = i;</span>
+            }
+<span class="nc bnc" id="L209" title="All 2 branches missed.">            bodyFont.setColor(i == hoveredComponent ? new Color(1f, 0.9f, 0.55f, 1f) : Color.WHITE);</span>
+<span class="nc" id="L210">            bodyFont.draw(batch, componentLines.get(i), leftX, lineY);</span>
+        }
+<span class="nc" id="L212">        bodyFont.setColor(Color.WHITE);</span>
+
+<span class="nc" id="L214">        float recipeX = 392f;</span>
+<span class="nc" id="L215">        bodyFont.draw(batch, &quot;Forge Patterns&quot;, recipeX, topY);</span>
+<span class="nc bnc" id="L216" title="All 2 branches missed.">        if (statusMessage != null) {</span>
+<span class="nc" id="L217">            bodyFont.setColor(1f, 0.9f, 0.55f, 1f);</span>
+<span class="nc" id="L218">            bodyFont.draw(batch, statusMessage, recipeX, topY - 30f);</span>
+<span class="nc" id="L219">            bodyFont.setColor(Color.WHITE);</span>
+        } else {
+<span class="nc" id="L221">            bodyFont.setColor(Color.LIGHT_GRAY);</span>
+<span class="nc" id="L222">            bodyFont.draw(batch, &quot;Select a pattern to craft it instantly.&quot;, recipeX, topY - 30f);</span>
+<span class="nc" id="L223">            bodyFont.setColor(Color.WHITE);</span>
+        }
+
+<span class="nc bnc" id="L226" title="All 2 branches missed.">        for (int i = 0; i &lt; recipes.size(); i++) {</span>
+<span class="nc" id="L227">            ForgeRecipeDefinition recipe = recipes.get(i);</span>
+<span class="nc" id="L228">            float cardX = recipeCardX();</span>
+<span class="nc" id="L229">            float cardY = recipeCardY(h, i);</span>
+<span class="nc" id="L230">            float cardW = recipeCardWidth(w);</span>
+<span class="nc bnc" id="L231" title="All 8 branches missed.">            if (mx &gt;= cardX &amp;&amp; mx &lt;= cardX + cardW &amp;&amp; my &gt;= cardY &amp;&amp; my &lt;= cardY + 78f) {</span>
+<span class="nc" id="L232">                hoveredRecipe = i;</span>
+            }
+<span class="nc" id="L234">            boolean craftable = gameScreen.canForgeRecipe(recipe);</span>
+<span class="nc bnc" id="L235" title="All 2 branches missed.">            batch.setColor(i == hoveredRecipe</span>
+<span class="nc" id="L236">                ? new Color(0.3f, 0.34f, 0.46f, 1f)</span>
+<span class="nc bnc" id="L237" title="All 2 branches missed.">                : (craftable ? new Color(0.2f, 0.28f, 0.24f, 1f) : new Color(0.18f, 0.2f, 0.28f, 1f)));</span>
+<span class="nc" id="L238">            batch.draw(uiTexture, cardX, cardY, cardW, 78f);</span>
+<span class="nc" id="L239">            batch.setColor(Color.WHITE);</span>
+<span class="nc" id="L240">            bodyFont.draw(batch, recipe.getName() + &quot;  [&quot; + recipe.getCategory() + &quot;]&quot;, cardX + 12f, cardY + 58f);</span>
+<span class="nc" id="L241">            bodyFont.draw(batch, recipe.getDescription(), cardX + 12f, cardY + 38f);</span>
+<span class="nc" id="L242">            bodyFont.draw(batch, gameScreen.buildForgeRequirementLine(recipe)</span>
+<span class="nc bnc" id="L243" title="All 2 branches missed.">                + (craftable ? &quot;  READY&quot; : &quot;  LOCKED&quot;), cardX + 12f, cardY + 16f);</span>
+        }
+<span class="nc" id="L245">    }</span>
+
+    private void close() {
+<span class="nc" id="L248">        screenManager.pop();</span>
+<span class="nc" id="L249">    }</span>
+
+    private float exitButtonX(float width) {
+<span class="nc" id="L252">        return width - 48f - EXIT_W;</span>
+    }
+
+    private boolean isExitButtonHit(float mx, float my, float width, float height) {
+<span class="nc" id="L256">        float x = exitButtonX(width);</span>
+<span class="nc" id="L257">        float y = height - 140f;</span>
+<span class="nc bnc" id="L258" title="All 8 branches missed.">        return mx &gt;= x &amp;&amp; mx &lt;= x + EXIT_W &amp;&amp; my &gt;= y &amp;&amp; my &lt;= y + EXIT_H;</span>
+    }
+
+    private float recipeCardWidth(float w) {
+<span class="nc" id="L262">        return w - 438f;</span>
+    }
+
+    private float recipeCardX() {
+<span class="nc" id="L266">        return 392f;</span>
+    }
+
+    private float recipeCardY(float h, int index) {
+<span class="nc" id="L270">        return h - 320f - (index * 86f);</span>
+    }
+
+    private float shardLineY(float h, int index) {
+<span class="nc" id="L274">        return h - 262f - (index * 24f);</span>
+    }
+
+    private float componentLineY(float h, int index) {
+<span class="nc" id="L278">        return h - 542f - (index * 24f);</span>
+    }
+
+    private String[] visibleShardGrades() {
+<span class="nc" id="L282">        String[] ordered = {&quot;S&quot;, &quot;A&quot;, &quot;B&quot;, &quot;C&quot;, &quot;D&quot;, &quot;E&quot;, &quot;F&quot;, &quot;G&quot;};</span>
+<span class="nc" id="L283">        java.util.List&lt;String&gt; visible = new java.util.ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L284" title="All 2 branches missed.">        for (String grade : ordered) {</span>
+<span class="nc bnc" id="L285" title="All 2 branches missed.">            if (gameScreen.getShardCount(grade) &gt; 0) {</span>
+<span class="nc" id="L286">                visible.add(grade);</span>
+            }
+        }
+<span class="nc" id="L289">        return visible.toArray(new String[0]);</span>
+    }
+
+    @Override
+    public void resize(int width, int height) {
+<span class="nc" id="L294">        camera.setToOrtho(false, width, height);</span>
+<span class="nc" id="L295">    }</span>
+
+<span class="nc" id="L297">    @Override public void pause() {}</span>
+<span class="nc" id="L298">    @Override public void resume() {}</span>
+<span class="nc" id="L299">    @Override public void hide() {}</span>
+
+    @Override
+    public void dispose() {
+<span class="nc" id="L303">        batch.dispose();</span>
+<span class="nc" id="L304">        titleFont.dispose();</span>
+<span class="nc" id="L305">        bodyFont.dispose();</span>
+<span class="nc" id="L306">        buttonFont.dispose();</span>
+<span class="nc" id="L307">        backgroundTexture.dispose();</span>
+<span class="nc" id="L308">        uiTexture.dispose();</span>
+<span class="nc" id="L309">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

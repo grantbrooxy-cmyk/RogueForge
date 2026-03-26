@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RobotEntity.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core</a> &gt; <a href="index.source.html" class="el_package">com.rogueforge.game.entity</a> &gt; <span class="el_source">RobotEntity.java</span></div><h1>RobotEntity.java</h1><pre class="source lang-java linenums">package com.rogueforge.game.entity;
+
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.math.Vector2;
+import com.rogueforge.game.robot.RobotDefinition;
+import java.util.List;
+
+public class RobotEntity {
+<span class="nc" id="L9">    public enum AIState {</span>
+<span class="nc" id="L10">        FOLLOW, ATTACK, RETREAT, IDLE</span>
+    }
+
+    private RobotDefinition definition;
+    private Vector2 position;
+    private Vector2 velocity;
+    private Vector2 targetPosition;
+    private float currentHp;
+    private float speed;
+    private AIState currentState;
+    private float stateTimer;
+    private float attackCooldown;
+    private float attackCooldownTimer;
+    private static final float FOLLOW_STOP_DISTANCE = 50f;
+    private static final float ATTACK_RANGE = 100f;
+    private static final float RETREAT_THRESHOLD = 0.3f;
+
+<span class="nc" id="L27">    public RobotEntity(RobotDefinition definition, Vector2 startPosition) {</span>
+<span class="nc" id="L28">        this.definition = definition;</span>
+<span class="nc" id="L29">        this.position = new Vector2(startPosition);</span>
+<span class="nc" id="L30">        this.velocity = new Vector2(0, 0);</span>
+<span class="nc" id="L31">        this.targetPosition = new Vector2(startPosition);</span>
+<span class="nc" id="L32">        this.currentHp = definition.getBaseHp();</span>
+<span class="nc" id="L33">        this.speed = definition.getBaseSpeed();</span>
+<span class="nc" id="L34">        this.currentState = AIState.IDLE;</span>
+<span class="nc" id="L35">        this.stateTimer = 0f;</span>
+<span class="nc" id="L36">        this.attackCooldown = 1.0f; // Default attack cooldown</span>
+<span class="nc" id="L37">        this.attackCooldownTimer = 0f;</span>
+<span class="nc" id="L38">    }</span>
+
+    public void update(float delta, Vector2 playerPos, List&lt;MonsterEntity&gt; monsters) {
+<span class="nc" id="L41">        attackCooldownTimer -= delta;</span>
+<span class="nc" id="L42">        stateTimer += delta;</span>
+
+        // Determine AI state
+<span class="nc" id="L45">        float distToPlayer = position.dst(playerPos);</span>
+<span class="nc" id="L46">        float hpPercent = currentHp / definition.getBaseHp();</span>
+
+        // Retreat when low HP
+<span class="nc bnc" id="L49" title="All 2 branches missed.">        if (hpPercent &lt; RETREAT_THRESHOLD) {</span>
+<span class="nc" id="L50">            currentState = AIState.RETREAT;</span>
+<span class="nc bnc" id="L51" title="All 4 branches missed.">        } else if (distToPlayer &lt; ATTACK_RANGE &amp;&amp; !monsters.isEmpty()) {</span>
+<span class="nc" id="L52">            currentState = AIState.ATTACK;</span>
+        } else {
+<span class="nc" id="L54">            currentState = AIState.FOLLOW;</span>
+        }
+
+        // Execute AI based on state
+<span class="nc bnc" id="L58" title="All 5 branches missed.">        switch (currentState) {</span>
+            case FOLLOW:
+<span class="nc" id="L60">                updateFollow(playerPos, delta);</span>
+<span class="nc" id="L61">                break;</span>
+            case ATTACK:
+<span class="nc" id="L63">                updateAttack(monsters, delta);</span>
+<span class="nc" id="L64">                break;</span>
+            case RETREAT:
+<span class="nc" id="L66">                updateRetreat(playerPos, delta);</span>
+<span class="nc" id="L67">                break;</span>
+            case IDLE:
+<span class="nc" id="L69">                velocity.setZero();</span>
+                break;
+        }
+
+        // Apply velocity and gravity-like settling
+<span class="nc" id="L74">        position.add(velocity.x * delta, velocity.y * delta);</span>
+
+        // Dampen velocity over time
+<span class="nc" id="L77">        velocity.scl(0.95f);</span>
+<span class="nc" id="L78">    }</span>
+
+    private void updateFollow(Vector2 playerPos, float delta) {
+<span class="nc" id="L81">        Vector2 dirToPlayer = new Vector2(playerPos).sub(position);</span>
+<span class="nc" id="L82">        float distToPlayer = dirToPlayer.len();</span>
+
+<span class="nc bnc" id="L84" title="All 2 branches missed.">        if (distToPlayer &gt; FOLLOW_STOP_DISTANCE) {</span>
+<span class="nc" id="L85">            dirToPlayer.nor();</span>
+<span class="nc" id="L86">            velocity.set(dirToPlayer).scl(speed);</span>
+<span class="nc" id="L87">            targetPosition.set(playerPos);</span>
+        } else {
+<span class="nc" id="L89">            velocity.setZero();</span>
+        }
+<span class="nc" id="L91">    }</span>
+
+    private void updateAttack(List&lt;MonsterEntity&gt; monsters, float delta) {
+<span class="nc bnc" id="L94" title="All 2 branches missed.">        if (monsters.isEmpty()) {</span>
+<span class="nc" id="L95">            currentState = AIState.IDLE;</span>
+<span class="nc" id="L96">            return;</span>
+        }
+
+        // Find nearest monster
+<span class="nc" id="L100">        MonsterEntity nearestMonster = null;</span>
+<span class="nc" id="L101">        float nearestDistance = Float.MAX_VALUE;</span>
+
+<span class="nc bnc" id="L103" title="All 2 branches missed.">        for (MonsterEntity monster : monsters) {</span>
+<span class="nc bnc" id="L104" title="All 2 branches missed.">            if (monster.isAlive()) {</span>
+<span class="nc" id="L105">                float dist = position.dst(monster.getPosition());</span>
+<span class="nc bnc" id="L106" title="All 2 branches missed.">                if (dist &lt; nearestDistance) {</span>
+<span class="nc" id="L107">                    nearestDistance = dist;</span>
+<span class="nc" id="L108">                    nearestMonster = monster;</span>
+                }
+            }
+<span class="nc" id="L111">        }</span>
+
+<span class="nc bnc" id="L113" title="All 2 branches missed.">        if (nearestMonster != null) {</span>
+<span class="nc" id="L114">            Vector2 dirToMonster = new Vector2(nearestMonster.getPosition()).sub(position);</span>
+<span class="nc" id="L115">            float distToMonster = dirToMonster.len();</span>
+
+<span class="nc bnc" id="L117" title="All 2 branches missed.">            if (distToMonster &gt; ATTACK_RANGE * 0.5f) {</span>
+                // Move closer
+<span class="nc" id="L119">                dirToMonster.nor();</span>
+<span class="nc" id="L120">                velocity.set(dirToMonster).scl(speed);</span>
+            } else {
+                // Attack
+<span class="nc" id="L123">                velocity.scl(0.5f); // Slow down while attacking</span>
+<span class="nc bnc" id="L124" title="All 2 branches missed.">                if (attackCooldownTimer &lt;= 0) {</span>
+<span class="nc" id="L125">                    nearestMonster.takeDamage(definition.getBaseAttack());</span>
+<span class="nc" id="L126">                    attackCooldownTimer = attackCooldown;</span>
+                }
+            }
+        }
+<span class="nc" id="L130">    }</span>
+
+    private void updateRetreat(Vector2 playerPos, float delta) {
+<span class="nc" id="L133">        Vector2 dirAwayFromPlayer = new Vector2(position).sub(playerPos);</span>
+<span class="nc bnc" id="L134" title="All 2 branches missed.">        if (dirAwayFromPlayer.len() &gt; 0) {</span>
+<span class="nc" id="L135">            dirAwayFromPlayer.nor();</span>
+<span class="nc" id="L136">            velocity.set(dirAwayFromPlayer).scl(speed * 0.8f);</span>
+        }
+<span class="nc" id="L138">    }</span>
+
+    public void render(SpriteBatch batch) {
+        // Render colored rectangle as placeholder robot
+<span class="nc" id="L142">        batch.end();</span>
+<span class="nc" id="L143">        com.badlogic.gdx.graphics.glutils.ShapeRenderer shapeRenderer = new com.badlogic.gdx.graphics.glutils.ShapeRenderer();</span>
+<span class="nc" id="L144">        shapeRenderer.begin(com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType.Filled);</span>
+
+        // Color based on state
+<span class="nc bnc" id="L147" title="All 4 branches missed.">        switch (currentState) {</span>
+            case ATTACK:
+<span class="nc" id="L149">                shapeRenderer.setColor(1, 0, 0, 1); // Red</span>
+<span class="nc" id="L150">                break;</span>
+            case RETREAT:
+<span class="nc" id="L152">                shapeRenderer.setColor(1, 1, 0, 1); // Yellow</span>
+<span class="nc" id="L153">                break;</span>
+            case FOLLOW:
+<span class="nc" id="L155">                shapeRenderer.setColor(0, 0, 1, 1); // Blue</span>
+<span class="nc" id="L156">                break;</span>
+            default:
+<span class="nc" id="L158">                shapeRenderer.setColor(0.5f, 0.5f, 0.5f, 1); // Gray</span>
+        }
+
+<span class="nc" id="L161">        shapeRenderer.rect(position.x, position.y, 24, 24);</span>
+<span class="nc" id="L162">        shapeRenderer.end();</span>
+<span class="nc" id="L163">        batch.begin();</span>
+<span class="nc" id="L164">    }</span>
+
+    public void takeDamage(float damage) {
+<span class="nc" id="L167">        currentHp -= damage;</span>
+<span class="nc" id="L168">        currentHp = Math.max(0, currentHp);</span>
+<span class="nc" id="L169">    }</span>
+
+    public float getCurrentHp() {
+<span class="nc" id="L172">        return currentHp;</span>
+    }
+
+    public boolean isAlive() {
+<span class="nc bnc" id="L176" title="All 2 branches missed.">        return currentHp &gt; 0;</span>
+    }
+
+    public Vector2 getPosition() {
+<span class="nc" id="L180">        return position;</span>
+    }
+
+    public void setPosition(Vector2 newPosition) {
+<span class="nc" id="L184">        position.set(newPosition);</span>
+<span class="nc" id="L185">    }</span>
+
+    public AIState getCurrentState() {
+<span class="nc" id="L188">        return currentState;</span>
+    }
+
+    public RobotDefinition getDefinition() {
+<span class="nc" id="L192">        return definition;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.10.2" orientation="orthogonal" renderorder="right-down" width="40" height="28" tilewidth="48" tileheight="48" infinite="0" nextlayerid="7" nextobjectid="34">
+<map version="1.10" tiledversion="1.10.2" orientation="orthogonal" renderorder="right-down" width="40" height="28" tilewidth="48" tileheight="48" infinite="0" nextlayerid="7" nextobjectid="44">
  <properties>
   <property name="groundStyle" value="meadow"/>
   <property name="safeZone" value="true"/>
@@ -38,6 +38,30 @@
     <property name="label" value="Dragon Peak Lift"/>
    </properties>
   </object>
+  <object id="34" name="forest_edge" x="84" y="156" width="220" height="170">
+   <properties>
+    <property name="kind" value="gate"/>
+    <property name="label" value="Whispering Forest Trail"/>
+   </properties>
+  </object>
+  <object id="35" name="quarry_road" x="1500" y="126" width="220" height="150">
+   <properties>
+    <property name="kind" value="gate"/>
+    <property name="label" value="Rusty Quarry Road"/>
+   </properties>
+  </object>
+  <object id="36" name="coast_path" x="154" y="980" width="240" height="180">
+   <properties>
+    <property name="kind" value="gate"/>
+    <property name="label" value="Coastal Shallows Path"/>
+   </properties>
+  </object>
+  <object id="40" name="dungeon_gate" x="620" y="1020" width="220" height="160">
+   <properties>
+    <property name="kind" value="gate"/>
+    <property name="label" value="Infinite Dungeon Sigil"/>
+   </properties>
+  </object>
   <object id="30" name="thorn_barrier" x="1250" y="690" width="96" height="72">
    <properties>
     <property name="kind" value="barrier"/>
@@ -71,6 +95,10 @@
   <object id="12" x="0" y="1284" width="1920" height="60"/>
   <object id="13" x="0" y="0" width="60" height="1344"/>
   <object id="14" x="1860" y="0" width="60" height="1344"/>
+  <object id="37" x="84" y="156" width="220" height="170"/>
+  <object id="38" x="1500" y="126" width="220" height="150"/>
+  <object id="39" x="154" y="980" width="240" height="180"/>
+  <object id="41" x="620" y="1020" width="220" height="160"/>
  </objectgroup>
  <objectgroup id="3" name="spawn_points">
   <object id="15" name="town_square" type="player" x="380" y="764">
@@ -86,6 +114,26 @@
   <object id="17" name="from_peak" type="player" x="1180" y="360">
    <properties>
     <property name="spawnId" value="from_peak"/>
+   </properties>
+  </object>
+  <object id="34" name="from_forest" type="player" x="348" y="314">
+   <properties>
+    <property name="spawnId" value="from_forest"/>
+   </properties>
+  </object>
+  <object id="35" name="from_quarry" type="player" x="1498" y="318">
+   <properties>
+    <property name="spawnId" value="from_quarry"/>
+   </properties>
+  </object>
+  <object id="36" name="from_coast" type="player" x="408" y="1068">
+   <properties>
+    <property name="spawnId" value="from_coast"/>
+   </properties>
+  </object>
+  <object id="42" name="from_dungeon" type="player" x="730" y="1110">
+   <properties>
+    <property name="spawnId" value="from_dungeon"/>
    </properties>
   </object>
   <object id="18" name="enemy_1" type="enemy" x="1320" y="914"/>
@@ -128,6 +176,35 @@
     <property name="targetSpawn" value="foothill"/>
     <property name="keyItem" value="peak_sigil"/>
     <property name="lockMessage" value="A resonant sigil is needed to raise the lift."/>
+   </properties>
+  </object>
+  <object id="37" name="whispering_forest_gate" x="160" y="248" width="72" height="72">
+   <properties>
+    <property name="label" value="Whispering Forest"/>
+    <property name="targetZone" value="whispering_forest"/>
+    <property name="targetSpawn" value="from_verdant"/>
+   </properties>
+  </object>
+  <object id="38" name="rusty_quarry_gate" x="1568" y="220" width="72" height="72">
+   <properties>
+    <property name="label" value="Rusty Quarry"/>
+    <property name="targetZone" value="rusty_quarry"/>
+    <property name="targetSpawn" value="from_verdant"/>
+   </properties>
+  </object>
+  <object id="39" name="coastal_shallows_gate" x="240" y="1022" width="72" height="72">
+   <properties>
+    <property name="label" value="Coastal Shallows"/>
+    <property name="targetZone" value="coastal_shallows"/>
+    <property name="targetSpawn" value="from_verdant"/>
+   </properties>
+  </object>
+  <object id="43" name="infinite_dungeon_gate" x="694" y="1082" width="72" height="72">
+   <properties>
+    <property name="label" value="Infinite Dungeon"/>
+    <property name="targetZone" value="infinite_dungeon"/>
+    <property name="targetSpawn" value="from_hub"/>
+    <property name="lockMessage" value="A fractured sigil beside Ironhaven opens into the endless training ruin beyond the frontier."/>
    </properties>
   </object>
  </objectgroup>

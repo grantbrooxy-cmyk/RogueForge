@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>StatusEffectManager.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core</a> &gt; <a href="index.source.html" class="el_package">com.rogueforge.game.combat</a> &gt; <span class="el_source">StatusEffectManager.java</span></div><h1>StatusEffectManager.java</h1><pre class="source lang-java linenums">package com.rogueforge.game.combat;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+
+/**
+ * Tracks active statuses on a combatant and resolves turn-based effects.
+ *
+ * All 15 game-design statuses are mechanically active. Quick reference:
+ *
+ *  Damage-over-time (beginTurn):
+ *    BURN     — 5 % max HP fire damage per turn
+ *    POISON   — 8 % max HP poison damage per turn
+ *    BLEED    — 3 % max HP on action taken (onActionTaken)
+ *
+ *  Healing-over-time (beginTurn):
+ *    REGEN    — 5 % max HP healing per turn
+ *
+ *  Speed modifiers (getSpeedMultiplier → TurnTimeline delay):
+ *    SLOW     — 0.5× speed → double tick delay → acts half as often
+ *    HASTE    — 1.5× speed → two-thirds tick delay → acts 50 % more often
+ *
+ *  Turn-skip control (shouldSkipTurn → battle screen skips the turn):
+ *    STUN     — always skips turn
+ *    FREEZE   — always skips turn, also +50 % physical damage taken
+ *    PARALYZE — 30 % chance to skip turn
+ *
+ *  Damage-reduction buffs (getPhysicalDamageTakenMultiplier /
+ *                          getAbilityDamageTakenMultiplier):
+ *    DEFENDING — −50 % physical, −25 % ability (set by Defend command)
+ *    PROTECT   — −30 % physical
+ *    SHELL     — −30 % ability
+ *
+ *  Attacker modifiers:
+ *    BLIND    — 50 % physical hit chance (getPhysicalHitChanceMultiplier;
+ *               miss returns 0 from CombatResolver.resolvePhysicalDamage)
+ *    WEAKEN   — −25 % physical damage dealt (getPhysicalDamageDealtMultiplier)
+ *    BERSERK  — +50 % physical damage dealt; forces Attack-only commands
+ *               (canAttackOnly — battle screen enforces the restriction)
+ *
+ *  Command-block:
+ *    SILENCE  — blocks Ability command (canUseAbilities returns false;
+ *               battle screen must check before showing Ability menu)
+ *
+ *  Also tracked: TAUNT (forces enemies to target the taunting unit;
+ *                enforced by enemy AI in the battle screen, not here).
+ *  DEFENDING is cleared at the start of the actor's next turn by the
+ *  normal tick-down in endTurn().
+ */
+<span class="fc" id="L51">public class StatusEffectManager {</span>
+<span class="fc" id="L52">    private final List&lt;ActiveStatusEffect&gt; activeEffects = new ArrayList&lt;&gt;();</span>
+
+    public void apply(StatusEffectType type, int turns) {
+<span class="fc" id="L55">        apply(type, turns, 0f);</span>
+<span class="fc" id="L56">    }</span>
+
+    public void apply(StatusEffectType type, int turns, float magnitude) {
+<span class="fc" id="L59">        ActiveStatusEffect existing = get(type);</span>
+<span class="pc bpc" id="L60" title="1 of 2 branches missed.">        if (existing != null) {</span>
+<span class="nc" id="L61">            existing.refresh(turns);</span>
+<span class="nc" id="L62">            return;</span>
+        }
+<span class="fc" id="L64">        activeEffects.add(new ActiveStatusEffect(type, turns, magnitude));</span>
+<span class="fc" id="L65">    }</span>
+
+    public boolean has(StatusEffectType type) {
+<span class="fc bfc" id="L68" title="All 2 branches covered.">        return get(type) != null;</span>
+    }
+
+    public ActiveStatusEffect get(StatusEffectType type) {
+<span class="fc bfc" id="L72" title="All 2 branches covered.">        for (ActiveStatusEffect effect : activeEffects) {</span>
+<span class="fc bfc" id="L73" title="All 2 branches covered.">            if (effect.getType() == type) {</span>
+<span class="fc" id="L74">                return effect;</span>
+            }
+<span class="fc" id="L76">        }</span>
+<span class="fc" id="L77">        return null;</span>
+    }
+
+    public void remove(StatusEffectType type) {
+<span class="nc bnc" id="L81" title="All 2 branches missed.">        activeEffects.removeIf(effect -&gt; effect.getType() == type);</span>
+<span class="nc" id="L82">    }</span>
+
+    public List&lt;ActiveStatusEffect&gt; getActiveEffects() {
+<span class="nc" id="L85">        return new ArrayList&lt;&gt;(activeEffects);</span>
+    }
+
+    /**
+     * Applies all begin-of-turn effects (DoTs, HoTs) and returns log lines.
+     *
+     * Status coverage:
+     *   BURN    — 5 % max HP fire damage
+     *   POISON  — 8 % max HP poison damage
+     *   REGEN   — 5 % max HP healing
+     *   (BLEED fires in onActionTaken, not here)
+     */
+    public List&lt;String&gt; beginTurn(BattleCombatant combatant) {
+<span class="fc" id="L98">        List&lt;String&gt; log = new ArrayList&lt;&gt;();</span>
+<span class="pc bpc" id="L99" title="2 of 4 branches missed.">        if (combatant == null || !combatant.isAlive()) {</span>
+<span class="nc" id="L100">            return log;</span>
+        }
+
+<span class="pc bpc" id="L103" title="1 of 2 branches missed.">        if (has(StatusEffectType.BURN)) {</span>
+<span class="fc" id="L104">            int damage = Math.max(1, Math.round(combatant.getMaxHealth() * 0.05f));</span>
+<span class="fc" id="L105">            combatant.applyDirectDamage(damage);</span>
+<span class="fc" id="L106">            log.add(combatant.getName() + &quot; is scorched for &quot; + damage + &quot; damage.&quot;);</span>
+        }
+<span class="pc bpc" id="L108" title="1 of 2 branches missed.">        if (has(StatusEffectType.POISON)) {</span>
+<span class="fc" id="L109">            int damage = Math.max(1, Math.round(combatant.getMaxHealth() * 0.08f));</span>
+<span class="fc" id="L110">            combatant.applyDirectDamage(damage);</span>
+<span class="fc" id="L111">            log.add(combatant.getName() + &quot; suffers &quot; + damage + &quot; poison damage.&quot;);</span>
+        }
+<span class="pc bpc" id="L113" title="1 of 2 branches missed.">        if (has(StatusEffectType.REGEN)) {</span>
+<span class="fc" id="L114">            int healing = Math.max(1, Math.round(combatant.getMaxHealth() * 0.05f));</span>
+<span class="fc" id="L115">            combatant.heal(healing);</span>
+<span class="fc" id="L116">            log.add(combatant.getName() + &quot; regenerates &quot; + healing + &quot; HP.&quot;);</span>
+        }
+<span class="pc bpc" id="L118" title="1 of 2 branches missed.">        if (combatant.hasUniqueBoost(&quot;AUTO_REPAIR&quot;)) {</span>
+<span class="fc" id="L119">            int healing = Math.max(1, Math.round(combatant.getMaxHealth() * 0.06f));</span>
+<span class="fc" id="L120">            combatant.heal(healing);</span>
+<span class="fc" id="L121">            log.add(combatant.getName() + &quot;'s auto-repair restores &quot; + healing + &quot; HP.&quot;);</span>
+        }
+
+        // BERSERK reminder: command restriction is enforced by canAttackOnly() —
+        // the battle screen must check that before building its command menu.
+<span class="pc bpc" id="L126" title="1 of 2 branches missed.">        if (has(StatusEffectType.BERSERK)) {</span>
+<span class="fc" id="L127">            log.add(combatant.getName() + &quot; is berserk and can only attack!&quot;);</span>
+        }
+<span class="fc" id="L129">        return log;</span>
+    }
+
+    public List&lt;String&gt; onActionTaken(BattleCombatant combatant) {
+<span class="fc" id="L133">        List&lt;String&gt; log = new ArrayList&lt;&gt;();</span>
+<span class="pc bpc" id="L134" title="2 of 4 branches missed.">        if (combatant == null || !combatant.isAlive()) {</span>
+<span class="nc" id="L135">            return log;</span>
+        }
+<span class="pc bpc" id="L137" title="1 of 2 branches missed.">        if (has(StatusEffectType.BLEED)) {</span>
+<span class="fc" id="L138">            int damage = Math.max(1, Math.round(combatant.getMaxHealth() * 0.03f));</span>
+<span class="fc" id="L139">            combatant.applyDirectDamage(damage);</span>
+<span class="fc" id="L140">            log.add(combatant.getName() + &quot; bleeds for &quot; + damage + &quot; damage.&quot;);</span>
+        }
+<span class="fc" id="L142">        return log;</span>
+    }
+
+    public List&lt;String&gt; endTurn(BattleCombatant combatant) {
+<span class="fc" id="L146">        List&lt;String&gt; log = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L147">        Iterator&lt;ActiveStatusEffect&gt; iterator = activeEffects.iterator();</span>
+<span class="fc bfc" id="L148" title="All 2 branches covered.">        while (iterator.hasNext()) {</span>
+<span class="fc" id="L149">            ActiveStatusEffect effect = iterator.next();</span>
+<span class="pc bpc" id="L150" title="1 of 2 branches missed.">            if (effect.tickDown()) {</span>
+<span class="fc" id="L151">                iterator.remove();</span>
+<span class="fc" id="L152">                log.add(combatant.getName() + &quot; is no longer affected by &quot; + prettify(effect.getType()) + &quot;.&quot;);</span>
+            }
+<span class="fc" id="L154">        }</span>
+<span class="fc" id="L155">        return log;</span>
+    }
+
+    public float getSpeedMultiplier() {
+<span class="fc" id="L159">        float multiplier = 1f;</span>
+<span class="fc bfc" id="L160" title="All 2 branches covered.">        if (has(StatusEffectType.SLOW)) {</span>
+<span class="fc" id="L161">            multiplier *= 0.5f;</span>
+        }
+<span class="fc bfc" id="L163" title="All 2 branches covered.">        if (has(StatusEffectType.HASTE)) {</span>
+<span class="fc" id="L164">            multiplier *= 1.5f;</span>
+        }
+<span class="fc" id="L166">        return multiplier;</span>
+    }
+
+    public float getPhysicalDamageTakenMultiplier() {
+<span class="fc" id="L170">        float multiplier = 1f;</span>
+<span class="pc bpc" id="L171" title="1 of 2 branches missed.">        if (has(StatusEffectType.DEFENDING)) {</span>
+<span class="fc" id="L172">            multiplier *= 0.5f;</span>
+        }
+<span class="pc bpc" id="L174" title="1 of 2 branches missed.">        if (has(StatusEffectType.PROTECT)) {</span>
+<span class="fc" id="L175">            multiplier *= 0.7f;</span>
+        }
+<span class="pc bpc" id="L177" title="1 of 2 branches missed.">        if (has(StatusEffectType.FREEZE)) {</span>
+<span class="nc" id="L178">            multiplier *= 1.5f;</span>
+        }
+<span class="fc" id="L180">        return multiplier;</span>
+    }
+
+    public float getAbilityDamageTakenMultiplier() {
+<span class="fc bfc" id="L184" title="All 2 branches covered.">        float multiplier = has(StatusEffectType.DEFENDING) ? 0.75f : 1f;</span>
+<span class="fc bfc" id="L185" title="All 2 branches covered.">        if (has(StatusEffectType.SHELL)) {</span>
+<span class="fc" id="L186">            multiplier *= 0.7f;</span>
+        }
+<span class="fc" id="L188">        return multiplier;</span>
+    }
+
+    public boolean shouldSkipTurn() {
+<span class="nc bnc" id="L192" title="All 4 branches missed.">        if (has(StatusEffectType.STUN) || has(StatusEffectType.FREEZE)) {</span>
+<span class="nc" id="L193">            return true;</span>
+        }
+<span class="nc bnc" id="L195" title="All 4 branches missed.">        return has(StatusEffectType.PARALYZE) &amp;&amp; Math.random() &lt; 0.3f;</span>
+    }
+
+    public boolean canUseAbilities() {
+<span class="pc bpc" id="L199" title="1 of 2 branches missed.">        return !has(StatusEffectType.SILENCE);</span>
+    }
+
+    public float getPhysicalDamageDealtMultiplier() {
+<span class="fc" id="L203">        float multiplier = 1f;</span>
+<span class="pc bpc" id="L204" title="1 of 2 branches missed.">        if (has(StatusEffectType.WEAKEN)) {</span>
+<span class="fc" id="L205">            multiplier *= 0.75f;</span>
+        }
+<span class="pc bpc" id="L207" title="1 of 2 branches missed.">        if (has(StatusEffectType.BERSERK)) {</span>
+<span class="fc" id="L208">            multiplier *= 1.5f;</span>
+        }
+<span class="fc" id="L210">        return multiplier;</span>
+    }
+
+    /**
+     * BLIND: physical attacks (Attack command, physical-type abilities) have
+     * a 50 % chance to miss. CombatResolver.resolvePhysicalDamage() checks
+     * this and returns 0 on a miss. The caller should log &quot;{name} missed!&quot;
+     */
+    public float getPhysicalHitChanceMultiplier() {
+<span class="nc bnc" id="L219" title="All 2 branches missed.">        return has(StatusEffectType.BLIND) ? 0.5f : 1f;</span>
+    }
+
+    /**
+     * BERSERK command lock: when true the battle screen must restrict the
+     * actor's command menu to Attack only. Berserk boosts physical output
+     * (handled by getPhysicalDamageDealtMultiplier) but removes tactical choice.
+     *
+     * SILENCE is the ability-blocking equivalent — use canUseAbilities().
+     */
+    public boolean canAttackOnly() {
+<span class="fc" id="L230">        return has(StatusEffectType.BERSERK);</span>
+    }
+
+    private String prettify(StatusEffectType type) {
+<span class="fc" id="L234">        String lower = type.name().toLowerCase();</span>
+<span class="fc" id="L235">        return Character.toUpperCase(lower.charAt(0)) + lower.substring(1);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

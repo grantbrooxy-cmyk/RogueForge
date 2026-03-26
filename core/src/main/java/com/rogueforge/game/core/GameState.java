@@ -55,6 +55,13 @@ public class GameState {
     private final Map<String, Boolean> worldStateFlags = new HashMap<>();
     private final Map<String, SettlementState> settlementUpgrades = new HashMap<>();
     private final Map<String, RobotProgressionState> robotProgressionStates = new HashMap<>();
+    private final Map<String, Integer> forgeComponents = new HashMap<>();
+    private final Map<String, Integer> shardInventory = new HashMap<>();
+
+    // Forge Core level (1 = base, 2/3/4 unlocked by boss milestones)
+    // Gates robot evolution tiers: Tier 2 requires Lv2, Tier 3 requires Lv3.
+    private int forgeCoreLevel = 1;
+    private final List<String> defeatedBossIds = new ArrayList<>();
 
     // Robot roster tracking
     private final List<String> collectedRobotIds = new ArrayList<>();
@@ -121,6 +128,52 @@ public class GameState {
             StatBlock stats = getPlayerStats();
             playerHealth = Math.min(stats.maxHealth, playerHealth + 18f);
         }
+    }
+
+    // --- Forge Core ---
+    /** Returns the current Forge Core level (1–4). */
+    public int getForgeCoreLevel() {
+        return forgeCoreLevel;
+    }
+
+    /**
+     * Sets the Forge Core level, clamped to [1, 4].
+     * Level 1 is the starting state; levels 2–4 are unlocked by boss milestones.
+     */
+    public void setForgeCoreLevel(int level) {
+        this.forgeCoreLevel = Math.max(1, Math.min(4, level));
+    }
+
+    public List<String> getDefeatedBossIds() {
+        return new ArrayList<>(defeatedBossIds);
+    }
+
+    public void setDefeatedBossIds(List<String> bossIds) {
+        defeatedBossIds.clear();
+        if (bossIds == null) {
+            return;
+        }
+        for (String bossId : bossIds) {
+            if (bossId != null && !bossId.isEmpty() && !defeatedBossIds.contains(bossId)) {
+                defeatedBossIds.add(bossId);
+            }
+        }
+    }
+
+    public boolean markBossDefeated(String bossId) {
+        if (bossId == null || bossId.isEmpty() || defeatedBossIds.contains(bossId)) {
+            return false;
+        }
+        defeatedBossIds.add(bossId);
+        return true;
+    }
+
+    public boolean hasDefeatedBoss(String bossId) {
+        return bossId != null && defeatedBossIds.contains(bossId);
+    }
+
+    public int getDefeatedBossCount() {
+        return defeatedBossIds.size();
     }
 
     // --- Grade system ---
@@ -246,6 +299,92 @@ public class GameState {
             robotEquipment.put(entry.getKey(),
                 entry.getValue() != null ? new HashMap<>(entry.getValue()) : new HashMap<>());
         }
+    }
+
+    public Map<String, Integer> getForgeComponents() {
+        return new HashMap<>(forgeComponents);
+    }
+
+    public void setForgeComponents(Map<String, Integer> components) {
+        forgeComponents.clear();
+        if (components == null) {
+            return;
+        }
+        for (Map.Entry<String, Integer> entry : components.entrySet()) {
+            if (entry.getKey() != null && !entry.getKey().isEmpty() && entry.getValue() != null && entry.getValue() > 0) {
+                forgeComponents.put(entry.getKey(), entry.getValue());
+            }
+        }
+    }
+
+    public int getForgeComponentCount(String componentId) {
+        return forgeComponents.getOrDefault(componentId, 0);
+    }
+
+    public void addForgeComponent(String componentId, int amount) {
+        if (componentId == null || componentId.isEmpty() || amount == 0) {
+            return;
+        }
+        forgeComponents.put(componentId, Math.max(0, forgeComponents.getOrDefault(componentId, 0) + amount));
+        if (forgeComponents.get(componentId) <= 0) {
+            forgeComponents.remove(componentId);
+        }
+    }
+
+    public boolean consumeForgeComponents(Map<String, Integer> costs) {
+        if (costs == null || costs.isEmpty()) {
+            return true;
+        }
+        for (Map.Entry<String, Integer> entry : costs.entrySet()) {
+            if (getForgeComponentCount(entry.getKey()) < Math.max(0, entry.getValue())) {
+                return false;
+            }
+        }
+        for (Map.Entry<String, Integer> entry : costs.entrySet()) {
+            addForgeComponent(entry.getKey(), -Math.max(0, entry.getValue()));
+        }
+        return true;
+    }
+
+    public Map<String, Integer> getShardInventory() {
+        return new HashMap<>(shardInventory);
+    }
+
+    public void setShardInventory(Map<String, Integer> shards) {
+        shardInventory.clear();
+        if (shards == null) {
+            return;
+        }
+        for (Map.Entry<String, Integer> entry : shards.entrySet()) {
+            if (entry.getKey() != null && !entry.getKey().isEmpty() && entry.getValue() != null && entry.getValue() > 0) {
+                shardInventory.put(entry.getKey(), entry.getValue());
+            }
+        }
+    }
+
+    public int getShardCount(String grade) {
+        return shardInventory.getOrDefault(grade, 0);
+    }
+
+    public void addShard(String grade, int amount) {
+        if (grade == null || grade.isEmpty() || amount == 0) {
+            return;
+        }
+        shardInventory.put(grade, Math.max(0, shardInventory.getOrDefault(grade, 0) + amount));
+        if (shardInventory.get(grade) <= 0) {
+            shardInventory.remove(grade);
+        }
+    }
+
+    public boolean consumeShards(String grade, int amount) {
+        if (amount <= 0) {
+            return true;
+        }
+        if (getShardCount(grade) < amount) {
+            return false;
+        }
+        addShard(grade, -amount);
+        return true;
     }
 
     // --- Robot roster ---

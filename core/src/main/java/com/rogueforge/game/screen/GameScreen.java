@@ -16,6 +16,9 @@ import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Json;
+import com.badlogic.gdx.utils.viewport.FitViewport;
+import com.badlogic.gdx.utils.viewport.ScreenViewport;
+import com.badlogic.gdx.utils.viewport.Viewport;
 import com.rogueforge.game.core.RogueForgeGame;
 import com.rogueforge.game.core.ScreenManager;
 import com.rogueforge.game.core.GameLoop;
@@ -24,10 +27,14 @@ import com.rogueforge.game.combat.AbilityDefinition;
 import com.rogueforge.game.combat.AbilityRegistry;
 import com.rogueforge.game.combat.WeaponType;
 import com.rogueforge.game.data.EquipmentItem;
+import com.rogueforge.game.data.ForgeComponentDefinition;
+import com.rogueforge.game.data.ForgeIngredientDefinition;
+import com.rogueforge.game.data.ForgeRecipeDefinition;
 import com.rogueforge.game.data.MonsterDefinition;
 import com.rogueforge.game.data.SaveFile;
 import com.rogueforge.game.data.ShopDefinition;
 import com.rogueforge.game.data.ShopEntryDefinition;
+import com.rogueforge.game.data.StoryEventDefinition;
 import com.rogueforge.game.data.ZoneDefinition;
 import com.rogueforge.game.economy.ShopInventory;
 import com.rogueforge.game.persistence.SaveManager;
@@ -37,6 +44,7 @@ import com.rogueforge.game.progression.AbilityProgressionState;
 import com.rogueforge.game.progression.RobotEvolutionManager;
 import com.rogueforge.game.progression.RobotProgressionState;
 import com.rogueforge.game.progression.WeaponProficiencyState;
+import com.rogueforge.game.progression.CombatArtRegistry;
 import com.rogueforge.game.progression.WeaponProficiencyTracker;
 import com.rogueforge.game.robot.RobotDefinition;
 import com.rogueforge.game.world.TmxWorldLoader;
@@ -60,11 +68,16 @@ import java.util.Map;
  * spawning enemies, combat mechanics, and HUD overlay.
  */
 public class GameScreen implements Screen {
+    private static final float WORLD_VIEW_WIDTH = 1280f;
+    private static final float WORLD_VIEW_HEIGHT = 720f;
+
     private final RogueForgeGame game;
     private final ScreenManager screenManager;
     private final GameLoop gameLoop;
     private final OrthographicCamera gameCamera;
     private final OrthographicCamera uiCamera;
+    private final Viewport gameViewport;
+    private final Viewport uiViewport;
     private final HUDOverlay hudOverlay;
 
     private final SpriteBatch batch;
@@ -135,6 +148,9 @@ public class GameScreen implements Screen {
     private final Map<String, MonsterDefinition> monsterDefinitions = new HashMap<>();
     private final Map<String, ShopDefinition> shopDefinitions = new HashMap<>();
     private final Map<String, RobotDefinition> robotDefinitions = new HashMap<>();
+    private final Map<String, ForgeComponentDefinition> forgeComponentDefinitions = new HashMap<>();
+    private final List<ForgeRecipeDefinition> forgeRecipes = new ArrayList<>();
+    private final List<StoryEventDefinition> storyEvents = new ArrayList<>();
     private final TmxWorldLoader worldLoader = new TmxWorldLoader();
     private final SettingsManager settingsManager = new SettingsManager();
     private final SaveManager saveManager = new SaveManager();
@@ -185,9 +201,11 @@ public class GameScreen implements Screen {
         this.screenManager = screenManager;
         this.gameLoop = new GameLoop();
         this.gameCamera = new OrthographicCamera();
-        this.gameCamera.setToOrtho(false, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         this.uiCamera = new OrthographicCamera();
-        this.uiCamera.setToOrtho(false, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        this.gameViewport = new FitViewport(WORLD_VIEW_WIDTH, WORLD_VIEW_HEIGHT, gameCamera);
+        this.uiViewport = new ScreenViewport(uiCamera);
+        this.gameViewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
+        this.uiViewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
         this.hudOverlay = new HUDOverlay();
         this.batch = new SpriteBatch();
         this.shapeRenderer = new ShapeRenderer();
@@ -242,6 +260,9 @@ public class GameScreen implements Screen {
         loadZoneDefinitions();
         loadRobotDefinitions();
         loadMonsterDefinitions();
+        loadForgeComponentDefinitions();
+        loadForgeRecipes();
+        loadStoryEvents();
         loadShopDefinitions();
         ensureRobotProgressionStates();
         initializeActiveRobotHealthForNewRun();
@@ -375,6 +396,7 @@ public class GameScreen implements Screen {
         }
 
         // Camera follows player
+        gameViewport.apply();
         gameCamera.position.set(playerPos.x, playerPos.y, 0);
         gameCamera.update();
 
@@ -438,7 +460,7 @@ public class GameScreen implements Screen {
             enemy.strength = monster.getAttack();
             enemy.intelligence = Math.max(8f, monster.getAttack() * 0.7f);
             enemy.stamina = Math.max(8f, monster.getDefense() * 1.1f);
-            enemy.rewardGold = monster.getBaseLoot();
+            enemy.rewardGold = 0;
             enemy.name = monster.getName();
             enemy.speed = Math.max(50f, monster.getSpeed() * 1.2f);
         } else {
@@ -449,7 +471,7 @@ public class GameScreen implements Screen {
             enemy.strength = 12f + (float) Math.random() * 10f;
             enemy.intelligence = 8f + (float) Math.random() * 10f;
             enemy.stamina = 10f + (float) Math.random() * 10f;
-            enemy.rewardGold = 15 + (int) (Math.random() * 16);
+            enemy.rewardGold = 0;
             enemy.name = "Scrap Beast";
         }
         enemy.alive = true;
@@ -505,8 +527,8 @@ public class GameScreen implements Screen {
 
     private void drawGroundTiles() {
         float tileSize = currentZone != null ? currentZone.tileWidth : 48f;
-        float halfW = Gdx.graphics.getWidth() / 2f + tileSize;
-        float halfH = Gdx.graphics.getHeight() / 2f + tileSize;
+        float halfW = (gameCamera.viewportWidth * gameCamera.zoom) / 2f + tileSize;
+        float halfH = (gameCamera.viewportHeight * gameCamera.zoom) / 2f + tileSize;
         float maxWidth = currentZone != null ? currentZone.pixelWidth : playerPos.x + halfW;
         float maxHeight = currentZone != null ? currentZone.pixelHeight : playerPos.y + halfH;
         int startX = Math.max(0, (int) Math.floor((playerPos.x - halfW) / tileSize) - 1);
@@ -723,7 +745,8 @@ public class GameScreen implements Screen {
         robotAttackLines.clear();
 
         Vector2 followTarget = playerPos;
-        for (int i = 0; i < ROBOT_COUNT; i++) {
+        int robotSlotLimit = getPartySlotLimit();
+        for (int i = 0; i < robotSlotLimit; i++) {
             RobotCompanion robot = robots[i];
             if (!hasActiveRobotAt(i) || robot.health <= 0f) {
                 continue;
@@ -754,22 +777,8 @@ public class GameScreen implements Screen {
     }
 
     private void onEnemyKilled(Enemy enemy) {
-        int goldDrop = 10 + (int) (Math.random() * 21);
-        onEnemyKilled(enemy, goldDrop);
-    }
-
-    private void onEnemyKilled(Enemy enemy, int goldDrop) {
-        gameState.addGold(goldDrop);
-        totalGold = gameState.getTotalGold();
         totalEnemiesKilled++;
         enemy.alive = false;
-
-        GoldPopup popup = new GoldPopup();
-        popup.pos = new Vector2(enemy.pos);
-        popup.text = "+" + goldDrop + " Gold";
-        popup.lifetime = 1f;
-        popup.timer = 0f;
-        goldPopups.add(popup);
     }
 
     private void updateGoldPopups(float delta) {
@@ -1176,8 +1185,8 @@ public class GameScreen implements Screen {
             return;
         }
 
-        float w = Gdx.graphics.getWidth();
-        uiCamera.setToOrtho(false, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        uiViewport.apply();
+        float w = uiViewport.getWorldWidth();
         shapeRenderer.setProjectionMatrix(uiCamera.combined);
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
         shapeRenderer.setColor(0.05f, 0.06f, 0.1f, 0.92f);
@@ -1201,8 +1210,8 @@ public class GameScreen implements Screen {
 
     @Override
     public void resize(int width, int height) {
-        gameCamera.setToOrtho(false, width, height);
-        uiCamera.setToOrtho(false, width, height);
+        gameViewport.update(width, height, true);
+        uiViewport.update(width, height, true);
         hudOverlay.resize(width, height);
     }
 
@@ -1249,6 +1258,12 @@ public class GameScreen implements Screen {
         }
     }
 
+    public void openForge() {
+        if (!isPaused && !battleActive) {
+            screenManager.push(new ForgeScreen(game, screenManager, this));
+        }
+    }
+
     public void dismissMessages() {
         activeSpeaker = null;
         activeDialog = null;
@@ -1289,6 +1304,10 @@ public class GameScreen implements Screen {
         sf.setKeyItems(new ArrayList<>(gameState.getKeyItems()));
         sf.setWorldStateFlags(new HashMap<>(gameState.getWorldStateFlags()));
         sf.setSettlementUpgrades(new HashMap<>(gameState.getSettlementUpgrades()));
+        sf.setForgeComponents(new HashMap<>(gameState.getForgeComponents()));
+        sf.setShardInventory(new HashMap<>(gameState.getShardInventory()));
+        sf.setForgeCoreLevel(gameState.getForgeCoreLevel());
+        sf.setDefeatedBossIds(new ArrayList<>(gameState.getDefeatedBossIds()));
         sf.setCurrentZoneId(gameState.getCurrentZoneId());
         sf.setRobotEquipment(copyRobotEquipment(robotEquipment));
         sf.setCollectedRobotIds(new ArrayList<>(gameState.getCollectedRobotIds()));
@@ -1351,6 +1370,10 @@ public class GameScreen implements Screen {
         gameState.setKeyItems(keyItems);
         gameState.setWorldStateFlags(saveFile.getWorldStateFlags());
         gameState.setSettlementUpgrades(saveFile.getSettlementUpgrades());
+        gameState.setForgeComponents(saveFile.getForgeComponents());
+        gameState.setShardInventory(saveFile.getShardInventory());
+        gameState.setForgeCoreLevel(saveFile.getForgeCoreLevel());
+        gameState.setDefeatedBossIds(saveFile.getDefeatedBossIds());
         worldStateManager.initialize(gameState);
         questManager.initialize(gameState);
         questManager.syncProgress(gameState, worldStateManager);
@@ -1495,8 +1518,11 @@ public class GameScreen implements Screen {
             encounter.enemyWeaknesses[i] = definition != null ? definition.getWeaknesses() : new String[0];
             encounter.enemyResistances[i] = definition != null ? definition.getResistances() : new String[0];
             encounter.enemyAbsorbs[i] = definition != null ? definition.getAbsorbs() : new String[0];
-            encounter.enemyRewardGold[i] = groupEnemy.rewardGold;
-            encounter.enemyExperienceReward[i] = 20 + groupEnemy.rewardGold;
+            int experienceReward = definition != null
+                ? 20 + definition.getBaseLoot()
+                : 25 + Math.round(groupEnemy.strength + groupEnemy.defense);
+            encounter.enemyRewardGold[i] = 0;
+            encounter.enemyExperienceReward[i] = experienceReward;
             encounter.enemyReferences[i] = groupEnemy;
         }
         encounter.playerName = playerName;
@@ -1561,7 +1587,6 @@ public class GameScreen implements Screen {
         healingPotions = result.healingPotions;
         applyRobotHealth(result.robotHealth, result.robotPartySlots);
         if (result.enemyReferences != null && result.enemyHealth != null) {
-            int totalGoldEarned = 0;
             int totalExperienceEarned = 0;
             for (int i = 0; i < result.enemyReferences.length && i < result.enemyHealth.length; i++) {
                 Enemy enemy = result.enemyReferences[i] instanceof Enemy ? (Enemy) result.enemyReferences[i] : null;
@@ -1578,9 +1603,8 @@ public class GameScreen implements Screen {
                     enemy.pos.set(playerPos.x + away.x, playerPos.y + away.y);
                     enemy.patrolTarget = new Vector2(enemy.pos);
                 } else if (enemy.hp <= 0f) {
-                    totalGoldEarned += i < result.goldEarned.length ? result.goldEarned[i] : 0;
                     totalExperienceEarned += i < result.experienceEarned.length ? result.experienceEarned[i] : 0;
-                    onEnemyKilled(enemy, i < result.goldEarned.length ? result.goldEarned[i] : enemy.rewardGold);
+                    onEnemyKilled(enemy);
                 }
             }
             if (totalExperienceEarned > 0) {
@@ -1591,11 +1615,17 @@ public class GameScreen implements Screen {
         if (result.updatedBestiary != null) {
             gameState.setBestiaryScanLevels(result.updatedBestiary);
         }
-        if (result.droppedEquipmentIds != null) {
-            for (String itemId : result.droppedEquipmentIds) {
-                unlockEquipment(itemId);
+        if (result.droppedShards != null) {
+            for (Map.Entry<String, Integer> entry : result.droppedShards.entrySet()) {
+                gameState.addShard(entry.getKey(), entry.getValue());
             }
         }
+        if (result.droppedComponents != null) {
+            for (Map.Entry<String, Integer> entry : result.droppedComponents.entrySet()) {
+                gameState.addForgeComponent(entry.getKey(), entry.getValue());
+            }
+        }
+        handleBattleStoryEvents(result);
 
         if (!hasLivingPartyMember()) {
             screenManager.pop();
@@ -1615,9 +1645,101 @@ public class GameScreen implements Screen {
         screenManager.pop();
     }
 
+    private void handleBattleStoryEvents(BattleScreen.BattleResult result) {
+        if (result == null || !result.enemyDefeated || result.enemyReferences == null || result.enemyHealth == null) {
+            return;
+        }
+        List<String> defeatedEnemyIds = new ArrayList<>();
+        for (int i = 0; i < result.enemyReferences.length && i < result.enemyHealth.length; i++) {
+            if (result.enemyHealth[i] > 0f) {
+                continue;
+            }
+            Enemy enemy = result.enemyReferences[i] instanceof Enemy ? (Enemy) result.enemyReferences[i] : null;
+            if (enemy != null && enemy.monsterId != null && !enemy.monsterId.isEmpty()) {
+                defeatedEnemyIds.add(enemy.monsterId);
+            }
+        }
+        boolean milestoneTriggered = false;
+        for (String enemyId : defeatedEnemyIds) {
+            if (!isBossMonster(enemyId)) {
+                continue;
+            }
+            if (gameState.markBossDefeated(enemyId)) {
+                milestoneTriggered = updateForgeCoreMilestones() || milestoneTriggered;
+            }
+            triggerStoryEvents("BOSS_DEFEAT", enemyId);
+        }
+        questManager.syncProgress(gameState, worldStateManager);
+        if (milestoneTriggered) {
+            refreshHud();
+        }
+    }
+
+    private void triggerStoryEvents(String triggerType, String triggerId) {
+        if (triggerType == null || triggerType.isEmpty() || triggerId == null || triggerId.isEmpty()) {
+            return;
+        }
+        boolean appliedAny = false;
+        for (StoryEventDefinition definition : storyEvents) {
+            if (definition == null) {
+                continue;
+            }
+            if (!triggerType.equals(definition.getTriggerType()) || !triggerId.equals(definition.getTriggerId())) {
+                continue;
+            }
+            if (applyStoryEvent(definition)) {
+                appliedAny = true;
+            }
+        }
+        if (appliedAny) {
+            questManager.syncProgress(gameState, worldStateManager);
+        }
+    }
+
+    private boolean applyStoryEvent(StoryEventDefinition definition) {
+        if (definition == null) {
+            return false;
+        }
+        String onceFlag = definition.getOnceFlag();
+        if (onceFlag != null && !onceFlag.isEmpty() && worldStateManager.isFlagActive(gameState, onceFlag)) {
+            return false;
+        }
+        if (onceFlag != null && !onceFlag.isEmpty()) {
+            worldStateManager.setFlag(gameState, onceFlag, true);
+        }
+        if (definition.getSetWorldFlag() != null && !definition.getSetWorldFlag().isEmpty()) {
+            worldStateManager.setFlag(gameState, definition.getSetWorldFlag(), true);
+        }
+        if (definition.getSetQuestId() != null && !definition.getSetQuestId().isEmpty()) {
+            if (QuestManager.NOT_STARTED.equals(questManager.getQuestState(gameState, definition.getSetQuestId()))) {
+                questManager.startQuest(gameState, definition.getSetQuestId());
+            }
+            if (definition.getSetQuestStep() != null && !definition.getSetQuestStep().isEmpty()) {
+                questManager.setQuestStep(gameState, definition.getSetQuestId(), definition.getSetQuestStep());
+            }
+        }
+        if (definition.getCompleteQuestId() != null && !definition.getCompleteQuestId().isEmpty()) {
+            questManager.completeQuest(gameState, definition.getCompleteQuestId());
+        }
+        if (definition.getAddKeyItem() != null && !definition.getAddKeyItem().isEmpty()) {
+            addKeyItem(definition.getAddKeyItem());
+        }
+        if (definition.getRewardExperience() > 0) {
+            addExperience(definition.getRewardExperience());
+        }
+        if (definition.getSpeaker() != null && !definition.getSpeaker().isEmpty()) {
+            activeSpeaker = definition.getSpeaker();
+        }
+        if (definition.getText() != null && !definition.getText().isEmpty()) {
+            activeDialog = definition.getText();
+        }
+        return true;
+    }
+
     public BattleProgressionPreview previewRobotBattleProgression(int experienceEarned) {
         BattleProgressionPreview preview = new BattleProgressionPreview();
-        for (int i = 0; i < activeRobotIds.size() && i < ROBOT_COUNT; i++) {
+        int slotLimit = getPartySlotLimit();
+        for (int i = 0; i < activeRobotIds.size() && i < slotLimit; i++) {
             RobotProgressionState state = getRobotProgressionStateForPartyIndex(i);
             if (state == null) {
                 continue;
@@ -1631,31 +1753,46 @@ public class GameScreen implements Screen {
                 simulatedLevel++;
             }
             int simulatedTier = currentTier;
-            if (simulatedLevel >= 10 && isGradeUnlocked("C")) {
+            int fcl = getForgeCoreLevel();
+            if (simulatedLevel >= 10 && isGradeUnlocked("C") && fcl >= 3) {
                 simulatedTier = 3;
-            } else if (simulatedLevel >= 5 && isGradeUnlocked("E")) {
+            } else if (simulatedLevel >= 5 && isGradeUnlocked("E") && fcl >= 2) {
                 simulatedTier = Math.max(simulatedTier, 2);
             }
             if (simulatedLevel > currentLevel) {
                 preview.robotProgress.add(getRobotName(i) + " +" + (simulatedLevel - currentLevel) + " level(s)");
             }
             if (simulatedTier > currentTier) {
-                preview.robotProgress.add(getRobotName(i) + " evolved to Tier " + simulatedTier);
+                // Note: the results screen preview is optimistic — it shows the evolution
+                // will happen but doesn't account for material cost availability.
+                preview.robotProgress.add(getRobotName(i) + " evolution ready (Tier " + simulatedTier + ")");
             }
         }
         return preview;
     }
 
     private void applyRobotBattleExperience(int experienceEarned) {
-        for (int i = 0; i < activeRobotIds.size() && i < ROBOT_COUNT; i++) {
+        int slotLimit = getPartySlotLimit();
+        for (int i = 0; i < activeRobotIds.size() && i < slotLimit; i++) {
             RobotProgressionState state = getRobotProgressionStateForPartyIndex(i);
             if (state == null) {
                 continue;
             }
             RobotEvolutionManager.addExperience(state, experienceEarned);
-            boolean evolved = RobotEvolutionManager.applyEvolution(state, getUnlockedGrade());
-            if (evolved) {
-                evolveRobotAtIndex(i, state);
+            int tierBefore = state.getEvolutionTier();
+            boolean tierChanged = RobotEvolutionManager.applyEvolution(
+                state, getUnlockedGrade(), getForgeCoreLevel());
+            if (tierChanged) {
+                // Try to pay the material cost. If the player can't afford it,
+                // revert the tier change — the robot will evolve once materials
+                // are gathered and a subsequent battle is won.
+                java.util.Map<String, Integer> cost =
+                    RobotEvolutionManager.evolutionMaterialCost(state.getEvolutionTier());
+                if (gameState.consumeForgeComponents(cost)) {
+                    evolveRobotAtIndex(i, state);
+                } else {
+                    state.setEvolutionTier(tierBefore);
+                }
             }
         }
     }
@@ -1751,8 +1888,9 @@ public class GameScreen implements Screen {
     }
 
     private List<Integer> getActiveRobotSlotIndices() {
+        int limit = getPartySlotLimit();
         List<Integer> indices = new ArrayList<>();
-        for (int i = 0; i < ROBOT_COUNT; i++) {
+        for (int i = 0; i < limit; i++) {
             if (hasActiveRobotAt(i)) {
                 indices.add(i);
             }
@@ -1813,6 +1951,53 @@ public class GameScreen implements Screen {
         }
     }
 
+    private void loadForgeComponentDefinitions() {
+        ForgeComponentDefinition[] definitions = new Json().fromJson(
+            ForgeComponentDefinition[].class,
+            Gdx.files.internal("data/forge_components.json").readString()
+        );
+        if (definitions == null) {
+            return;
+        }
+        for (ForgeComponentDefinition definition : definitions) {
+            if (definition != null && definition.getId() != null) {
+                forgeComponentDefinitions.put(definition.getId(), definition);
+            }
+        }
+    }
+
+    private void loadForgeRecipes() {
+        ForgeRecipeDefinition[] definitions = new Json().fromJson(
+            ForgeRecipeDefinition[].class,
+            Gdx.files.internal("data/forge_recipes.json").readString()
+        );
+        if (definitions == null) {
+            return;
+        }
+        forgeRecipes.clear();
+        for (ForgeRecipeDefinition definition : definitions) {
+            if (definition != null && definition.getId() != null) {
+                forgeRecipes.add(definition);
+            }
+        }
+    }
+
+    private void loadStoryEvents() {
+        StoryEventDefinition[] definitions = new Json().fromJson(
+            StoryEventDefinition[].class,
+            Gdx.files.internal("data/story_events.json").readString()
+        );
+        storyEvents.clear();
+        if (definitions == null) {
+            return;
+        }
+        for (StoryEventDefinition definition : definitions) {
+            if (definition != null && definition.getId() != null) {
+                storyEvents.add(definition);
+            }
+        }
+    }
+
     private void loadShopDefinitions() {
         ShopDefinition[] definitions = new Json().fromJson(ShopDefinition[].class, Gdx.files.internal("data/shop_inventories.json").readString());
         if (definitions == null) {
@@ -1869,6 +2054,7 @@ public class GameScreen implements Screen {
         if (resetEnemies) {
             spawnEnemies();
         }
+        triggerStoryEvents("ZONE_ENTER", zoneId);
         refreshHud();
         autosave();
     }
@@ -2120,16 +2306,47 @@ public class GameScreen implements Screen {
     }
 
     private void initializeEquipmentCatalog() {
-        addEquipmentToCatalog(new EquipmentItem("bronze_edge", "Bronze Edge", "WEAPON", 0, 6, 0, 0, 0, 80, 1, "G", ""));
-        addEquipmentToCatalog(new EquipmentItem("swift_boots", "Swift Boots", "LEGS", 0, 0, 1, 6, 0, 65, 1, "G", ""));
-        addEquipmentToCatalog(new EquipmentItem("copper_core", "Copper Core", "BODY", 12, 0, 4, 0, 0, 95, 1, "F", ""));
-        addEquipmentToCatalog(new EquipmentItem("tactics_lens", "Tactics Lens", "HEAD", 4, 0, 0, 2, 5, 90, 1, "F", ""));
-        addEquipmentToCatalog(new EquipmentItem("heavy_plating", "Heavy Plating", "BODY", 20, 0, 8, -2, 0, 140, 2, "E", ""));
-        addEquipmentToCatalog(new EquipmentItem("spark_ring", "Spark Ring", "ACCESSORY", 6, 2, 2, 2, 2, 110, 1, "E", ""));
-        addEquipmentToCatalog(new EquipmentItem("mentor_sigil", "Mentor Sigil", "ACCESSORY", 0, 0, 0, 2, 6, 220, 2, "D", "XP_BOOST"));
-        addEquipmentToCatalog(new EquipmentItem("vanguard_frame", "Vanguard Frame", "BODY", 24, 8, 6, 0, 0, 260, 2, "C", "FIRST_STRIKE"));
-        addEquipmentToCatalog(new EquipmentItem("oracle_prism", "Oracle Prism", "HEAD", 8, 0, 0, 4, 12, 320, 3, "B", "ARCANE_SURGE"));
+        addEquipmentToCatalog(createEquipment("bronze_edge", "Bronze Edge", "WEAPON", 0, 6, 0, 0, 0, 80, 1, "G", "", WeaponType.SWORD));
+        addEquipmentToCatalog(createEquipment("swift_boots", "Swift Boots", "LEGS", 0, 0, 1, 6, 0, 65, 1, "G", "", WeaponType.NONE));
+        addEquipmentToCatalog(createEquipment("copper_core", "Copper Core", "BODY", 12, 0, 4, 0, 0, 95, 1, "F", "", WeaponType.NONE));
+        addEquipmentToCatalog(createEquipment("tactics_lens", "Tactics Lens", "HEAD", 4, 0, 0, 2, 5, 90, 1, "F", "", WeaponType.NONE));
+        addEquipmentToCatalog(createEquipment("heavy_plating", "Heavy Plating", "BODY", 20, 0, 8, -2, 0, 140, 2, "E", "", WeaponType.NONE));
+        addEquipmentToCatalog(createEquipment("spark_ring", "Spark Ring", "ACCESSORY", 6, 2, 2, 2, 2, 110, 1, "E", "", WeaponType.NONE));
+        addEquipmentToCatalog(createEquipment("mentor_sigil", "Mentor Sigil", "ACCESSORY", 0, 0, 0, 2, 6, 220, 2, "D", "XP_BOOST", WeaponType.NONE));
+        addEquipmentToCatalog(createEquipment("vanguard_frame", "Vanguard Frame", "BODY", 24, 8, 6, 0, 0, 260, 2, "C", "FIRST_STRIKE", WeaponType.NONE));
+        addEquipmentToCatalog(createEquipment("oracle_prism", "Oracle Prism", "HEAD", 8, 0, 0, 4, 12, 320, 3, "B", "ARCANE_SURGE", WeaponType.NONE));
+        addEquipmentToCatalog(createEquipment("hunter_blade", "Hunter Blade", "WEAPON", 0, 14, 0, 4, 0, 200, 2, "G", "LIFE_TAP", WeaponType.SWORD));
+        addEquipmentToCatalog(createEquipment("storm_carbine", "Storm Carbine", "WEAPON", 0, 16, 0, 5, 2, 260, 2, "F", "OVERDRIVE_LINK", WeaponType.GUN));
+        addEquipmentToCatalog(createEquipment("oracle_staff", "Oracle Staff", "WEAPON", 0, 8, 0, 0, 12, 280, 2, "F", "ARCANE_SURGE", WeaponType.STAFF));
+        addEquipmentToCatalog(createEquipment("reactive_arms", "Reactive Arms", "ARMS", 8, 10, 4, 2, 0, 240, 2, "F", "COUNTER_FIELD", WeaponType.NONE));
+        addEquipmentToCatalog(createEquipment("thruster_legs", "Thruster Legs", "LEGS", 6, 0, 2, 12, 0, 230, 2, "F", "", WeaponType.NONE));
+        addEquipmentToCatalog(createEquipment("bulwark_chassis", "Bulwark Chassis", "BODY", 30, 0, 14, -1, 0, 320, 3, "E", "BARRIER_MATRIX", WeaponType.NONE));
+        addEquipmentToCatalog(createEquipment("oracle_headpiece", "Oracle Headpiece", "HEAD", 10, 0, 2, 3, 14, 310, 3, "E", "AUTO_REPAIR", WeaponType.NONE));
+        addEquipmentToCatalog(createEquipment("drakescale_frame", "Drakescale Frame", "BODY", 36, 8, 12, 3, 4, 420, 3, "D", "COUNTER_FIELD", WeaponType.NONE));
         seedStarterOwnedEquipment();
+    }
+
+    private EquipmentItem createEquipment(String id, String name, String slotType, int hpBonus,
+                                          int attackBonus, int defenseBonus, int speedBonus,
+                                          int intelligenceBonus, long cost, int tier,
+                                          String gradeRequirement, String uniqueBoost,
+                                          WeaponType weaponType) {
+        EquipmentItem item = new EquipmentItem(
+            id,
+            name,
+            slotType,
+            hpBonus,
+            attackBonus,
+            defenseBonus,
+            speedBonus,
+            intelligenceBonus,
+            cost,
+            tier,
+            gradeRequirement,
+            uniqueBoost
+        );
+        item.setWeaponType(weaponType);
+        return item;
     }
 
     private void addEquipmentToCatalog(EquipmentItem item) {
@@ -2219,10 +2436,12 @@ public class GameScreen implements Screen {
 
     private void ensureRobotProgressionStates() {
         for (String robotId : collectedRobotIds) {
-            getOrCreateRobotProgressionState(robotId);
+            RobotProgressionState state = getOrCreateRobotProgressionState(robotId);
+            ensureClassMasteryAbilities(robotId, state);
         }
         for (String robotId : activeRobotIds) {
-            getOrCreateRobotProgressionState(robotId);
+            RobotProgressionState state = getOrCreateRobotProgressionState(robotId);
+            ensureClassMasteryAbilities(robotId, state);
         }
     }
 
@@ -2252,6 +2471,42 @@ public class GameScreen implements Screen {
 
     private boolean isGradeUnlocked(String grade) {
         return gradeIndex(getUnlockedGrade()) >= gradeIndex(grade);
+    }
+
+    /**
+     * Returns the number of robot battle slots currently available based on the
+     * player's unlocked grade.
+     *
+     * <ul>
+     *   <li>G-rank → 1 slot  (index 0 only)</li>
+     *   <li>F-rank → 2 slots (indices 0–1)</li>
+     *   <li>D-rank and above → 3 slots (indices 0–2)</li>
+     * </ul>
+     *
+     * This is the single authority used by battle entry, overworld companion
+     * rendering, and post-battle progression loops.
+     */
+    public int getPartySlotLimit() {
+        int slots = 1;
+        if (getForgeCoreLevel() >= 2 && isGradeUnlocked("F")) {
+            slots = 2;
+        }
+        if (getForgeCoreLevel() >= 3 && isGradeUnlocked("D")) {
+            slots = 3;
+        }
+        return slots;
+    }
+
+    /**
+     * Returns the grade the player must reach to unlock the next party slot,
+     * or {@code null} if all three slots are already unlocked.
+     */
+    public String getPartySlotNextGrade() {
+        if (!isGradeUnlocked("F")) return "F";
+        if (getForgeCoreLevel() < 2) return "Forge Core Lv2";
+        if (!isGradeUnlocked("D")) return "D";
+        if (getForgeCoreLevel() < 3) return "Forge Core Lv3";
+        return null;
     }
 
     private int gradeIndex(String grade) {
@@ -2341,15 +2596,37 @@ public class GameScreen implements Screen {
             return null;
         }
         int beforeLevel = state.getLevel();
-        state.addXp(xpAmount);
-        List<String> unlocked = new ArrayList<>();
-        for (int level = beforeLevel + 1; level <= state.getLevel(); level++) {
-            String unlock = WeaponProficiencyTracker.unlockLabel(level);
-            if (!unlock.isEmpty() && state.unlockMilestone(unlock)) {
-                unlocked.add(unlock);
+        // gainXp handles level-up and auto-unlocks milestones in WeaponProficiencyState;
+        // returns the list of newly-unlocked Combat Art ability IDs.
+        List<String> newArtIds = WeaponProficiencyTracker.gainXp(state, weaponType, xpAmount);
+        List<String> unlockLabels = new ArrayList<>();
+        for (String artId : newArtIds) {
+            AbilityDefinition def = AbilityRegistry.get(artId);
+            String artName = def != null ? def.getName() : artId;
+            int tier = CombatArtRegistry.tierOf(weaponType, artId);
+            String tierStr = tier > 0 ? " (Tier " + tier + ")" : "";
+            unlockLabels.add(artName + tierStr);
+        }
+        return new WeaponGain(weaponType, beforeLevel, state.getLevel(), unlockLabels);
+    }
+
+    public List<String> getUniqueBoostsForPartyIndex(int partyIndex) {
+        List<String> boosts = new ArrayList<>();
+        Map<String, String> equipped = partyIndex < 0 ? playerEquipment : getEquippedItemsForPartyIndex(partyIndex);
+        if (equipped == null) {
+            return boosts;
+        }
+        for (String itemId : equipped.values()) {
+            EquipmentItem item = findEquipmentItem(itemId);
+            if (item == null) {
+                continue;
+            }
+            String uniqueBoost = item.getUniqueBoost();
+            if (!uniqueBoost.isEmpty() && !boosts.contains(uniqueBoost)) {
+                boosts.add(uniqueBoost);
             }
         }
-        return new WeaponGain(weaponType, beforeLevel, state.getLevel(), unlocked);
+        return boosts;
     }
 
     private EquipmentTotals getPlayerEquipmentTotals() {
@@ -2905,6 +3182,15 @@ public class GameScreen implements Screen {
         return gameState.getUnlockedGrade();
     }
 
+    /** Returns the current Forge Core level (1–4). Used to gate robot evolution tiers. */
+    public int getForgeCoreLevel() {
+        return gameState.getForgeCoreLevel();
+    }
+
+    public int getDefeatedBossCount() {
+        return gameState.getDefeatedBossCount();
+    }
+
     public RobotStatBlock getPlayerStats() {
         EquipmentTotals equipmentTotals = getPlayerEquipmentTotals();
         float levelOffset = playerLevel - 1;
@@ -2949,7 +3235,7 @@ public class GameScreen implements Screen {
                 : robotId;
             int level = state != null ? state.getLevel() : 1;
             int tier = state != null ? state.getEvolutionTier() : 1;
-            lines.add(name + " Lv." + level + " Evo " + tier);
+            lines.add(name + " [" + getRobotClassForRobotId(robotId) + "] Lv." + level + " Evo " + tier);
         }
         return lines;
     }
@@ -3115,6 +3401,13 @@ public class GameScreen implements Screen {
         return progressionState != null ? progressionState.getEvolutionTier() : 1;
     }
 
+    public String getRobotClass(int index) {
+        if (!hasActiveRobotAt(index)) {
+            return "-";
+        }
+        return getRobotClassForRobotId(getRobotId(index));
+    }
+
     public List<String> getRobotAbilityProgressionLines(int index) {
         List<String> lines = new ArrayList<>();
         RobotProgressionState progressionState = getRobotProgressionStateForPartyIndex(index);
@@ -3159,7 +3452,7 @@ public class GameScreen implements Screen {
         float levelBonus = Math.max(0f, (robotLevel - 1) * RobotEvolutionManager.levelBonusPerLevel());
         float evolutionMultiplier = RobotEvolutionManager.statMultiplier(evolutionTier);
         float maxHealth = getRobotEffectiveMaxHealth(getRobotId(index), progressionState);
-        return new RobotStatBlock(
+        RobotStatBlock block = new RobotStatBlock(
             robot.health,
             maxHealth,
             (robot.agility + levelBonus) * evolutionMultiplier + equipmentTotals.agilityBonus,
@@ -3167,6 +3460,234 @@ public class GameScreen implements Screen {
             (robot.intelligence + levelBonus) * evolutionMultiplier + equipmentTotals.intelligenceBonus,
             (robot.stamina + levelBonus) * evolutionMultiplier + equipmentTotals.staminaBonus
         );
+        applyRobotClassBonuses(block, getRobotClass(index));
+        block.currentHealth = Math.min(block.maxHealth, block.currentHealth);
+        return block;
+    }
+
+    private void applyRobotClassBonuses(RobotStatBlock block, String robotClass) {
+        if (block == null || robotClass == null) {
+            return;
+        }
+        String[] classes = robotClass.split("/");
+        float weight = classes.length > 1 ? 0.6f : 1f;
+        for (String value : classes) {
+            applySingleClassBonus(block, value.trim(), weight);
+        }
+    }
+
+    private void applySingleClassBonus(RobotStatBlock block, String robotClass, float weight) {
+        switch (robotClass) {
+            case "Vanguard":
+                block.maxHealth *= (1f + (0.08f * weight));
+                block.stamina *= (1f + (0.1f * weight));
+                block.agility *= (1f - (0.03f * weight));
+                break;
+            case "Striker":
+                block.strength *= (1f + (0.1f * weight));
+                block.agility *= (1f + (0.04f * weight));
+                block.stamina *= (1f - (0.05f * weight));
+                break;
+            case "Support":
+                block.maxHealth *= (1f + (0.05f * weight));
+                block.intelligence *= (1f + (0.12f * weight));
+                block.strength *= (1f - (0.05f * weight));
+                break;
+            case "Scout":
+                block.maxHealth *= (1f - (0.06f * weight));
+                block.agility *= (1f + (0.12f * weight));
+                block.strength *= (1f + (0.04f * weight));
+                break;
+            default:
+                break;
+        }
+    }
+
+    private String getRobotClassForRobotId(String robotId) {
+        RobotDefinition definition = robotId != null ? robotDefinitions.get(robotId) : null;
+        Map<String, Integer> scores = new HashMap<>();
+        scores.put("Vanguard", 0);
+        scores.put("Striker", 0);
+        scores.put("Support", 0);
+        scores.put("Scout", 0);
+        applyBaseRoleScore(scores, definition);
+
+        Map<String, String> equipped = robotId != null ? robotEquipment.get(robotId) : null;
+        if (equipped != null) {
+            for (String itemId : equipped.values()) {
+                EquipmentItem item = findEquipmentItem(itemId);
+                if (item == null) {
+                    continue;
+                }
+                scoreEquipmentForClass(scores, item);
+            }
+        }
+
+        String defaultClass = defaultClassForRole(definition);
+        String primaryClass = defaultClass;
+        String secondaryClass = defaultClass;
+        int bestScore = Integer.MIN_VALUE;
+        int secondBestScore = Integer.MIN_VALUE;
+        for (Map.Entry<String, Integer> entry : scores.entrySet()) {
+            int value = entry.getValue();
+            if (value > bestScore || (value == bestScore && entry.getKey().equals(defaultClass))) {
+                secondBestScore = bestScore;
+                secondaryClass = primaryClass;
+                bestScore = value;
+                primaryClass = entry.getKey();
+            } else if (value > secondBestScore || (value == secondBestScore && entry.getKey().equals(defaultClass))) {
+                secondBestScore = value;
+                secondaryClass = entry.getKey();
+            }
+        }
+        if (!primaryClass.equals(secondaryClass) && shouldHybridize(bestScore, secondBestScore)) {
+            return primaryClass + "/" + secondaryClass;
+        }
+        return primaryClass;
+    }
+
+    private boolean shouldHybridize(int bestScore, int secondBestScore) {
+        return secondBestScore >= 4 && (bestScore - secondBestScore) <= 1;
+    }
+
+    private void applyBaseRoleScore(Map<String, Integer> scores, RobotDefinition definition) {
+        if (scores == null || definition == null || definition.getRole() == null) {
+            return;
+        }
+        scores.put(defaultClassForRole(definition), scores.get(defaultClassForRole(definition)) + 2);
+    }
+
+    private String defaultClassForRole(RobotDefinition definition) {
+        if (definition == null || definition.getRole() == null) {
+            return "Striker";
+        }
+        switch (definition.getRole()) {
+            case TANK:
+                return "Vanguard";
+            case SUPPORT:
+                return "Support";
+            case SCOUT:
+                return "Scout";
+            case DPS:
+            default:
+                return "Striker";
+        }
+    }
+
+    private void scoreEquipmentForClass(Map<String, Integer> scores, EquipmentItem item) {
+        if (scores == null || item == null) {
+            return;
+        }
+        switch (item.getSlotType()) {
+            case "BODY":
+                scores.put("Vanguard", scores.get("Vanguard") + 3);
+                break;
+            case "ARMS":
+                scores.put("Striker", scores.get("Striker") + 3);
+                break;
+            case "HEAD":
+                scores.put("Support", scores.get("Support") + 3);
+                break;
+            case "LEGS":
+                scores.put("Scout", scores.get("Scout") + 3);
+                break;
+            default:
+                break;
+        }
+
+        switch (item.getWeaponType()) {
+            case STAFF:
+                scores.put("Support", scores.get("Support") + 2);
+                break;
+            case GUN:
+            case BOW:
+            case DUAL_BLADE:
+                scores.put("Scout", scores.get("Scout") + 2);
+                break;
+            case SWORD:
+            case AXE:
+            case LANCE:
+            case FIST:
+                scores.put("Striker", scores.get("Striker") + 2);
+                break;
+            default:
+                break;
+        }
+
+        if (item.getHpBonus() >= 20 || item.getDefenseBonus() >= 10) {
+            scores.put("Vanguard", scores.get("Vanguard") + 1);
+        }
+        if (item.getAttackBonus() >= 8) {
+            scores.put("Striker", scores.get("Striker") + 1);
+        }
+        if (item.getIntelligenceBonus() >= 8) {
+            scores.put("Support", scores.get("Support") + 1);
+        }
+        if (item.getSpeedBonus() >= 8) {
+            scores.put("Scout", scores.get("Scout") + 1);
+        }
+
+        switch (item.getUniqueBoost()) {
+            case "BARRIER_MATRIX":
+                scores.put("Vanguard", scores.get("Vanguard") + 3);
+                break;
+            case "COUNTER_FIELD":
+                scores.put("Vanguard", scores.get("Vanguard") + 2);
+                scores.put("Striker", scores.get("Striker") + 1);
+                break;
+            case "LIFE_TAP":
+            case "OVERDRIVE_LINK":
+                scores.put("Striker", scores.get("Striker") + 3);
+                break;
+            case "AUTO_REPAIR":
+                scores.put("Support", scores.get("Support") + 3);
+                break;
+            case "ARCANE_SURGE":
+            case "XP_BOOST":
+                scores.put("Support", scores.get("Support") + 2);
+                break;
+            case "FIRST_STRIKE":
+                scores.put("Scout", scores.get("Scout") + 2);
+                break;
+            default:
+                break;
+        }
+    }
+
+    private void ensureClassMasteryAbilities(String robotId, RobotProgressionState state) {
+        if (robotId == null || robotId.isEmpty() || state == null) {
+            return;
+        }
+        String[] classes = getRobotClassForRobotId(robotId).split("/");
+        for (String robotClass : classes) {
+            grantClassAbility(state, robotClass.trim());
+        }
+    }
+
+    private void grantClassAbility(RobotProgressionState state, String robotClass) {
+        String abilityId = classAbilityId(robotClass);
+        if (abilityId.isEmpty()) {
+            return;
+        }
+        if (!state.getKnownAbilityIds().contains(abilityId)) {
+            state.getKnownAbilityIds().add(abilityId);
+        }
+        state.getOrCreateAbilityProgression(abilityId);
+    }
+
+    private String classAbilityId(String robotClass) {
+        switch (robotClass) {
+            case "Vanguard":
+                return "shield_wall";
+            case "Striker":
+                return "power_strike";
+            case "Support":
+                return "repair_aura";
+            case "Scout":
+                return "dash";
+            default:
+                return "";
+        }
     }
 
     public List<EquipmentItem> getEquipmentCatalog() {
@@ -3188,6 +3709,240 @@ public class GameScreen implements Screen {
         ownedEquipmentIds.clear();
         ownedEquipmentIds.addAll(gameState.getOwnedEquipmentIds());
         return unlocked;
+    }
+
+    public List<ForgeRecipeDefinition> getForgeRecipes() {
+        return new ArrayList<>(forgeRecipes);
+    }
+
+    public Map<String, Integer> getForgeComponentInventory() {
+        return gameState.getForgeComponents();
+    }
+
+    public Map<String, Integer> getShardInventory() {
+        return gameState.getShardInventory();
+    }
+
+    public int getShardCount(String grade) {
+        return gameState.getShardCount(grade);
+    }
+
+    public int getForgeComponentCount(String componentId) {
+        return gameState.getForgeComponentCount(componentId);
+    }
+
+    public String getForgeComponentName(String componentId) {
+        ForgeComponentDefinition definition = forgeComponentDefinitions.get(componentId);
+        return definition != null ? definition.getName() : componentId;
+    }
+
+    public String getForgeComponentDescription(String componentId) {
+        ForgeComponentDefinition definition = forgeComponentDefinitions.get(componentId);
+        return definition != null ? definition.getDescription() : "";
+    }
+
+    public List<String> getForgeInventoryLines() {
+        List<String> lines = new ArrayList<>();
+        for (ForgeComponentDefinition definition : forgeComponentDefinitions.values()) {
+            int count = getForgeComponentCount(definition.getId());
+            if (count > 0) {
+                lines.add(definition.getName() + " x" + count + " [" + definition.getRarity() + "] (Sell "
+                    + getForgeComponentSellValue(definition.getId()) + "g)");
+            }
+        }
+        if (lines.isEmpty()) {
+            lines.add("No forge components collected yet.");
+        }
+        return lines;
+    }
+
+    public List<String> getForgeSellableComponentIds() {
+        List<String> ids = new ArrayList<>();
+        for (ForgeComponentDefinition definition : forgeComponentDefinitions.values()) {
+            if (getForgeComponentCount(definition.getId()) > 0) {
+                ids.add(definition.getId());
+            }
+        }
+        return ids;
+    }
+
+    public List<String> getShardInventoryLines() {
+        List<String> lines = new ArrayList<>();
+        String[] grades = {"S", "A", "B", "C", "D", "E", "F", "G"};
+        for (String grade : grades) {
+            int count = getShardCount(grade);
+            if (count > 0) {
+                lines.add(grade + "-Grade Shard x" + count + " (Sell " + getShardSellValue(grade) + "g)");
+            }
+        }
+        if (lines.isEmpty()) {
+            lines.add("No graded shards recovered yet.");
+        }
+        return lines;
+    }
+
+    public boolean canForgeRecipe(ForgeRecipeDefinition recipe) {
+        if (recipe == null || recipe.getResultEquipmentId() == null) {
+            return false;
+        }
+        if (findEquipmentItem(recipe.getResultEquipmentId()) == null) {
+            return false;
+        }
+        if (gameState.getOwnedEquipmentIds().contains(recipe.getResultEquipmentId())) {
+            return false;
+        }
+        if (gameState.getTotalGold() < recipe.getGoldCost()) {
+            return false;
+        }
+        if (getShardCount(recipe.getShardGrade()) < recipe.getShardCost()) {
+            return false;
+        }
+        for (ForgeIngredientDefinition ingredient : recipe.getIngredients()) {
+            if (ingredient == null || getForgeComponentCount(ingredient.getComponentId()) < ingredient.getQuantity()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public String buildForgeRequirementLine(ForgeRecipeDefinition recipe) {
+        if (recipe == null) {
+            return "";
+        }
+        StringBuilder builder = new StringBuilder();
+        builder.append("Gold ").append(recipe.getGoldCost());
+        builder.append("  ");
+        builder.append(recipe.getShardGrade()).append("-Shard ");
+        builder.append(getShardCount(recipe.getShardGrade())).append("/").append(recipe.getShardCost());
+        for (ForgeIngredientDefinition ingredient : recipe.getIngredients()) {
+            if (ingredient == null) {
+                continue;
+            }
+            builder.append("  ");
+            builder.append(getForgeComponentName(ingredient.getComponentId()));
+            builder.append(" ");
+            builder.append(getForgeComponentCount(ingredient.getComponentId()));
+            builder.append("/");
+            builder.append(ingredient.getQuantity());
+        }
+        return builder.toString();
+    }
+
+    public String forgeRecipe(int recipeIndex) {
+        if (recipeIndex < 0 || recipeIndex >= forgeRecipes.size()) {
+            return "That forge pattern is unavailable.";
+        }
+        ForgeRecipeDefinition recipe = forgeRecipes.get(recipeIndex);
+        EquipmentItem result = findEquipmentItem(recipe.getResultEquipmentId());
+        if (result == null) {
+            return "The forge pattern is incomplete.";
+        }
+        if (gameState.getOwnedEquipmentIds().contains(result.getId())) {
+            return result.getName() + " has already been forged.";
+        }
+        if (gameState.getTotalGold() < recipe.getGoldCost()) {
+            return "Not enough gold for " + recipe.getName() + ".";
+        }
+        if (getShardCount(recipe.getShardGrade()) < recipe.getShardCost()) {
+            return "Missing " + recipe.getShardGrade() + "-Grade shards for " + recipe.getName() + ".";
+        }
+        Map<String, Integer> costs = buildForgeCostMap(recipe);
+        if (!gameState.consumeForgeComponents(costs)) {
+            return "Missing components for " + recipe.getName() + ".";
+        }
+        if (!gameState.consumeShards(recipe.getShardGrade(), recipe.getShardCost())) {
+            for (Map.Entry<String, Integer> entry : costs.entrySet()) {
+                gameState.addForgeComponent(entry.getKey(), entry.getValue());
+            }
+            return "Missing " + recipe.getShardGrade() + "-Grade shards for " + recipe.getName() + ".";
+        }
+        if (!spendGold(recipe.getGoldCost())) {
+            for (Map.Entry<String, Integer> entry : costs.entrySet()) {
+                gameState.addForgeComponent(entry.getKey(), entry.getValue());
+            }
+            gameState.addShard(recipe.getShardGrade(), recipe.getShardCost());
+            return "Not enough gold for " + recipe.getName() + ".";
+        }
+        unlockEquipment(result.getId());
+        return "Forged " + result.getName() + ".";
+    }
+
+    public long getShardSellValue(String grade) {
+        switch (grade) {
+            case "S":
+                return 300L;
+            case "A":
+                return 180L;
+            case "B":
+                return 110L;
+            case "C":
+                return 70L;
+            case "D":
+                return 45L;
+            case "E":
+                return 28L;
+            case "F":
+                return 18L;
+            case "G":
+            default:
+                return 10L;
+        }
+    }
+
+    public long getForgeComponentSellValue(String componentId) {
+        ForgeComponentDefinition definition = forgeComponentDefinitions.get(componentId);
+        String rarity = definition != null ? definition.getRarity() : "COMMON";
+        switch (rarity) {
+            case "EPIC":
+                return 120L;
+            case "RARE":
+                return 70L;
+            case "UNCOMMON":
+                return 35L;
+            case "COMMON":
+            default:
+                return 18L;
+        }
+    }
+
+    public String sellShard(String grade) {
+        if (grade == null || grade.isEmpty()) {
+            return "That shard cannot be sold.";
+        }
+        if (!gameState.consumeShards(grade, 1)) {
+            return "No " + grade + "-Grade shards available.";
+        }
+        addGold(getShardSellValue(grade));
+        return "Sold 1 " + grade + "-Grade shard.";
+    }
+
+    public String sellForgeComponent(String componentId) {
+        if (componentId == null || componentId.isEmpty()) {
+            return "That component cannot be sold.";
+        }
+        if (getForgeComponentCount(componentId) <= 0) {
+            return "No " + getForgeComponentName(componentId) + " available.";
+        }
+        gameState.addForgeComponent(componentId, -1);
+        addGold(getForgeComponentSellValue(componentId));
+        return "Sold 1 " + getForgeComponentName(componentId) + ".";
+    }
+
+    private Map<String, Integer> buildForgeCostMap(ForgeRecipeDefinition recipe) {
+        Map<String, Integer> costs = new HashMap<>();
+        if (recipe == null) {
+            return costs;
+        }
+        for (ForgeIngredientDefinition ingredient : recipe.getIngredients()) {
+            if (ingredient == null || ingredient.getComponentId() == null || ingredient.getComponentId().isEmpty()) {
+                continue;
+            }
+            costs.put(
+                ingredient.getComponentId(),
+                costs.getOrDefault(ingredient.getComponentId(), 0) + ingredient.getQuantity()
+            );
+        }
+        return costs;
     }
 
     public List<EquipmentItem> getSellableEquipment() {
@@ -3249,6 +4004,7 @@ public class GameScreen implements Screen {
             return false;
         }
         robotEquipment = copyRobotEquipment(gameState.getRobotEquipment());
+        ensureClassMasteryAbilities(robotId, getRobotProgressionStateForPartyIndex(index));
         robots[index].health = Math.min(getRobotStats(index).maxHealth, robots[index].health);
         refreshHud();
         return true;
@@ -3360,6 +4116,136 @@ public class GameScreen implements Screen {
 
     public Map<String, Integer> getBestiaryScanLevels() {
         return gameState.getBestiaryScanLevels();
+    }
+
+    public Map<String, Integer> rollForgeDropsForEnemy(String monsterId, String rank) {
+        Map<String, Integer> drops = new HashMap<>();
+        MonsterDefinition monster = monsterDefinitions.get(monsterId);
+        if (monster == null) {
+            return drops;
+        }
+
+        List<ForgeComponentDefinition> eligible = new ArrayList<>();
+        List<String> tags = new ArrayList<>();
+        tags.add(monsterId);
+        for (String lootTableId : monster.getLootTableIds()) {
+            if (lootTableId != null && !lootTableId.isEmpty()) {
+                tags.add(lootTableId);
+            }
+        }
+
+        for (ForgeComponentDefinition definition : forgeComponentDefinitions.values()) {
+            for (String dropTag : definition.getDropTags()) {
+                if (tags.contains(dropTag)) {
+                    eligible.add(definition);
+                    break;
+                }
+            }
+        }
+        if (eligible.isEmpty()) {
+            return drops;
+        }
+        if (Math.random() > getForgeDropChance(rank)) {
+            return drops;
+        }
+
+        ForgeComponentDefinition primary = eligible.get((int) (Math.random() * eligible.size()));
+        drops.put(primary.getId(), getForgeDropQuantity(rank));
+        if (eligible.size() > 1 && isHighRankForgeDrop(rank) && Math.random() < 0.35f) {
+            ForgeComponentDefinition secondary = eligible.get((int) (Math.random() * eligible.size()));
+            if (!secondary.getId().equals(primary.getId())) {
+                drops.put(secondary.getId(), 1);
+            }
+        }
+        return drops;
+    }
+
+    public String[] resolveForgeDropNames(Map<String, Integer> drops) {
+        List<String> names = new ArrayList<>();
+        if (drops == null) {
+            return new String[0];
+        }
+        for (Map.Entry<String, Integer> entry : drops.entrySet()) {
+            names.add(getForgeComponentName(entry.getKey()) + " x" + entry.getValue());
+        }
+        return names.toArray(new String[0]);
+    }
+
+    public String[] resolveShardDropNames(Map<String, Integer> drops) {
+        List<String> names = new ArrayList<>();
+        if (drops == null) {
+            return new String[0];
+        }
+        String[] grades = {"S", "A", "B", "C", "D", "E", "F", "G"};
+        for (String grade : grades) {
+            int count = drops.getOrDefault(grade, 0);
+            if (count > 0) {
+                names.add(grade + "-Grade Shard x" + count);
+            }
+        }
+        return names.toArray(new String[0]);
+    }
+
+    private float getForgeDropChance(String rank) {
+        switch (rank) {
+            case "B":
+            case "A":
+            case "S":
+                return 0.95f;
+            case "C":
+            case "D":
+                return 0.8f;
+            default:
+                return 0.65f;
+        }
+    }
+
+    private int getForgeDropQuantity(String rank) {
+        switch (rank) {
+            case "B":
+            case "A":
+            case "S":
+                return Math.random() < 0.5f ? 2 : 1;
+            case "C":
+            case "D":
+                return Math.random() < 0.25f ? 2 : 1;
+            default:
+                return 1;
+        }
+    }
+
+    private boolean isHighRankForgeDrop(String rank) {
+        return "C".equals(rank) || "B".equals(rank) || "A".equals(rank) || "S".equals(rank);
+    }
+
+    private boolean isBossMonster(String monsterId) {
+        MonsterDefinition definition = monsterId != null ? monsterDefinitions.get(monsterId) : null;
+        return definition != null && "BOSS".equals(definition.getAiProfile());
+    }
+
+    private boolean updateForgeCoreMilestones() {
+        int defeatedBosses = gameState.getDefeatedBossCount();
+        int targetLevel = 1;
+        if (defeatedBosses >= 15) {
+            targetLevel = 4;
+        } else if (defeatedBosses >= 10) {
+            targetLevel = 3;
+        } else if (defeatedBosses >= 5) {
+            targetLevel = 2;
+        }
+        if (targetLevel <= gameState.getForgeCoreLevel()) {
+            return false;
+        }
+        gameState.setForgeCoreLevel(targetLevel);
+        activeSpeaker = "Forge Core";
+        if (targetLevel == 2) {
+            activeDialog = "Five boss systems have fallen. Forge Core Lv2 is online. Tier-II evolutions and a second party slot are now unlocked.";
+        } else if (targetLevel == 3) {
+            activeDialog = "Ten boss systems have fallen. Forge Core Lv3 surges to life. Tier-III evolutions and a third party slot are now unlocked.";
+        } else {
+            activeDialog = "Fifteen boss systems have fallen. Forge Core Lv4 reaches full resonance. Ironhaven's highest forge functions are now available.";
+        }
+        return true;
     }
 
     public void autosave() {
@@ -3511,9 +4397,10 @@ public class GameScreen implements Screen {
         float height;
         List<InteriorNpc> interiorNpcs;
         List<Chest> chests;
+        List<InteriorFeature> interiorFeatures;
 
         House(int id, String name, float x, float y, float width, float height,
-              List<InteriorNpc> interiorNpcs, List<Chest> chests) {
+              List<InteriorNpc> interiorNpcs, List<Chest> chests, List<InteriorFeature> interiorFeatures) {
             this.id = id;
             this.name = name;
             this.x = x;
@@ -3522,6 +4409,7 @@ public class GameScreen implements Screen {
             this.height = height;
             this.interiorNpcs = interiorNpcs;
             this.chests = chests;
+            this.interiorFeatures = interiorFeatures;
         }
 
         Vector2 getDoorCenter() {
@@ -3547,10 +4435,15 @@ public class GameScreen implements Screen {
         static House createWorkshop(int id, String name, float x, float y, float width, float height) {
             List<InteriorNpc> npcs = new ArrayList<>();
             npcs.add(new InteriorNpc("toma", "Toma", new Vector2(220f, 250f),
-                "If you find old parts in the wild, bring them here and I can rebuild them.", "workshop"));
+                "If you find old parts in the wild, bring them here and I can rebuild them."));
+            npcs.add(new InteriorNpc("rooke", "Rooke", new Vector2(138f, 204f),
+                "Fresh plates, tuned edges, replacement seals. If the workshop stocks it, I can sell it.", "workshop"));
             List<Chest> chests = new ArrayList<>();
             chests.add(new Chest("workshop_cache", new Vector2(120f, 128f), 30, 0, true));
-            return new House(id, name, x, y, width, height, npcs, chests);
+            List<InteriorFeature> features = new ArrayList<>();
+            features.add(new InteriorFeature("forge_station", "Forge", new Vector2(306f, 214f), "forge",
+                "The anvil glows with recycled heat. Toma's forge is ready."));
+            return new House(id, name, x, y, width, height, npcs, chests, features);
         }
 
         static House createLodge(int id, String name, float x, float y, float width, float height) {
@@ -3561,7 +4454,7 @@ public class GameScreen implements Screen {
                 "Rest when you can. Even machines need a rhythm."));
             List<Chest> chests = new ArrayList<>();
             chests.add(new Chest("lodge_stash", new Vector2(300f, 122f), 15, 1, false));
-            return new House(id, name, x, y, width, height, npcs, chests);
+            return new House(id, name, x, y, width, height, npcs, chests, new ArrayList<>());
         }
 
         static House createHerbalist(int id, String name, float x, float y, float width, float height) {
@@ -3571,7 +4464,7 @@ public class GameScreen implements Screen {
             List<Chest> chests = new ArrayList<>();
             chests.add(new Chest("herbalist_hidden", new Vector2(92f, 238f), 10, 2, true));
             chests.add(new Chest("herbalist_supplies", new Vector2(310f, 136f), 0, 1, false));
-            return new House(id, name, x, y, width, height, npcs, chests);
+            return new House(id, name, x, y, width, height, npcs, chests, new ArrayList<>());
         }
     }
 
@@ -3609,6 +4502,22 @@ public class GameScreen implements Screen {
             this.pos = pos;
             this.dialog = dialog;
             this.shopId = shopId;
+        }
+    }
+
+    static class InteriorFeature {
+        String id;
+        String label;
+        Vector2 pos;
+        String actionType;
+        String dialog;
+
+        InteriorFeature(String id, String label, Vector2 pos, String actionType, String dialog) {
+            this.id = id;
+            this.label = label;
+            this.pos = pos;
+            this.actionType = actionType;
+            this.dialog = dialog;
         }
     }
 

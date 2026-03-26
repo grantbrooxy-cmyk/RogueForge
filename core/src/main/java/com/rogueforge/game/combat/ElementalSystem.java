@@ -14,6 +14,15 @@ public final class ElementalSystem {
         if (target.getAbsorbs().contains(element)) {
             return -1f;
         }
+        if (target.hasElementalBreak(element)) {
+            if (target.getWeaknesses().contains(element)) {
+                return 1.5f;
+            }
+            if (target.getResistances().contains(element)) {
+                return 1f;
+            }
+            return 1.5f;
+        }
         if (target.getWeaknesses().contains(element)) {
             return 1.5f;
         }

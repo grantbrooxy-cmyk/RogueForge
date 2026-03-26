@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AbilityDefinition.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core</a> &gt; <a href="index.source.html" class="el_package">com.rogueforge.game.combat</a> &gt; <span class="el_source">AbilityDefinition.java</span></div><h1>AbilityDefinition.java</h1><pre class="source lang-java linenums">package com.rogueforge.game.combat;
+
+/**
+ * Represents the definition of an ability - its properties, cooldown, effects, and targets.
+ * This is the static definition; AbilityInstance tracks runtime state (cooldown).
+ */
+public class AbilityDefinition {
+
+    /**
+     * Type of ability effect
+     */
+<span class="fc" id="L12">    public enum AbilityType {</span>
+<span class="fc" id="L13">        DAMAGE,</span>
+<span class="fc" id="L14">        HEAL,</span>
+<span class="fc" id="L15">        BUFF,</span>
+<span class="fc" id="L16">        DEBUFF,</span>
+<span class="fc" id="L17">        UTILITY</span>
+    }
+
+    /**
+     * Who the ability targets
+     */
+<span class="fc" id="L23">    public enum TargetType {</span>
+<span class="fc" id="L24">        SELF,</span>
+<span class="fc" id="L25">        SINGLE_ENEMY,</span>
+<span class="fc" id="L26">        ALL_ENEMIES,</span>
+<span class="fc" id="L27">        SINGLE_ALLY,</span>
+<span class="fc" id="L28">        ALL_ALLIES</span>
+    }
+
+    private String id;
+    private String name;
+    private AbilityType type;
+    private TargetType targetType;
+    private float cooldown;           // in seconds
+    private float power;              // strength of effect (damage, healing, buff amount)
+    private float duration;           // for buffs/debuffs, 0 for instant
+    private String description;
+<span class="fc" id="L39">    private Element element = Element.NONE;</span>
+<span class="fc" id="L40">    private int speedCost = 80;</span>
+    private StatusEffectType appliedStatus;
+    private int statusTurns;
+<span class="fc" id="L43">    private WeaponType weaponType = WeaponType.NONE;</span>
+    private String masteryUpgradeId;
+    private String uniqueSkillId;
+
+    /**
+     * Some unique skills (Omniscience Eye, Gravity Well, Genesis Field) apply
+     * two statuses at once. secondaryStatus is applied alongside appliedStatus.
+     * secondaryStatusTurns defaults to statusTurns when not set.
+     * secondaryTargetType overrides the ability's own targetType for the
+     * secondary effect only (e.g. Gravity Well slows ALL_ENEMIES but applies
+     * Protect to SELF).
+     */
+    private StatusEffectType secondaryStatus;
+    private int secondaryStatusTurns;
+    private TargetType secondaryTargetType;
+
+    /**
+     * No-arg constructor for JSON serialization
+     */
+<span class="fc" id="L62">    public AbilityDefinition() {</span>
+<span class="fc" id="L63">    }</span>
+
+    /**
+     * Full constructor
+     */
+    public AbilityDefinition(String id, String name, AbilityType type, TargetType targetType,
+<span class="fc" id="L69">                           float cooldown, float power, float duration, String description) {</span>
+<span class="fc" id="L70">        this.id = id;</span>
+<span class="fc" id="L71">        this.name = name;</span>
+<span class="fc" id="L72">        this.type = type;</span>
+<span class="fc" id="L73">        this.targetType = targetType;</span>
+<span class="fc" id="L74">        this.cooldown = cooldown;</span>
+<span class="fc" id="L75">        this.power = power;</span>
+<span class="fc" id="L76">        this.duration = duration;</span>
+<span class="fc" id="L77">        this.description = description;</span>
+<span class="fc" id="L78">    }</span>
+
+    // Getters
+    public String getId() {
+<span class="fc" id="L82">        return id;</span>
+    }
+
+    public String getName() {
+<span class="fc" id="L86">        return name;</span>
+    }
+
+    public AbilityType getType() {
+<span class="nc" id="L90">        return type;</span>
+    }
+
+    public TargetType getTargetType() {
+<span class="nc" id="L94">        return targetType;</span>
+    }
+
+    public float getCooldown() {
+<span class="fc" id="L98">        return cooldown;</span>
+    }
+
+    public float getPower() {
+<span class="fc" id="L102">        return power;</span>
+    }
+
+    public float getDuration() {
+<span class="nc" id="L106">        return duration;</span>
+    }
+
+    public String getDescription() {
+<span class="nc" id="L110">        return description;</span>
+    }
+
+    public Element getElement() {
+<span class="fc bfc" id="L114" title="All 2 branches covered.">        return element != null ? element : Element.NONE;</span>
+    }
+
+    public int getSpeedCost() {
+<span class="pc bpc" id="L118" title="1 of 2 branches missed.">        return speedCost &gt; 0 ? speedCost : 80;</span>
+    }
+
+    public StatusEffectType getAppliedStatus() {
+<span class="nc" id="L122">        return appliedStatus;</span>
+    }
+
+    public int getStatusTurns() {
+<span class="nc" id="L126">        return statusTurns;</span>
+    }
+
+    public WeaponType getWeaponType() {
+<span class="fc bfc" id="L130" title="All 2 branches covered.">        return weaponType != null ? weaponType : WeaponType.NONE;</span>
+    }
+
+    public String getMasteryUpgradeId() {
+<span class="fc bfc" id="L134" title="All 2 branches covered.">        return masteryUpgradeId != null ? masteryUpgradeId : &quot;&quot;;</span>
+    }
+
+    public String getUniqueSkillId() {
+<span class="fc bfc" id="L138" title="All 2 branches covered.">        return uniqueSkillId != null ? uniqueSkillId : &quot;&quot;;</span>
+    }
+
+    public StatusEffectType getSecondaryStatus() {
+<span class="nc" id="L142">        return secondaryStatus;</span>
+    }
+
+    /** Returns the secondary status duration, falling back to statusTurns if not explicitly set. */
+    public int getSecondaryStatusTurns() {
+<span class="pc bpc" id="L147" title="1 of 2 branches missed.">        return secondaryStatusTurns &gt; 0 ? secondaryStatusTurns : statusTurns;</span>
+    }
+
+    /**
+     * Returns the target type to use when applying the secondary status.
+     * Null means &quot;use the same target(s) as the primary effect&quot;.
+     */
+    public TargetType getSecondaryTargetType() {
+<span class="nc" id="L155">        return secondaryTargetType;</span>
+    }
+
+    // Setters (for JSON deserialization)
+    public void setId(String id) {
+<span class="fc" id="L160">        this.id = id;</span>
+<span class="fc" id="L161">    }</span>
+
+    public void setName(String name) {
+<span class="fc" id="L164">        this.name = name;</span>
+<span class="fc" id="L165">    }</span>
+
+    public void setType(AbilityType type) {
+<span class="nc" id="L168">        this.type = type;</span>
+<span class="nc" id="L169">    }</span>
+
+    public void setTargetType(TargetType targetType) {
+<span class="nc" id="L172">        this.targetType = targetType;</span>
+<span class="nc" id="L173">    }</span>
+
+    public void setCooldown(float cooldown) {
+<span class="nc" id="L176">        this.cooldown = cooldown;</span>
+<span class="nc" id="L177">    }</span>
+
+    public void setPower(float power) {
+<span class="nc" id="L180">        this.power = power;</span>
+<span class="nc" id="L181">    }</span>
+
+    public void setDuration(float duration) {
+<span class="nc" id="L184">        this.duration = duration;</span>
+<span class="nc" id="L185">    }</span>
+
+    public void setDescription(String description) {
+<span class="nc" id="L188">        this.description = description;</span>
+<span class="nc" id="L189">    }</span>
+
+    public void setElement(Element element) {
+<span class="fc" id="L192">        this.element = element;</span>
+<span class="fc" id="L193">    }</span>
+
+    public void setSpeedCost(int speedCost) {
+<span class="fc" id="L196">        this.speedCost = speedCost;</span>
+<span class="fc" id="L197">    }</span>
+
+    public void setAppliedStatus(StatusEffectType appliedStatus) {
+<span class="nc" id="L200">        this.appliedStatus = appliedStatus;</span>
+<span class="nc" id="L201">    }</span>
+
+    public void setStatusTurns(int statusTurns) {
+<span class="fc" id="L204">        this.statusTurns = statusTurns;</span>
+<span class="fc" id="L205">    }</span>
+
+    public void setWeaponType(WeaponType weaponType) {
+<span class="fc" id="L208">        this.weaponType = weaponType;</span>
+<span class="fc" id="L209">    }</span>
+
+    public void setMasteryUpgradeId(String masteryUpgradeId) {
+<span class="fc" id="L212">        this.masteryUpgradeId = masteryUpgradeId;</span>
+<span class="fc" id="L213">    }</span>
+
+    public void setUniqueSkillId(String uniqueSkillId) {
+<span class="fc" id="L216">        this.uniqueSkillId = uniqueSkillId;</span>
+<span class="fc" id="L217">    }</span>
+
+    public void setSecondaryStatus(StatusEffectType secondaryStatus) {
+<span class="nc" id="L220">        this.secondaryStatus = secondaryStatus;</span>
+<span class="nc" id="L221">    }</span>
+
+    public void setSecondaryStatusTurns(int secondaryStatusTurns) {
+<span class="nc" id="L224">        this.secondaryStatusTurns = secondaryStatusTurns;</span>
+<span class="nc" id="L225">    }</span>
+
+    public void setSecondaryTargetType(TargetType secondaryTargetType) {
+<span class="nc" id="L228">        this.secondaryTargetType = secondaryTargetType;</span>
+<span class="nc" id="L229">    }</span>
+
+    @Override
+    public String toString() {
+<span class="nc" id="L233">        return &quot;AbilityDefinition{&quot; +</span>
+                &quot;id='&quot; + id + '\'' +
+                &quot;, name='&quot; + name + '\'' +
+                &quot;, type=&quot; + type +
+                &quot;, targetType=&quot; + targetType +
+                &quot;, cooldown=&quot; + cooldown +
+                &quot;, power=&quot; + power +
+                &quot;, duration=&quot; + duration +
+                &quot;, element=&quot; + element +
+                &quot;, speedCost=&quot; + speedCost +
+                &quot;, weaponType=&quot; + weaponType +
+                &quot;, description='&quot; + description + '\'' +
+                '}';
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

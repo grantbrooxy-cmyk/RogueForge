@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RankBadge.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core</a> &gt; <a href="index.source.html" class="el_package">com.rogueforge.game.ui</a> &gt; <span class="el_source">RankBadge.java</span></div><h1>RankBadge.java</h1><pre class="source lang-java linenums">package com.rogueforge.game.ui;
+
+import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.scenes.scene2d.ui.Label;
+import com.badlogic.gdx.scenes.scene2d.ui.Table;
+import com.badlogic.gdx.utils.Align;
+
+/**
+ * Scene2D widget displaying a rank badge.
+ * Shows rank text with a colored background matching the rank color scheme.
+ */
+public class RankBadge extends Table {
+
+    private String rank;
+    private Label rankLabel;
+
+    /**
+     * Constructs a new RankBadge.
+     */
+    public RankBadge() {
+<span class="nc" id="L21">        super();</span>
+<span class="nc" id="L22">        initializeUI();</span>
+<span class="nc" id="L23">    }</span>
+
+    /**
+     * Constructs a new RankBadge with an initial rank.
+     *
+     * @param initialRank the rank to display (e.g., &quot;S&quot;, &quot;A&quot;, &quot;G&quot;)
+     */
+    public RankBadge(String initialRank) {
+<span class="nc" id="L31">        super();</span>
+<span class="nc" id="L32">        initializeUI();</span>
+<span class="nc" id="L33">        setRank(initialRank);</span>
+<span class="nc" id="L34">    }</span>
+
+    /**
+     * Initializes the UI components.
+     */
+    private void initializeUI() {
+        // Set up badge styling - compact table
+<span class="nc" id="L41">        this.pad(4);</span>
+<span class="nc" id="L42">        this.defaults().expandX().fillX();</span>
+
+        // Create label with default rank text
+<span class="nc" id="L45">        rankLabel = new Label(&quot;?&quot;, new Label.LabelStyle(</span>
+            null, // Font will be set by skin
+            UITheme.TEXT
+        ));
+<span class="nc" id="L49">        rankLabel.setAlignment(Align.center);</span>
+
+        // Add label to table
+<span class="nc" id="L52">        this.add(rankLabel).width(24).height(24);</span>
+
+        // Set initial background
+<span class="nc" id="L55">        updateBackground();</span>
+<span class="nc" id="L56">    }</span>
+
+    /**
+     * Sets the rank to display and updates styling.
+     *
+     * @param rank the rank string (e.g., &quot;G&quot;, &quot;F&quot;, &quot;E&quot;, &quot;D&quot;, &quot;C&quot;, &quot;A&quot;, &quot;S&quot;, &quot;S+&quot;, &quot;S++&quot;, &quot;S+++&quot;)
+     */
+    public void setRank(String rank) {
+<span class="nc bnc" id="L64" title="All 2 branches missed.">        this.rank = rank != null ? rank : &quot;?&quot;;</span>
+<span class="nc" id="L65">        rankLabel.setText(this.rank);</span>
+<span class="nc" id="L66">        updateBackground();</span>
+<span class="nc" id="L67">    }</span>
+
+    /**
+     * Updates the background color based on the current rank.
+     */
+    private void updateBackground() {
+<span class="nc" id="L73">        Color rankColor = UITheme.getColorForRank(rank);</span>
+        // Darken the color slightly for better contrast with white text
+<span class="nc" id="L75">        Color bgColor = UITheme.darken(rankColor, 0.3f);</span>
+
+        // In a real implementation, you would set a background drawable
+        // with the appropriate color. For now, this is a placeholder.
+        // this.background(new Image(new Texture(...)));
+<span class="nc" id="L80">    }</span>
+
+    /**
+     * Gets the current rank displayed.
+     *
+     * @return the rank string
+     */
+    public String getRank() {
+<span class="nc" id="L88">        return rank;</span>
+    }
+
+    /**
+     * Gets the label widget for direct manipulation if needed.
+     *
+     * @return the Label displaying the rank
+     */
+    public Label getRankLabel() {
+<span class="nc" id="L97">        return rankLabel;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

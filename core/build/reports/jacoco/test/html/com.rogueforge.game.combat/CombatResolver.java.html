@@ -1,0 +1,267 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CombatResolver.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core</a> &gt; <a href="index.source.html" class="el_package">com.rogueforge.game.combat</a> &gt; <span class="el_source">CombatResolver.java</span></div><h1>CombatResolver.java</h1><pre class="source lang-java linenums">package com.rogueforge.game.combat;
+
+import com.rogueforge.game.core.EventBus;
+import com.rogueforge.game.event.DamageDealtEvent;
+import com.rogueforge.game.event.EntityKilledEvent;
+
+import java.util.List;
+
+/**
+ * Processes hit events, applies damage calculations, and manages combat outcomes.
+ */
+public class CombatResolver {
+    private static final float MIN_DAMAGE = 1.0f;
+    private static final float DEFENSE_REDUCTION_FACTOR = 0.5f;
+
+    private EventBus eventBus;
+
+<span class="fc" id="L18">    public CombatResolver(EventBus eventBus) {</span>
+<span class="fc" id="L19">        this.eventBus = eventBus;</span>
+<span class="fc" id="L20">    }</span>
+
+    /**
+     * Resolves a hit between attacker and defender, calculating damage.
+     * Damage formula: baseDamage = attack - (defense * 0.5), minimum 1
+     *
+     * @param attackerStats The attacker's combat stats
+     * @param defenderStats The defender's combat stats
+     * @return The calculated damage value
+     */
+    public float resolveHit(CombatStats attackerStats, CombatStats defenderStats) {
+<span class="fc" id="L31">        float baseDamage = attackerStats.getAttack() - (defenderStats.getDefense() * DEFENSE_REDUCTION_FACTOR);</span>
+<span class="fc" id="L32">        float finalDamage = Math.max(baseDamage, MIN_DAMAGE);</span>
+
+<span class="fc" id="L34">        return finalDamage;</span>
+    }
+
+    public int resolvePhysicalDamage(BattleCombatant attacker, BattleCombatant defender, float actionMultiplier) {
+<span class="nc" id="L38">        return resolvePhysicalDamage(attacker, defender, actionMultiplier, 1f);</span>
+    }
+
+    public int resolvePhysicalDamage(BattleCombatant attacker, BattleCombatant defender, float actionMultiplier, float weaponMultiplier) {
+<span class="nc bnc" id="L42" title="All 4 branches missed.">        if (attacker == null || defender == null) {</span>
+<span class="nc" id="L43">            return 0;</span>
+        }
+
+        // BLIND: physical attacks have a chance to miss entirely.
+<span class="nc" id="L47">        float hitChance = attacker.getStatusEffectManager().getPhysicalHitChanceMultiplier();</span>
+<span class="nc bnc" id="L48" title="All 4 branches missed.">        if (hitChance &lt; 1f &amp;&amp; Math.random() &gt;= hitChance) {</span>
+            // 0 signals a miss to the caller; caller should log &quot;X missed!&quot;
+<span class="nc" id="L50">            return 0;</span>
+        }
+
+<span class="nc" id="L53">        float baseDamage = (attacker.getStrength() * actionMultiplier)</span>
+<span class="nc" id="L54">            * Math.max(1f, weaponMultiplier)</span>
+<span class="nc" id="L55">            * attacker.getStatusEffectManager().getPhysicalDamageDealtMultiplier()</span>
+<span class="nc" id="L56">            - (defender.getEffectiveStamina() * DEFENSE_REDUCTION_FACTOR);</span>
+<span class="nc bnc" id="L57" title="All 4 branches missed.">        if (attacker.hasUniqueBoost(&quot;OVERDRIVE_LINK&quot;) &amp;&amp; attacker.getHealth() &gt;= (attacker.getMaxHealth() * 0.7f)) {</span>
+<span class="nc" id="L58">            baseDamage *= 1.15f;</span>
+        }
+<span class="nc" id="L60">        float finalDamage = Math.max(MIN_DAMAGE, applyVariance(baseDamage));</span>
+<span class="nc bnc" id="L61" title="All 2 branches missed.">        if (Math.random() &lt; getCritChance(attacker)) {</span>
+<span class="nc" id="L62">            finalDamage *= 1.5f;</span>
+        }
+<span class="nc" id="L64">        finalDamage *= defender.getStatusEffectManager().getPhysicalDamageTakenMultiplier();</span>
+<span class="nc" id="L65">        return Math.max(1, Math.round(finalDamage));</span>
+    }
+
+    public int resolveAbilityDamage(BattleCombatant caster, BattleCombatant target, AbilityDefinition ability) {
+<span class="fc" id="L69">        return resolveAbilityDamage(caster, target, ability, 1f);</span>
+    }
+
+    /**
+     * Elemental Break sentinel: when the damage return value equals this constant,
+     * the caller knows that an Elemental Break was triggered on this hit and should
+     * display the break notification. The actual damage is encoded as
+     * {@code -(ELEMENTAL_BREAK_FLAG + damage)} — extract with
+     * {@link #extractBreakDamage(int)}.
+     */
+    public static final int ELEMENTAL_BREAK_FLAG = Integer.MIN_VALUE / 2;
+
+    /** Returns true when resolveAbilityDamage encoded a break in its return value. */
+    public static boolean wasElementalBreak(int result) {
+<span class="pc bpc" id="L83" title="1 of 2 branches missed.">        return result &lt;= ELEMENTAL_BREAK_FLAG;</span>
+    }
+
+    /** Extracts the real damage value from an elemental-break encoded result. */
+    public static int extractBreakDamage(int result) {
+<span class="fc" id="L88">        return -(result - ELEMENTAL_BREAK_FLAG);</span>
+    }
+
+    public int resolveAbilityDamage(BattleCombatant caster, BattleCombatant target, AbilityDefinition ability, float proficiencyMultiplier) {
+<span class="pc bpc" id="L92" title="3 of 6 branches missed.">        if (caster == null || target == null || ability == null) {</span>
+<span class="nc" id="L93">            return 0;</span>
+        }
+<span class="fc" id="L95">        float offense = (caster.getStrength() * 0.6f) + (caster.getIntelligence() * 0.4f);</span>
+<span class="fc" id="L96">        float baseDamage = ability.getPower()</span>
+<span class="fc" id="L97">            * Math.max(1f, proficiencyMultiplier)</span>
+<span class="fc" id="L98">            * Math.max(1f, offense)</span>
+<span class="fc" id="L99">            / Math.max(1f, target.getEffectiveStamina());</span>
+<span class="pc bpc" id="L100" title="3 of 4 branches missed.">        if (caster.hasUniqueBoost(&quot;OVERDRIVE_LINK&quot;) &amp;&amp; caster.getHealth() &gt;= (caster.getMaxHealth() * 0.7f)) {</span>
+<span class="nc" id="L101">            baseDamage *= 1.15f;</span>
+        }
+
+        // Register this elemental hit and check for Elemental Break.
+        // registerElementalHit returns the current consecutive-hit streak.
+        // A break fires at 3 consecutive hits of the same element.
+<span class="fc" id="L107">        Element element = ability.getElement();</span>
+<span class="fc" id="L108">        boolean breakTriggered = false;</span>
+<span class="pc bpc" id="L109" title="2 of 4 branches missed.">        if (element != null &amp;&amp; element != Element.NONE) {</span>
+<span class="fc" id="L110">            int streak = target.registerElementalHit(element);</span>
+<span class="fc bfc" id="L111" title="All 2 branches covered.">            breakTriggered = (streak == 3); // exactly 3 triggers the break; subsequent hits are already broken</span>
+        }
+
+<span class="fc" id="L114">        float multiplier = ElementalSystem.getMultiplier(element, target);</span>
+<span class="fc bfc" id="L115" title="All 2 branches covered.">        if (multiplier &lt; 0f) {</span>
+            // Absorb: heals the target instead of damaging.
+<span class="fc" id="L117">            int healing = Math.max(1, Math.round(Math.abs(baseDamage)));</span>
+<span class="fc" id="L118">            target.heal(healing);</span>
+<span class="fc" id="L119">            return -healing;</span>
+        }
+<span class="fc" id="L121">        float finalDamage = Math.max(MIN_DAMAGE, applyVariance(baseDamage * multiplier));</span>
+<span class="fc" id="L122">        finalDamage *= target.getStatusEffectManager().getAbilityDamageTakenMultiplier();</span>
+<span class="fc" id="L123">        int damage = Math.max(1, Math.round(finalDamage));</span>
+
+        // Encode a break notification into the return value so the caller can
+        // display &quot;Elemental Break!&quot; without needing a separate out-param.
+<span class="fc bfc" id="L127" title="All 2 branches covered.">        if (breakTriggered) {</span>
+<span class="fc" id="L128">            return ELEMENTAL_BREAK_FLAG - damage; // caller uses wasElementalBreak() + extractBreakDamage()</span>
+        }
+<span class="fc" id="L130">        return damage;</span>
+    }
+
+    public int resolveHealing(BattleCombatant caster, AbilityDefinition ability) {
+<span class="fc" id="L134">        return resolveHealing(caster, ability, 1f);</span>
+    }
+
+    public int resolveHealing(BattleCombatant caster, AbilityDefinition ability, float proficiencyMultiplier) {
+<span class="pc bpc" id="L138" title="2 of 4 branches missed.">        if (caster == null || ability == null) {</span>
+<span class="nc" id="L139">            return 0;</span>
+        }
+<span class="fc" id="L141">        float healAmount = ability.getPower()</span>
+<span class="fc" id="L142">            * ((caster.getIntelligence() * 0.8f) + (caster.getStrength() * 0.2f))</span>
+            * 0.08f
+<span class="fc" id="L144">            * Math.max(1f, proficiencyMultiplier);</span>
+<span class="pc bpc" id="L145" title="1 of 2 branches missed.">        if (caster.isCombatClass(&quot;Support&quot;)) {</span>
+<span class="fc" id="L146">            healAmount *= 1.2f;</span>
+        }
+<span class="fc" id="L148">        return Math.max(1, Math.round(healAmount));</span>
+    }
+
+    public void applyDamage(BattleCombatant defender, int damage) {
+<span class="nc bnc" id="L152" title="All 4 branches missed.">        if (defender == null || damage == 0) {</span>
+<span class="nc" id="L153">            return;</span>
+        }
+<span class="nc bnc" id="L155" title="All 2 branches missed.">        if (damage &lt; 0) {</span>
+<span class="nc" id="L156">            defender.heal(Math.abs(damage));</span>
+<span class="nc" id="L157">            return;</span>
+        }
+<span class="nc" id="L159">        defender.applyDirectDamage(damage);</span>
+<span class="nc" id="L160">    }</span>
+
+    /**
+     * Processes all active status effects, advancing their timers and executing their effects.
+     *
+     * @param effects List of active status effects
+     * @param delta Time elapsed since last frame in seconds
+     */
+    public void processStatusEffects(List&lt;StatusEffect&gt; effects, float delta) {
+<span class="nc bnc" id="L169" title="All 4 branches missed.">        if (effects == null || effects.isEmpty()) {</span>
+<span class="nc" id="L170">            return;</span>
+        }
+
+        // Update all effects and remove expired ones
+<span class="nc bnc" id="L174" title="All 2 branches missed.">        for (int i = effects.size() - 1; i &gt;= 0; i--) {</span>
+<span class="nc" id="L175">            StatusEffect effect = effects.get(i);</span>
+<span class="nc" id="L176">            effect.update(delta);</span>
+
+<span class="nc bnc" id="L178" title="All 2 branches missed.">            if (effect.isExpired()) {</span>
+<span class="nc" id="L179">                effects.remove(i);</span>
+            }
+        }
+<span class="nc" id="L182">    }</span>
+
+    /**
+     * Box2D contact listener callback for when two entities collide.
+     * This is a placeholder for integration with Box2D physics.
+     *
+     * @param entityA First colliding entity
+     * @param entityB Second colliding entity
+     */
+    public void onContactBegin(Object entityA, Object entityB) {
+        // TODO: Implement Box2D contact listener integration
+        // - Check if either entity is an attacker
+        // - Calculate hit resolution
+        // - Apply damage to defender
+        // - Trigger damage events
+<span class="nc" id="L197">    }</span>
+
+    /**
+     * Applies damage from attacker to defender, resolving the hit and updating HP.
+     * Fires DamageDealtEvent and checks for death.
+     *
+     * @param attacker The attacker's combat stats
+     * @param defender The defender's combat stats
+     * @param attackerSource The source entity of the attack
+     * @param defenderSource The target entity taking damage
+     * @return the actual damage dealt
+     */
+    public float applyDamage(CombatStats attacker, CombatStats defender, Object attackerSource, Object defenderSource) {
+<span class="fc" id="L210">        float damage = resolveHit(attacker, defender);</span>
+<span class="fc" id="L211">        defender.takeDamage(damage);</span>
+
+<span class="fc" id="L213">        DamageDealtEvent event = new DamageDealtEvent(attackerSource, defenderSource, damage);</span>
+<span class="fc" id="L214">        eventBus.fire(event);</span>
+
+<span class="fc" id="L216">        checkDeath(defender, defenderSource);</span>
+<span class="fc" id="L217">        return damage;</span>
+    }
+
+    /**
+     * Checks if a combatant is dead and fires EntityKilledEvent.
+     *
+     * @param stats The combat stats to check
+     * @param entity The entity associated with these stats
+     */
+    public void checkDeath(CombatStats stats, Object entity) {
+<span class="fc bfc" id="L227" title="All 2 branches covered.">        if (!stats.isAlive()) {</span>
+<span class="fc" id="L228">            EntityKilledEvent event = new EntityKilledEvent(entity);</span>
+<span class="fc" id="L229">            eventBus.fire(event);</span>
+        }
+<span class="fc" id="L231">    }</span>
+
+    /**
+     * Convenience overload for distance-based combat (no Box2D needed).
+     * Takes raw attack/defense values and applies damage to a target's CombatStats.
+     *
+     * @param attackPower The base attack power value
+     * @param defender The defender's combat stats
+     * @param source The source entity of the damage
+     * @return the actual damage dealt
+     */
+    public float applyRawDamage(float attackPower, CombatStats defender, Object source) {
+<span class="fc" id="L243">        float baseDamage = attackPower - (defender.getDefense() * DEFENSE_REDUCTION_FACTOR);</span>
+<span class="fc" id="L244">        float damage = Math.max(baseDamage, MIN_DAMAGE);</span>
+<span class="fc" id="L245">        defender.takeDamage(damage);</span>
+
+<span class="fc" id="L247">        DamageDealtEvent event = new DamageDealtEvent(source, null, damage);</span>
+<span class="fc" id="L248">        eventBus.fire(event);</span>
+
+<span class="fc" id="L250">        checkDeath(defender, null);</span>
+<span class="fc" id="L251">        return damage;</span>
+    }
+
+    private float applyVariance(float value) {
+<span class="fc" id="L255">        float variance = 0.95f + ((float) Math.random() * 0.1f);</span>
+<span class="fc" id="L256">        return value * variance;</span>
+    }
+
+    private float getCritChance(BattleCombatant attacker) {
+<span class="nc" id="L260">        float critChance = 0.05f + (attacker.getEffectiveSpeed() / 1000f);</span>
+<span class="nc bnc" id="L261" title="All 4 branches missed.">        if (attacker != null &amp;&amp; attacker.isCombatClass(&quot;Striker&quot;)) {</span>
+<span class="nc" id="L262">            critChance += 0.08f;</span>
+        }
+<span class="nc" id="L264">        return Math.min(0.4f, critChance);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

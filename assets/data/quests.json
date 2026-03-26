@@ -79,5 +79,76 @@
       { "id": "speak_toma", "objective": "Ask Toma to restore the old survey relay." },
       { "id": "return_nia", "objective": "Return to Nia once the relay is rebuilt.", "completionWorldFlag": "settlement.survey_drones" }
     ]
+  },
+  {
+    "id": "forest_glade",
+    "title": "Moonlit Glade",
+    "mainQuest": false,
+    "autoStart": false,
+    "startStepId": "speak_pell",
+    "steps": [
+      { "id": "speak_pell", "objective": "Speak with Ranger Pell in Whispering Forest." },
+      { "id": "open_glade", "objective": "Use a scan-capable frame to reveal the hidden glade in Whispering Forest.", "completionWorldFlag": "frontier.forest_hidden_glade_open" },
+      { "id": "return_pell", "objective": "Return to Ranger Pell with news of the hidden glade." }
+    ]
+  },
+  {
+    "id": "quarry_sluice",
+    "title": "Sluice Break",
+    "mainQuest": false,
+    "autoStart": false,
+    "startStepId": "speak_jora",
+    "steps": [
+      { "id": "speak_jora", "objective": "Speak with Jora in Rusty Quarry." },
+      { "id": "force_sluice", "objective": "Force open the jammed sluice in Rusty Quarry with a heavy frame.", "completionWorldFlag": "frontier.quarry_sluice_forced" },
+      { "id": "return_jora", "objective": "Report back to Jora once the sluice is open." }
+    ]
+  },
+  {
+    "id": "abyss_archive",
+    "title": "Into The Deep",
+    "mainQuest": true,
+    "autoStart": false,
+    "startStepId": "speak_maren",
+    "steps": [
+      { "id": "speak_maren", "objective": "Speak with Captain Maren in Sunken Abyss." },
+      { "id": "recover_archive", "objective": "Search Sunken Abyss for the Archive Chart.", "completionKeyItem": "abyss_chart" },
+      { "id": "return_maren", "objective": "Return the Archive Chart to Captain Maren." }
+    ]
+  },
+  {
+    "id": "fortress_command",
+    "title": "Sky High Secrets",
+    "mainQuest": true,
+    "autoStart": false,
+    "startStepId": "speak_rex",
+    "steps": [
+      { "id": "speak_rex", "objective": "Speak with Commander Rex in Sky Fortress." },
+      { "id": "recover_sigil", "objective": "Search Clockwork Sanctum for the Command Sigil.", "completionKeyItem": "command_sigil" },
+      { "id": "return_rex", "objective": "Return the Command Sigil to Commander Rex." }
+    ]
+  },
+  {
+    "id": "void_key",
+    "title": "The Final Gate",
+    "mainQuest": true,
+    "autoStart": false,
+    "startStepId": "speak_clockmaker",
+    "steps": [
+      { "id": "speak_clockmaker", "objective": "Speak with the Clockmaker Echo in Clockwork Sanctum." },
+      { "id": "recover_void_key", "objective": "Search Abyssal Rift for the Void Key.", "completionKeyItem": "void_key" },
+      { "id": "return_clockmaker", "objective": "Return the Void Key to the Clockmaker Echo." }
+    ]
+  },
+  {
+    "id": "origin_descent",
+    "title": "Origin",
+    "mainQuest": true,
+    "autoStart": false,
+    "startStepId": "speak_watcher",
+    "steps": [
+      { "id": "speak_watcher", "objective": "Speak with The Watcher at Abyssal Rift." },
+      { "id": "enter_void", "objective": "Enter The Void and push toward the Throne of Origin." }
+    ]
   }
 ]

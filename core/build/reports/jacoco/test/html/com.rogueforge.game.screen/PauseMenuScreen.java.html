@@ -1,0 +1,358 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PauseMenuScreen.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core</a> &gt; <a href="index.source.html" class="el_package">com.rogueforge.game.screen</a> &gt; <span class="el_source">PauseMenuScreen.java</span></div><h1>PauseMenuScreen.java</h1><pre class="source lang-java linenums">package com.rogueforge.game.screen;
+
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
+import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.Pixmap;
+import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.Texture.TextureFilter;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.GlyphLayout;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.rogueforge.game.core.RogueForgeGame;
+import com.rogueforge.game.core.ScreenManager;
+import com.rogueforge.game.persistence.SaveManager;
+import com.rogueforge.game.data.SaveFile;
+
+/**
+ * Pause menu screen displayed as a semi-transparent overlay.
+ * Rendered using ShapeRenderer for buttons and BitmapFont for text.
+ * Does not clear the screen beneath, allowing the game to show through.
+ */
+public class PauseMenuScreen implements Screen {
+    private final RogueForgeGame game;
+    private final ScreenManager screenManager;
+    private final GameScreen gameScreen;
+    private final SaveManager saveManager;
+    private final SpriteBatch batch;
+    private final ShapeRenderer shapeRenderer;
+    private final BitmapFont titleFont;
+    private final BitmapFont buttonFont;
+    private final OrthographicCamera camera;
+    private final GlyphLayout layout;
+    private Texture overlayTexture;
+    private final Texture backgroundTexture;
+    private final Texture uiTexture;
+
+<span class="nc" id="L41">    private static final String[] BUTTON_LABELS = {&quot;Resume&quot;, &quot;Save&quot;, &quot;Options&quot;, &quot;Quit to Menu&quot;};</span>
+    private static final float BTN_W = 240f;
+    private static final float BTN_H = 50f;
+    private static final float BTN_GAP = 16f;
+
+    private static final float SAVE_SLOT_BTN_W = 300f;
+    private static final float SAVE_SLOT_BTN_H = 50f;
+    private static final float SAVE_SLOT_BTN_GAP = 16f;
+    private static final float BACK_W = 180f;
+    private static final float BACK_H = 44f;
+
+<span class="nc" id="L52">    private int hoveredButton = -1;</span>
+<span class="nc" id="L53">    private boolean showingSaveSlots = false;</span>
+<span class="nc" id="L54">    private int hoveredSaveSlot = -1;</span>
+    private boolean hoveredBack;
+    private float closeInputBlockTimer;
+
+<span class="nc" id="L58">    public PauseMenuScreen(RogueForgeGame game, ScreenManager screenManager, GameScreen gameScreen) {</span>
+<span class="nc" id="L59">        this.game = game;</span>
+<span class="nc" id="L60">        this.screenManager = screenManager;</span>
+<span class="nc" id="L61">        this.gameScreen = gameScreen;</span>
+<span class="nc" id="L62">        this.saveManager = new SaveManager();</span>
+<span class="nc" id="L63">        this.batch = new SpriteBatch();</span>
+<span class="nc" id="L64">        this.shapeRenderer = new ShapeRenderer();</span>
+<span class="nc" id="L65">        this.camera = new OrthographicCamera();</span>
+<span class="nc" id="L66">        this.camera.setToOrtho(false, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());</span>
+<span class="nc" id="L67">        this.layout = new GlyphLayout();</span>
+<span class="nc" id="L68">        this.backgroundTexture = loadTexture(&quot;Backgrounds/background 2/orig_big.png&quot;);</span>
+<span class="nc" id="L69">        this.uiTexture = createUiTexture();</span>
+
+        // Create semi-transparent overlay texture
+<span class="nc" id="L72">        Pixmap pm = new Pixmap(1, 1, Pixmap.Format.RGBA8888);</span>
+<span class="nc" id="L73">        pm.setColor(0, 0, 0, 0.5f);</span>
+<span class="nc" id="L74">        pm.fill();</span>
+<span class="nc" id="L75">        overlayTexture = new Texture(pm);</span>
+<span class="nc" id="L76">        pm.dispose();</span>
+
+        // Setup fonts
+<span class="nc" id="L79">        titleFont = new BitmapFont();</span>
+<span class="nc" id="L80">        titleFont.getData().setScale(3.5f);</span>
+<span class="nc" id="L81">        titleFont.setColor(Color.WHITE);</span>
+
+<span class="nc" id="L83">        buttonFont = new BitmapFont();</span>
+<span class="nc" id="L84">        buttonFont.getData().setScale(1.8f);</span>
+<span class="nc" id="L85">        buttonFont.setColor(Color.WHITE);</span>
+<span class="nc" id="L86">    }</span>
+
+    private Texture loadTexture(String relativePath) {
+<span class="nc" id="L89">        Texture texture = new Texture(Gdx.files.internal(relativePath));</span>
+<span class="nc" id="L90">        texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);</span>
+<span class="nc" id="L91">        return texture;</span>
+    }
+
+    private Texture createUiTexture() {
+<span class="nc" id="L95">        Pixmap pm = new Pixmap(1, 1, Pixmap.Format.RGBA8888);</span>
+<span class="nc" id="L96">        pm.setColor(Color.WHITE);</span>
+<span class="nc" id="L97">        pm.fill();</span>
+<span class="nc" id="L98">        Texture texture = new Texture(pm);</span>
+<span class="nc" id="L99">        texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);</span>
+<span class="nc" id="L100">        pm.dispose();</span>
+<span class="nc" id="L101">        return texture;</span>
+    }
+
+    @Override
+    public void show() {
+<span class="nc" id="L106">        Gdx.input.setInputProcessor(null);</span>
+<span class="nc" id="L107">        closeInputBlockTimer = 0.18f;</span>
+<span class="nc" id="L108">    }</span>
+
+    @Override
+    public void render(float delta) {
+<span class="nc" id="L112">        closeInputBlockTimer = Math.max(0f, closeInputBlockTimer - delta);</span>
+<span class="nc" id="L113">        float w = Gdx.graphics.getWidth();</span>
+<span class="nc" id="L114">        float h = Gdx.graphics.getHeight();</span>
+
+        // Draw semi-transparent overlay without clearing
+<span class="nc" id="L117">        batch.begin();</span>
+<span class="nc" id="L118">        batch.draw(backgroundTexture, 0, 0, w, h);</span>
+<span class="nc" id="L119">        batch.draw(overlayTexture, 0, 0, w, h);</span>
+<span class="nc" id="L120">        batch.end();</span>
+
+        // Mouse position (flip Y for our camera)
+<span class="nc" id="L123">        float mx = Gdx.input.getX();</span>
+<span class="nc" id="L124">        float my = h - Gdx.input.getY();</span>
+
+<span class="nc bnc" id="L126" title="All 4 branches missed.">        if (closeInputBlockTimer &lt;= 0f &amp;&amp; Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {</span>
+<span class="nc bnc" id="L127" title="All 2 branches missed.">            if (showingSaveSlots) {</span>
+<span class="nc" id="L128">                showingSaveSlots = false;</span>
+<span class="nc" id="L129">                hoveredSaveSlot = -1;</span>
+            } else {
+<span class="nc" id="L131">                gameScreen.resumeGame();</span>
+<span class="nc" id="L132">                screenManager.pop();</span>
+            }
+<span class="nc" id="L134">            return;</span>
+        }
+
+<span class="nc bnc" id="L137" title="All 2 branches missed.">        if (showingSaveSlots) {</span>
+<span class="nc" id="L138">            renderSaveSlotPicker(w, h, mx, my);</span>
+        } else {
+<span class="nc" id="L140">            renderMainMenu(w, h, mx, my);</span>
+        }
+<span class="nc" id="L142">    }</span>
+
+    private void renderMainMenu(float w, float h, float mx, float my) {
+        // Button layout — centered, stacked below title
+<span class="nc" id="L146">        float totalBtnHeight = BUTTON_LABELS.length * BTN_H + (BUTTON_LABELS.length - 1) * BTN_GAP;</span>
+<span class="nc" id="L147">        float startY = (h - totalBtnHeight) / 2f - 30f;</span>
+
+        // Detect hover
+<span class="nc" id="L150">        hoveredButton = -1;</span>
+<span class="nc bnc" id="L151" title="All 2 branches missed.">        for (int i = 0; i &lt; BUTTON_LABELS.length; i++) {</span>
+<span class="nc" id="L152">            float bx = (w - BTN_W) / 2f;</span>
+<span class="nc" id="L153">            float by = startY + (BUTTON_LABELS.length - 1 - i) * (BTN_H + BTN_GAP);</span>
+<span class="nc bnc" id="L154" title="All 8 branches missed.">            if (mx &gt;= bx &amp;&amp; mx &lt;= bx + BTN_W &amp;&amp; my &gt;= by &amp;&amp; my &lt;= by + BTN_H) {</span>
+<span class="nc" id="L155">                hoveredButton = i;</span>
+            }
+        }
+
+        // Handle click
+<span class="nc bnc" id="L160" title="All 4 branches missed.">        if (Gdx.input.justTouched() &amp;&amp; hoveredButton &gt;= 0) {</span>
+<span class="nc" id="L161">            onButtonClicked(hoveredButton);</span>
+        }
+
+        // Draw buttons
+<span class="nc" id="L165">        batch.setProjectionMatrix(camera.combined);</span>
+<span class="nc" id="L166">        batch.begin();</span>
+<span class="nc" id="L167">        batch.setColor(0.08f, 0.1f, 0.15f, 0.95f);</span>
+<span class="nc" id="L168">        batch.draw(uiTexture, (w - 420f) / 2f, startY - 50f, 420f, totalBtnHeight + 180f);</span>
+<span class="nc bnc" id="L169" title="All 2 branches missed.">        for (int i = 0; i &lt; BUTTON_LABELS.length; i++) {</span>
+<span class="nc" id="L170">            float bx = (w - BTN_W) / 2f;</span>
+<span class="nc" id="L171">            float by = startY + (BUTTON_LABELS.length - 1 - i) * (BTN_H + BTN_GAP);</span>
+<span class="nc bnc" id="L172" title="All 2 branches missed.">            batch.setColor(i == hoveredButton ? new Color(0.72f, 0.46f, 0.2f, 1f) : new Color(0.2f, 0.22f, 0.3f, 1f));</span>
+<span class="nc" id="L173">            batch.draw(uiTexture, bx, by, BTN_W, BTN_H);</span>
+        }
+<span class="nc" id="L175">        batch.setColor(Color.WHITE);</span>
+
+        // Title
+<span class="nc" id="L178">        layout.setText(titleFont, &quot;PAUSED&quot;);</span>
+<span class="nc" id="L179">        titleFont.setColor(1f, 0.85f, 0.4f, 1f);</span>
+<span class="nc" id="L180">        titleFont.draw(batch, &quot;PAUSED&quot;, (w - layout.width) / 2f, startY + totalBtnHeight + 90f);</span>
+
+        // Button labels
+<span class="nc bnc" id="L183" title="All 2 branches missed.">        for (int i = 0; i &lt; BUTTON_LABELS.length; i++) {</span>
+<span class="nc" id="L184">            float bx = (w - BTN_W) / 2f;</span>
+<span class="nc" id="L185">            float by = startY + (BUTTON_LABELS.length - 1 - i) * (BTN_H + BTN_GAP);</span>
+<span class="nc" id="L186">            layout.setText(buttonFont, BUTTON_LABELS[i]);</span>
+<span class="nc" id="L187">            buttonFont.setColor(Color.WHITE);</span>
+<span class="nc" id="L188">            buttonFont.draw(batch, BUTTON_LABELS[i],</span>
+                bx + (BTN_W - layout.width) / 2f,
+                by + (BTN_H + layout.height) / 2f);
+        }
+
+<span class="nc" id="L193">        batch.end();</span>
+<span class="nc" id="L194">    }</span>
+
+    private void renderSaveSlotPicker(float w, float h, float mx, float my) {
+<span class="nc" id="L197">        int numSlots = SaveManager.MAX_SLOTS + 1; // 0-3 = 4 slots</span>
+<span class="nc" id="L198">        float totalSlotHeight = numSlots * SAVE_SLOT_BTN_H + (numSlots - 1) * SAVE_SLOT_BTN_GAP;</span>
+<span class="nc" id="L199">        float startY = (h - totalSlotHeight) / 2f - 30f;</span>
+
+        // Detect hover
+<span class="nc" id="L202">        hoveredSaveSlot = -1;</span>
+<span class="nc" id="L203">        hoveredBack = isSaveBackHit(mx, my, w, h);</span>
+<span class="nc bnc" id="L204" title="All 2 branches missed.">        for (int i = 0; i &lt; numSlots; i++) {</span>
+<span class="nc" id="L205">            float bx = (w - SAVE_SLOT_BTN_W) / 2f;</span>
+<span class="nc" id="L206">            float by = startY + (numSlots - 1 - i) * (SAVE_SLOT_BTN_H + SAVE_SLOT_BTN_GAP);</span>
+<span class="nc bnc" id="L207" title="All 8 branches missed.">            if (mx &gt;= bx &amp;&amp; mx &lt;= bx + SAVE_SLOT_BTN_W &amp;&amp; my &gt;= by &amp;&amp; my &lt;= by + SAVE_SLOT_BTN_H) {</span>
+<span class="nc" id="L208">                hoveredSaveSlot = i;</span>
+            }
+        }
+
+        // Handle click
+<span class="nc bnc" id="L213" title="All 4 branches missed.">        if (Gdx.input.justTouched() &amp;&amp; hoveredBack) {</span>
+<span class="nc" id="L214">            showingSaveSlots = false;</span>
+<span class="nc" id="L215">            hoveredSaveSlot = -1;</span>
+<span class="nc" id="L216">            return;</span>
+        }
+<span class="nc bnc" id="L218" title="All 4 branches missed.">        if (Gdx.input.justTouched() &amp;&amp; hoveredSaveSlot &gt;= 0) {</span>
+<span class="nc" id="L219">            onSaveSlotClicked(hoveredSaveSlot);</span>
+        }
+
+        // Detect cancel button (right-click or ESC)
+<span class="nc bnc" id="L223" title="All 4 branches missed.">        if (Gdx.input.justTouched() &amp;&amp; hoveredSaveSlot &lt; 0) {</span>
+<span class="nc" id="L224">            showingSaveSlots = false;</span>
+<span class="nc" id="L225">            hoveredSaveSlot = -1;</span>
+        }
+
+        // Draw slot buttons
+<span class="nc" id="L229">        batch.setProjectionMatrix(camera.combined);</span>
+<span class="nc" id="L230">        batch.begin();</span>
+<span class="nc" id="L231">        batch.setColor(0.08f, 0.1f, 0.15f, 0.95f);</span>
+<span class="nc" id="L232">        batch.draw(uiTexture, (w - 500f) / 2f, startY - 50f, 500f, totalSlotHeight + 180f);</span>
+<span class="nc bnc" id="L233" title="All 2 branches missed.">        for (int i = 0; i &lt; numSlots; i++) {</span>
+<span class="nc" id="L234">            float bx = (w - SAVE_SLOT_BTN_W) / 2f;</span>
+<span class="nc" id="L235">            float by = startY + (numSlots - 1 - i) * (SAVE_SLOT_BTN_H + SAVE_SLOT_BTN_GAP);</span>
+<span class="nc bnc" id="L236" title="All 2 branches missed.">            batch.setColor(i == hoveredSaveSlot ? new Color(0.72f, 0.46f, 0.2f, 1f) : new Color(0.2f, 0.22f, 0.3f, 1f));</span>
+<span class="nc" id="L237">            batch.draw(uiTexture, bx, by, SAVE_SLOT_BTN_W, SAVE_SLOT_BTN_H);</span>
+        }
+<span class="nc" id="L239">        batch.setColor(Color.WHITE);</span>
+<span class="nc" id="L240">        float backX = (w - BACK_W) / 2f;</span>
+<span class="nc" id="L241">        float backY = startY - 32f;</span>
+<span class="nc bnc" id="L242" title="All 2 branches missed.">        batch.setColor(hoveredBack ? new Color(0.68f, 0.28f, 0.24f, 1f) : new Color(0.2f, 0.22f, 0.3f, 1f));</span>
+<span class="nc" id="L243">        batch.draw(uiTexture, backX, backY, BACK_W, BACK_H);</span>
+<span class="nc" id="L244">        batch.setColor(Color.WHITE);</span>
+
+        // Title
+<span class="nc" id="L247">        layout.setText(titleFont, &quot;SELECT SAVE SLOT&quot;);</span>
+<span class="nc" id="L248">        titleFont.setColor(1f, 0.85f, 0.4f, 1f);</span>
+<span class="nc" id="L249">        titleFont.draw(batch, &quot;SELECT SAVE SLOT&quot;, (w - layout.width) / 2f, startY + totalSlotHeight + 90f);</span>
+
+        // Slot labels
+<span class="nc bnc" id="L252" title="All 2 branches missed.">        for (int i = 0; i &lt; numSlots; i++) {</span>
+<span class="nc" id="L253">            float bx = (w - SAVE_SLOT_BTN_W) / 2f;</span>
+<span class="nc" id="L254">            float by = startY + (numSlots - 1 - i) * (SAVE_SLOT_BTN_H + SAVE_SLOT_BTN_GAP);</span>
+<span class="nc" id="L255">            String slotLabel = buildSlotLabel(i);</span>
+<span class="nc" id="L256">            layout.setText(buttonFont, slotLabel);</span>
+<span class="nc" id="L257">            buttonFont.setColor(Color.WHITE);</span>
+<span class="nc" id="L258">            buttonFont.draw(batch, slotLabel,</span>
+                bx + (SAVE_SLOT_BTN_W - layout.width) / 2f,
+                by + (SAVE_SLOT_BTN_H + layout.height) / 2f);
+        }
+<span class="nc" id="L262">        layout.setText(buttonFont, &quot;Back&quot;);</span>
+<span class="nc" id="L263">        buttonFont.draw(batch, &quot;Back&quot;, backX + (BACK_W - layout.width) / 2f, backY + 28f);</span>
+
+<span class="nc" id="L265">        batch.end();</span>
+<span class="nc" id="L266">    }</span>
+
+    private boolean isSaveBackHit(float mx, float my, float width, float height) {
+<span class="nc bnc" id="L269" title="All 2 branches missed.">        if (!showingSaveSlots) {</span>
+<span class="nc" id="L270">            return false;</span>
+        }
+<span class="nc" id="L272">        int numSlots = SaveManager.MAX_SLOTS + 1;</span>
+<span class="nc" id="L273">        float totalSlotHeight = numSlots * SAVE_SLOT_BTN_H + (numSlots - 1) * SAVE_SLOT_BTN_GAP;</span>
+<span class="nc" id="L274">        float startY = (height - totalSlotHeight) / 2f - 30f;</span>
+<span class="nc" id="L275">        float backX = (width - BACK_W) / 2f;</span>
+<span class="nc" id="L276">        float backY = startY - 32f;</span>
+<span class="nc bnc" id="L277" title="All 8 branches missed.">        return mx &gt;= backX &amp;&amp; mx &lt;= backX + BACK_W &amp;&amp; my &gt;= backY &amp;&amp; my &lt;= backY + BACK_H;</span>
+    }
+
+    private String buildSlotLabel(int slot) {
+        String slotName;
+<span class="nc bnc" id="L282" title="All 2 branches missed.">        if (slot == 0) {</span>
+<span class="nc" id="L283">            slotName = &quot;Autosave&quot;;</span>
+        } else {
+<span class="nc" id="L285">            slotName = &quot;Slot &quot; + slot;</span>
+        }
+
+<span class="nc bnc" id="L288" title="All 2 branches missed.">        if (saveManager.hasSave(slot)) {</span>
+<span class="nc" id="L289">            SaveFile save = saveManager.load(slot);</span>
+<span class="nc bnc" id="L290" title="All 2 branches missed.">            if (save != null) {</span>
+<span class="nc" id="L291">                return slotName + &quot; - HP:&quot; + save.getPlayerHp() + &quot; Gold:&quot; + save.getCurrencyBalance();</span>
+            }
+        }
+
+<span class="nc" id="L295">        return slotName + &quot; - Empty&quot;;</span>
+    }
+
+    private void onButtonClicked(int index) {
+<span class="nc bnc" id="L299" title="All 5 branches missed.">        switch (index) {</span>
+            case 0: // Resume
+<span class="nc" id="L301">                gameScreen.resumeGame();</span>
+<span class="nc" id="L302">                screenManager.pop();</span>
+<span class="nc" id="L303">                break;</span>
+            case 1: // Save
+<span class="nc" id="L305">                onSave();</span>
+<span class="nc" id="L306">                break;</span>
+            case 2: // Options
+<span class="nc" id="L308">                screenManager.push(new OptionsScreen(game, screenManager));</span>
+<span class="nc" id="L309">                break;</span>
+            case 3: // Quit to Menu
+<span class="nc" id="L311">                screenManager.replace(new MainMenuScreen(game, screenManager));</span>
+                break;
+        }
+<span class="nc" id="L314">    }</span>
+
+    private void onSave() {
+<span class="nc" id="L317">        showingSaveSlots = true;</span>
+<span class="nc" id="L318">        hoveredSaveSlot = -1;</span>
+<span class="nc" id="L319">    }</span>
+
+    private void onSaveSlotClicked(int slot) {
+<span class="nc" id="L322">        SaveFile saveData = gameScreen.buildSaveFile(slot);</span>
+<span class="nc" id="L323">        saveManager.save(saveData, slot);</span>
+<span class="nc" id="L324">        showingSaveSlots = false;</span>
+<span class="nc" id="L325">        hoveredSaveSlot = -1;</span>
+<span class="nc" id="L326">    }</span>
+
+    @Override
+    public void resize(int width, int height) {
+<span class="nc" id="L330">        camera.setToOrtho(false, width, height);</span>
+<span class="nc" id="L331">    }</span>
+
+    @Override
+    public void pause() {
+<span class="nc" id="L335">    }</span>
+
+    @Override
+    public void resume() {
+<span class="nc" id="L339">    }</span>
+
+    @Override
+    public void hide() {
+<span class="nc" id="L343">    }</span>
+
+    @Override
+    public void dispose() {
+<span class="nc" id="L347">        batch.dispose();</span>
+<span class="nc" id="L348">        shapeRenderer.dispose();</span>
+<span class="nc" id="L349">        titleFont.dispose();</span>
+<span class="nc" id="L350">        buttonFont.dispose();</span>
+<span class="nc bnc" id="L351" title="All 2 branches missed.">        if (overlayTexture != null) {</span>
+<span class="nc" id="L352">            overlayTexture.dispose();</span>
+        }
+<span class="nc" id="L354">        backgroundTexture.dispose();</span>
+<span class="nc" id="L355">        uiTexture.dispose();</span>
+<span class="nc" id="L356">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

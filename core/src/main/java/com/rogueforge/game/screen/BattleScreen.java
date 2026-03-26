@@ -23,8 +23,8 @@ import com.rogueforge.game.combat.StatusEffectType;
 import com.rogueforge.game.combat.WeaponType;
 import com.rogueforge.game.core.RogueForgeGame;
 import com.rogueforge.game.core.ScreenManager;
-import com.rogueforge.game.data.EquipmentItem;
 import com.rogueforge.game.progression.ProficiencyTracker;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -60,6 +60,7 @@ public class BattleScreen implements Screen {
     private final Map<String, Integer> abilityXpGains = new LinkedHashMap<>();
     private final Map<String, Integer> weaponXpGains = new LinkedHashMap<>();
     private final List<String> masteryUnlocks = new ArrayList<>();
+    private final Map<String, Integer> bossPhases = new HashMap<>();
 
     private Mode mode = Mode.ROOT;
     private int selectedIndex;
@@ -90,8 +91,11 @@ public class BattleScreen implements Screen {
         this.combatResolver = new CombatResolver(RogueForgeGame.getEventBus());
         this.healingPotions = encounter.healingPotions;
         this.bestiaryManager.importData(gameScreen.getBestiaryScanLevels());
-        this.battleState = new BattleState(buildCombatants());
+        List<BattleCombatant> combatants = buildCombatants();
+        this.battleState = new BattleState(combatants);
         battleLog.add("Encounter! " + join(encounter.enemyNames));
+        applyBattleStartUniqueBoosts(combatants);
+        initializeBossPhases(combatants);
     }
 
     private List<BattleCombatant> buildCombatants() {
@@ -103,6 +107,7 @@ public class BattleScreen implements Screen {
             -1,
             "PLAYER",
             "PLAYER",
+            "Player",
             encounter.playerHealth,
             encounter.playerMaxHealth,
             encounter.playerAgility,
@@ -115,7 +120,8 @@ public class BattleScreen implements Screen {
             new ArrayList<>(),
             0,
             0,
-            null
+            null,
+            gameScreen.getUniqueBoostsForPartyIndex(-1)
         ));
         if (encounter.robotHealth != null) {
             for (int i = 0; i < encounter.robotHealth.length; i++) {
@@ -129,6 +135,7 @@ public class BattleScreen implements Screen {
                     partySlot,
                     "ALLY",
                     "ALLY",
+                    gameScreen.getRobotClass(partySlot),
                     encounter.robotHealth[i],
                     encounter.robotMaxHealth[i],
                     encounter.robotAgility[i],
@@ -141,7 +148,8 @@ public class BattleScreen implements Screen {
                     new ArrayList<>(),
                     0,
                     0,
-                    null
+                    null,
+                    gameScreen.getUniqueBoostsForPartyIndex(partySlot)
                 ));
             }
         }
@@ -153,6 +161,7 @@ public class BattleScreen implements Screen {
                 i,
                 encounter.enemyRanks != null && i < encounter.enemyRanks.length ? encounter.enemyRanks[i] : "G",
                 encounter.enemyAiProfiles != null && i < encounter.enemyAiProfiles.length ? encounter.enemyAiProfiles[i] : "PATROL",
+                "Enemy",
                 encounter.enemyHealth[i],
                 encounter.enemyMaxHealth[i],
                 encounter.enemyAgility[i],
@@ -165,7 +174,8 @@ public class BattleScreen implements Screen {
                 toElements(encounter.enemyAbsorbs != null && i < encounter.enemyAbsorbs.length ? encounter.enemyAbsorbs[i] : null),
                 encounter.enemyRewardGold[i],
                 encounter.enemyExperienceReward[i],
-                encounter.enemyReferences[i]
+                encounter.enemyReferences[i],
+                new ArrayList<>()
             ));
         }
         return combatants;
@@ -457,21 +467,32 @@ public class BattleScreen implements Screen {
         }
         if (Math.random() > actor.getStatusEffectManager().getPhysicalHitChanceMultiplier()) {
             battleLog.add(actor.getName() + " misses " + target.getName() + ".");
-            endTurn(actor, move.speedCost);
+            endTurn(actor, adjustedSpeedCost(actor, move.speedCost));
             return;
         }
         float weaponMultiplier = actor.getPartyIndex() >= 0
             ? gameScreen.getWeaponDamageMultiplier(actor.getPartyIndex(), gameScreen.getEquippedWeaponType(actor.getPartyIndex()))
             : 1f;
         int damage = combatResolver.resolvePhysicalDamage(actor, target, move.multiplier, weaponMultiplier);
+        ElementalOutcome elementalOutcome = applyElementalOutcome(target, move.element, damage);
+        damage = elementalOutcome.damage;
         combatResolver.applyDamage(target, damage);
-        battleLog.add(actor.getName() + " uses " + move.name + " on " + target.getName() + " for " + damage + " damage.");
-        float multiplier = ElementalSystem.getMultiplier(move.element, target);
-        if (move.element != Element.NONE && multiplier != 1f) {
-            battleLog.add("Elemental hit: " + ElementalSystem.describeHit(multiplier) + ".");
+        handleBossPhaseTransition(target);
+        if (damage < 0) {
+            battleLog.add(actor.getName() + " uses " + move.name + " on " + target.getName()
+                + ", but it is absorbed for " + Math.abs(damage) + " HP.");
+        } else {
+            battleLog.add(actor.getName() + " uses " + move.name + " on " + target.getName() + " for " + damage + " damage.");
         }
+        if (move.element != Element.NONE && elementalOutcome.multiplier != 1f) {
+            battleLog.add("Elemental hit: " + ElementalSystem.describeHit(elementalOutcome.multiplier) + ".");
+        }
+        if (elementalOutcome.triggeredBreak) {
+            battleLog.add(target.getName() + "'s " + move.element.name() + " guard breaks.");
+        }
+        applyPostHitUniqueEffects(actor, target, damage, false, move.name);
         awardWeaponProgress(actor, gameScreen.getEquippedWeaponType(actor.getPartyIndex()), move.name);
-        endTurn(actor, move.speedCost);
+        endTurn(actor, adjustedSpeedCost(actor, move.speedCost));
     }
 
     private void useAbility(BattleCombatant actor, AbilityInstance ability, BattleCombatant explicitTarget) {
@@ -508,7 +529,7 @@ public class BattleScreen implements Screen {
         ability.use();
         recordAbilityGain(actor, ability, ProficiencyTracker.xpForAbilityUse());
         awardWeaponProgress(actor, definition.getWeaponType(), definition.getName());
-        endTurn(actor, definition.getSpeedCost());
+        endTurn(actor, adjustedSpeedCost(actor, definition.getSpeedCost()), ability);
     }
 
     private void applyAbilityToTarget(BattleCombatant actor, BattleCombatant target, AbilityInstance ability) {
@@ -520,18 +541,26 @@ public class BattleScreen implements Screen {
             case DAMAGE:
                 int damage = combatResolver.resolveAbilityDamage(actor, target, definition, ability.getPowerMultiplier());
                 combatResolver.applyDamage(target, damage);
+                handleBossPhaseTransition(target);
                 if (damage < 0) {
                     battleLog.add(target.getName() + " absorbs " + definition.getName() + " and restores " + Math.abs(damage) + " HP.");
                 } else {
                     battleLog.add(actor.getName() + " casts " + definition.getName() + " on " + target.getName() + " for " + damage + " damage.");
                     if (definition.getAppliedStatus() != null) {
-                        target.getStatusEffectManager().apply(definition.getAppliedStatus(), Math.max(1, definition.getStatusTurns()));
+                        target.getStatusEffectManager().apply(
+                            definition.getAppliedStatus(),
+                            adjustedStatusTurns(actor, definition.getAppliedStatus(), Math.max(1, definition.getStatusTurns()))
+                        );
                     }
                 }
+                applyPostHitUniqueEffects(actor, target, damage, true, definition.getName());
                 if (definition.getElement() != Element.NONE) {
                     float multiplier = ElementalSystem.getMultiplier(definition.getElement(), target);
                     if (multiplier != 1f) {
                         battleLog.add("Elemental hit: " + ElementalSystem.describeHit(multiplier) + ".");
+                    }
+                    if (damage > 0 && maybeTriggerElementalBreak(target, definition.getElement())) {
+                        battleLog.add(target.getName() + "'s " + definition.getElement().name() + " guard breaks.");
                     }
                 }
                 break;
@@ -543,13 +572,19 @@ public class BattleScreen implements Screen {
             case BUFF:
             case UTILITY:
                 if (definition.getAppliedStatus() != null) {
-                    target.getStatusEffectManager().apply(definition.getAppliedStatus(), Math.max(1, definition.getStatusTurns()));
+                    target.getStatusEffectManager().apply(
+                        definition.getAppliedStatus(),
+                        adjustedStatusTurns(actor, definition.getAppliedStatus(), Math.max(1, definition.getStatusTurns()))
+                    );
                 }
                 battleLog.add(actor.getName() + " uses " + definition.getName() + " on " + target.getName() + ".");
                 break;
             case DEBUFF:
                 if (definition.getAppliedStatus() != null) {
-                    target.getStatusEffectManager().apply(definition.getAppliedStatus(), Math.max(1, definition.getStatusTurns()));
+                    target.getStatusEffectManager().apply(
+                        definition.getAppliedStatus(),
+                        adjustedStatusTurns(actor, definition.getAppliedStatus(), Math.max(1, definition.getStatusTurns()))
+                    );
                 }
                 battleLog.add(actor.getName() + " afflicts " + target.getName() + " with " + definition.getName() + ".");
                 break;
@@ -586,8 +621,12 @@ public class BattleScreen implements Screen {
 
     private void defend(BattleCombatant actor) {
         actor.getStatusEffectManager().apply(StatusEffectType.DEFENDING, 1);
+        if (actor != null && actor.isCombatClass("Vanguard")) {
+            actor.getStatusEffectManager().apply(StatusEffectType.PROTECT, 1);
+            battleLog.add(actor.getName() + " projects a vanguard guard.");
+        }
         battleLog.add(actor.getName() + " takes a defensive stance.");
-        endTurn(actor, 40);
+        endTurn(actor, adjustedSpeedCost(actor, 40));
     }
 
     private void useItem(BattleCombatant actor) {
@@ -597,9 +636,12 @@ public class BattleScreen implements Screen {
         }
         healingPotions--;
         int healAmount = Math.max(10, Math.round(actor.getMaxHealth() * 0.22f));
+        if (actor != null && actor.isCombatClass("Support")) {
+            healAmount = Math.round(healAmount * 1.15f);
+        }
         actor.heal(healAmount);
         battleLog.add(actor.getName() + " uses a repair kit and restores " + healAmount + " HP.");
-        endTurn(actor, 70);
+        endTurn(actor, adjustedSpeedCost(actor, 70));
     }
 
     private void attemptFlee(BattleCombatant actor) {
@@ -620,7 +662,7 @@ public class BattleScreen implements Screen {
             return;
         }
         battleLog.add(actor.getName() + " cannot escape.");
-        endTurn(actor, 100);
+        endTurn(actor, adjustedSpeedCost(actor, 100));
     }
 
     private void executeEnemyTurn(BattleCombatant actor) {
@@ -631,9 +673,11 @@ public class BattleScreen implements Screen {
         }
         int speedCost = 80;
         if ("RANGED".equals(actor.getAiProfile()) || "BOSS".equals(actor.getAiProfile())) {
-            int damage = combatResolver.resolveAbilityDamage(actor, target, createEnemyAbility());
+            AbilityDefinition enemyAbility = createEnemyAbility(actor);
+            int damage = combatResolver.resolveAbilityDamage(actor, target, enemyAbility);
             combatResolver.applyDamage(target, damage);
-            battleLog.add(actor.getName() + " unleashes Mind Lance on " + target.getName() + " for " + Math.abs(damage) + " damage.");
+            battleLog.add(actor.getName() + " unleashes " + enemyAbility.getName()
+                + " on " + target.getName() + " for " + Math.abs(damage) + " damage.");
             speedCost = 95;
         } else {
             int damage = combatResolver.resolvePhysicalDamage(actor, target, 1.2f);
@@ -643,7 +687,7 @@ public class BattleScreen implements Screen {
         endTurn(actor, speedCost);
     }
 
-    private AbilityDefinition createEnemyAbility() {
+    private AbilityDefinition createEnemyAbility(BattleCombatant actor) {
         AbilityDefinition definition = new AbilityDefinition(
             "enemy_mind_lance",
             "Mind Lance",
@@ -656,7 +700,70 @@ public class BattleScreen implements Screen {
         );
         definition.setElement(Element.LIGHTNING);
         definition.setSpeedCost(95);
+        if (actor != null && "origin_core_s".equals(actor.getId())) {
+            int phase = bossPhases.getOrDefault(actor.getId(), 1);
+            if (phase == 2) {
+                definition.setName("Entropy Spear");
+                definition.setElement(Element.FIRE);
+                definition.setPower(22f);
+                definition.setAppliedStatus(StatusEffectType.WEAKEN);
+                definition.setStatusTurns(2);
+            } else if (phase >= 3) {
+                definition.setName("Genesis Reset");
+                definition.setElement(Element.WATER);
+                definition.setPower(26f);
+                definition.setAppliedStatus(StatusEffectType.SLOW);
+                definition.setStatusTurns(2);
+            }
+        }
         return definition;
+    }
+
+    private void initializeBossPhases(List<BattleCombatant> combatants) {
+        if (combatants == null) {
+            return;
+        }
+        for (BattleCombatant combatant : combatants) {
+            if (combatant != null && "origin_core_s".equals(combatant.getId())) {
+                bossPhases.put(combatant.getId(), 1);
+            }
+        }
+    }
+
+    private void handleBossPhaseTransition(BattleCombatant target) {
+        if (target == null || !target.isAlive() || !"origin_core_s".equals(target.getId())) {
+            return;
+        }
+        int currentPhase = bossPhases.getOrDefault(target.getId(), 1);
+        float healthRatio = target.getHealth() / Math.max(1f, target.getMaxHealth());
+        if (currentPhase == 1 && healthRatio <= 0.66f) {
+            transitionOriginCore(target, 2);
+        } else if (currentPhase == 2 && healthRatio <= 0.33f) {
+            transitionOriginCore(target, 3);
+        }
+    }
+
+    private void transitionOriginCore(BattleCombatant target, int nextPhase) {
+        bossPhases.put(target.getId(), nextPhase);
+        target.heal(target.getMaxHealth() * 0.12f);
+        target.getWeaknesses().clear();
+        target.getResistances().clear();
+        if (nextPhase == 2) {
+            target.getWeaknesses().add(Element.WATER);
+            target.getResistances().add(Element.EARTH);
+            target.getStatusEffectManager().apply(StatusEffectType.HASTE, 3);
+            target.getStatusEffectManager().apply(StatusEffectType.SHELL, 3);
+            battleLog.add("Origin Core ruptures its outer shell and enters Phase 2.");
+            battleLog.add("Its weakness rotates to WATER as the chamber floods with unstable coolant.");
+        } else {
+            target.getWeaknesses().add(Element.FIRE);
+            target.getResistances().add(Element.WATER);
+            target.getResistances().add(Element.LIGHTNING);
+            target.getStatusEffectManager().apply(StatusEffectType.BERSERK, 4);
+            target.getStatusEffectManager().apply(StatusEffectType.REGEN, 4);
+            battleLog.add("Origin Core fractures reality and enters Phase 3.");
+            battleLog.add("Its weakness rotates to FIRE as Genesis Reset destabilizes the chamber.");
+        }
     }
 
     private BattleCombatant chooseEnemyTarget() {
@@ -675,7 +782,11 @@ public class BattleScreen implements Screen {
     }
 
     private void endTurn(BattleCombatant actor, int speedCost) {
-        tickCooldowns();
+        endTurn(actor, speedCost, null);
+    }
+
+    private void endTurn(BattleCombatant actor, int speedCost, AbilityInstance usedAbility) {
+        tickCooldowns(actor, usedAbility);
         appendLogs(actor.getStatusEffectManager().onActionTaken(actor));
         appendLogs(actor.getStatusEffectManager().endTurn(actor));
         battleState.getTurnTimeline().consumeTurn(actor, speedCost);
@@ -688,12 +799,98 @@ public class BattleScreen implements Screen {
         actionDelay = 0.18f;
     }
 
-    private void tickCooldowns() {
-        for (BattleCombatant combatant : battleState.getCombatants()) {
-            for (AbilityInstance ability : combatant.getAbilities()) {
-                ability.update(1f);
+    private void tickCooldowns(BattleCombatant actor, AbilityInstance usedAbility) {
+        if (actor == null) {
+            return;
+        }
+        for (AbilityInstance ability : actor.getAbilities()) {
+            if (ability == usedAbility) {
+                continue;
+            }
+            ability.update(1f);
+        }
+    }
+
+    private ElementalOutcome applyElementalOutcome(BattleCombatant target, Element element, int baseDamage) {
+        ElementalOutcome outcome = new ElementalOutcome();
+        outcome.damage = baseDamage;
+        outcome.multiplier = 1f;
+        if (target == null || element == null || element == Element.NONE || baseDamage == 0) {
+            return outcome;
+        }
+        outcome.multiplier = ElementalSystem.getMultiplier(element, target);
+        if (outcome.multiplier < 0f) {
+            outcome.damage = -Math.max(1, baseDamage);
+            return outcome;
+        }
+        outcome.damage = Math.max(1, Math.round(baseDamage * outcome.multiplier));
+        if (outcome.damage > 0) {
+            outcome.triggeredBreak = maybeTriggerElementalBreak(target, element);
+        }
+        return outcome;
+    }
+
+    private void applyBattleStartUniqueBoosts(List<BattleCombatant> combatants) {
+        for (BattleCombatant combatant : combatants) {
+            if (combatant == null || !combatant.isAlive()) {
+                continue;
+            }
+            if (combatant.hasUniqueBoost("BARRIER_MATRIX")) {
+                combatant.getStatusEffectManager().apply(StatusEffectType.PROTECT, 2);
+                battleLog.add(combatant.getName() + " deploys a barrier matrix.");
             }
         }
+    }
+
+    private void applyPostHitUniqueEffects(BattleCombatant actor, BattleCombatant target, int damage, boolean abilityHit, String actionName) {
+        if (actor == null || target == null || damage <= 0) {
+            return;
+        }
+        if (!abilityHit && actor.hasUniqueBoost("LIFE_TAP")) {
+            int healAmount = Math.max(1, Math.round(damage * 0.2f));
+            float before = actor.getHealth();
+            actor.heal(healAmount);
+            int restored = Math.round(actor.getHealth() - before);
+            if (restored > 0) {
+                battleLog.add(actor.getName() + " siphons " + restored + " HP through " + actionName + ".");
+            }
+        }
+        if (target.hasUniqueBoost("COUNTER_FIELD") && actor != target) {
+            int reflectDamage = Math.max(1, Math.round(damage * 0.15f));
+            actor.applyDirectDamage(reflectDamage);
+            battleLog.add(target.getName() + "'s counter field jolts " + actor.getName() + " for " + reflectDamage + " damage.");
+        }
+    }
+
+    private int adjustedSpeedCost(BattleCombatant actor, int baseSpeedCost) {
+        if (actor != null && actor.isCombatClass("Scout")) {
+            return Math.max(20, Math.round(baseSpeedCost * 0.85f));
+        }
+        return baseSpeedCost;
+    }
+
+    private int adjustedStatusTurns(BattleCombatant actor, StatusEffectType status, int baseTurns) {
+        if (actor == null || status == null) {
+            return baseTurns;
+        }
+        if (actor.isCombatClass("Vanguard") && (status == StatusEffectType.PROTECT || status == StatusEffectType.TAUNT)) {
+            return baseTurns + 1;
+        }
+        if (actor.isCombatClass("Support") && (status == StatusEffectType.HASTE
+            || status == StatusEffectType.PROTECT
+            || status == StatusEffectType.REGEN
+            || status == StatusEffectType.SHELL)) {
+            return baseTurns + 1;
+        }
+        return baseTurns;
+    }
+
+    private boolean maybeTriggerElementalBreak(BattleCombatant target, Element element) {
+        if (target == null || element == null || element == Element.NONE || target.hasElementalBreak(element)) {
+            return false;
+        }
+        int chain = target.registerElementalHit(element);
+        return chain >= 3 && target.hasElementalBreak(element);
     }
 
     private void finishBattle(boolean enemyDefeated, boolean escaped) {
@@ -709,8 +906,12 @@ public class BattleScreen implements Screen {
         result.experienceEarned = buildExperienceRewards(enemyDefeated);
         result.enemyReferences = encounter.enemyReferences;
         result.updatedBestiary = bestiaryManager.exportData();
-        result.droppedEquipmentIds = buildDroppedEquipmentIds(enemyDefeated);
-        result.droppedEquipmentNames = resolveDropNames(result.droppedEquipmentIds);
+        result.droppedEquipmentIds = new String[0];
+        result.droppedEquipmentNames = new String[0];
+        result.droppedShards = buildDroppedShards(enemyDefeated);
+        result.droppedShardNames = gameScreen.resolveShardDropNames(result.droppedShards);
+        result.droppedComponents = buildDroppedComponents(enemyDefeated);
+        result.droppedComponentNames = gameScreen.resolveForgeDropNames(result.droppedComponents);
 
         if (!enemyDefeated) {
             gameScreen.resolveBattle(result);
@@ -724,7 +925,7 @@ public class BattleScreen implements Screen {
             sum(result.experienceEarned),
             gameScreen.previewLevelUps(sum(result.experienceEarned)),
             countBestiaryUpdates(),
-            result.droppedEquipmentNames,
+            combineDrops(result.droppedShardNames, result.droppedComponentNames),
             toProgressLines(abilityXpGains, "XP"),
             toProgressLines(weaponXpGains, "XP"),
             masteryUnlocks.toArray(new String[0]),
@@ -807,77 +1008,47 @@ public class BattleScreen implements Screen {
         return lines.toArray(new String[0]);
     }
 
-    private String[] buildDroppedEquipmentIds(boolean enemyDefeated) {
+    private Map<String, Integer> buildDroppedShards(boolean enemyDefeated) {
+        Map<String, Integer> drops = new HashMap<>();
         if (!enemyDefeated) {
-            return new String[0];
+            return drops;
         }
-        List<EquipmentItem> catalog = gameScreen.getFullEquipmentCatalog();
-        List<String> drops = new ArrayList<>();
         for (BattleCombatant enemy : battleState.getEnemies()) {
             if (enemy.isAlive()) {
                 continue;
             }
-            if (Math.random() > getDropChance(enemy.getRank())) {
+            String grade = enemy.getRank() != null && !enemy.getRank().isEmpty() ? enemy.getRank() : "G";
+            drops.put(grade, drops.getOrDefault(grade, 0) + 1);
+        }
+        return drops;
+    }
+
+    private Map<String, Integer> buildDroppedComponents(boolean enemyDefeated) {
+        Map<String, Integer> drops = new HashMap<>();
+        if (!enemyDefeated) {
+            return drops;
+        }
+        for (BattleCombatant enemy : battleState.getEnemies()) {
+            if (enemy.isAlive()) {
                 continue;
             }
-            EquipmentItem drop = chooseDropForRank(catalog, enemy.getRank(), drops);
-            if (drop != null) {
-                drops.add(drop.getId());
+            Map<String, Integer> rolled = gameScreen.rollForgeDropsForEnemy(enemy.getId(), enemy.getRank());
+            for (Map.Entry<String, Integer> entry : rolled.entrySet()) {
+                drops.put(entry.getKey(), drops.getOrDefault(entry.getKey(), 0) + entry.getValue());
             }
         }
-        return drops.toArray(new String[0]);
+        return drops;
     }
 
-    private float getDropChance(String rank) {
-        switch (rank) {
-            case "B":
-            case "A":
-            case "S":
-                return 0.45f;
-            case "C":
-            case "D":
-                return 0.3f;
-            default:
-                return 0.2f;
+    private String[] combineDrops(String[] shardDrops, String[] componentDrops) {
+        List<String> combined = new ArrayList<>();
+        if (shardDrops != null) {
+            combined.addAll(Arrays.asList(shardDrops));
         }
-    }
-
-    private EquipmentItem chooseDropForRank(List<EquipmentItem> catalog, String rank, List<String> existingDrops) {
-        int maxTier = maxTierForRank(rank);
-        List<EquipmentItem> eligible = new ArrayList<>();
-        for (EquipmentItem item : catalog) {
-            if (item.getTier() <= maxTier && !existingDrops.contains(item.getId())) {
-                eligible.add(item);
-            }
+        if (componentDrops != null) {
+            combined.addAll(Arrays.asList(componentDrops));
         }
-        if (eligible.isEmpty()) {
-            return null;
-        }
-        return eligible.get((int) (Math.random() * eligible.size()));
-    }
-
-    private int maxTierForRank(String rank) {
-        switch (rank) {
-            case "S":
-            case "A":
-            case "B":
-                return 3;
-            case "C":
-            case "D":
-            case "E":
-                return 2;
-            default:
-                return 1;
-        }
-    }
-
-    private String[] resolveDropNames(String[] ids) {
-        String[] names = new String[ids != null ? ids.length : 0];
-        for (int i = 0; i < names.length; i++) {
-            EquipmentItem item = gameScreen.findEquipmentItem(ids[i]);
-            names[i] = item != null ? item.getName() : ids[i];
-        }
-        return names;
+        return combined.toArray(new String[0]);
     }
 
     private int countBestiaryUpdates() {
@@ -913,11 +1084,7 @@ public class BattleScreen implements Screen {
 
     private int[] buildGoldRewards(boolean enemyDefeated) {
         List<BattleCombatant> enemies = battleState.getEnemies();
-        int[] values = new int[enemies.size()];
-        for (int i = 0; i < enemies.size(); i++) {
-            values[i] = enemyDefeated && !enemies.get(i).isAlive() ? enemies.get(i).getRewardGold() : 0;
-        }
-        return values;
+        return new int[enemies.size()];
     }
 
     private int[] buildExperienceRewards(boolean enemyDefeated) {
@@ -1207,6 +1374,10 @@ public class BattleScreen implements Screen {
         public Map<String, Integer> updatedBestiary;
         public String[] droppedEquipmentIds;
         public String[] droppedEquipmentNames;
+        public Map<String, Integer> droppedShards;
+        public String[] droppedShardNames;
+        public Map<String, Integer> droppedComponents;
+        public String[] droppedComponentNames;
     }
 
     private enum Mode {
@@ -1230,5 +1401,11 @@ public class BattleScreen implements Screen {
             this.multiplier = multiplier;
             this.element = element;
         }
+    }
+
+    private static class ElementalOutcome {
+        int damage;
+        float multiplier;
+        boolean triggeredBreak;
     }
 }

@@ -45,6 +45,18 @@ public class AbilityDefinition {
     private String uniqueSkillId;
 
     /**
+     * Some unique skills (Omniscience Eye, Gravity Well, Genesis Field) apply
+     * two statuses at once. secondaryStatus is applied alongside appliedStatus.
+     * secondaryStatusTurns defaults to statusTurns when not set.
+     * secondaryTargetType overrides the ability's own targetType for the
+     * secondary effect only (e.g. Gravity Well slows ALL_ENEMIES but applies
+     * Protect to SELF).
+     */
+    private StatusEffectType secondaryStatus;
+    private int secondaryStatusTurns;
+    private TargetType secondaryTargetType;
+
+    /**
      * No-arg constructor for JSON serialization
      */
     public AbilityDefinition() {
@@ -126,6 +138,23 @@ public class AbilityDefinition {
         return uniqueSkillId != null ? uniqueSkillId : "";
     }
 
+    public StatusEffectType getSecondaryStatus() {
+        return secondaryStatus;
+    }
+
+    /** Returns the secondary status duration, falling back to statusTurns if not explicitly set. */
+    public int getSecondaryStatusTurns() {
+        return secondaryStatusTurns > 0 ? secondaryStatusTurns : statusTurns;
+    }
+
+    /**
+     * Returns the target type to use when applying the secondary status.
+     * Null means "use the same target(s) as the primary effect".
+     */
+    public TargetType getSecondaryTargetType() {
+        return secondaryTargetType;
+    }
+
     // Setters (for JSON deserialization)
     public void setId(String id) {
         this.id = id;
@@ -185,6 +214,18 @@ public class AbilityDefinition {
 
     public void setUniqueSkillId(String uniqueSkillId) {
         this.uniqueSkillId = uniqueSkillId;
+    }
+
+    public void setSecondaryStatus(StatusEffectType secondaryStatus) {
+        this.secondaryStatus = secondaryStatus;
+    }
+
+    public void setSecondaryStatusTurns(int secondaryStatusTurns) {
+        this.secondaryStatusTurns = secondaryStatusTurns;
+    }
+
+    public void setSecondaryTargetType(TargetType secondaryTargetType) {
+        this.secondaryTargetType = secondaryTargetType;
     }
 
     @Override

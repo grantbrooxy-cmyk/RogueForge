@@ -29,7 +29,7 @@
     "speedCost": 50,
     "weaponType": "NONE",
     "masteryUpgradeId": "deep_scan",
-    "uniqueSkillId": ""
+    "uniqueSkillId": "omniscience_eye"
   },
   {
     "id": "shield_wall",
@@ -52,7 +52,7 @@
     "id": "taunt",
     "name": "Taunt",
     "type": "DEBUFF",
-    "targetType": "ALL_ENEMIES",
+    "targetType": "SELF",
     "cooldown": 10,
     "power": 0,
     "duration": 4,
@@ -63,7 +63,7 @@
     "statusTurns": 2,
     "weaponType": "NONE",
     "masteryUpgradeId": "grand_taunt",
-    "uniqueSkillId": ""
+    "uniqueSkillId": "gravity_well"
   },
   {
     "id": "power_strike",
@@ -93,7 +93,7 @@
     "speedCost": 110,
     "weaponType": "GUN",
     "masteryUpgradeId": "storm_barrage",
-    "uniqueSkillId": ""
+    "uniqueSkillId": "bullet_storm"
   },
   {
     "id": "heal_pulse",
@@ -113,7 +113,7 @@
   {
     "id": "repair_aura",
     "name": "Repair Aura",
-    "type": "HEAL",
+    "type": "BUFF",
     "targetType": "ALL_ALLIES",
     "cooldown": 20,
     "power": 5,
@@ -121,9 +121,11 @@
     "description": "Heals allies over time for 8 seconds",
     "element": "WATER",
     "speedCost": 100,
+    "appliedStatus": "REGEN",
+    "statusTurns": 2,
     "weaponType": "STAFF",
     "masteryUpgradeId": "nanite_field",
-    "uniqueSkillId": ""
+    "uniqueSkillId": "genesis_field"
   },
   {
     "id": "dash_prime",
@@ -155,7 +157,7 @@
     "speedCost": 45,
     "weaponType": "NONE",
     "masteryUpgradeId": "",
-    "uniqueSkillId": ""
+    "uniqueSkillId": "omniscience_eye"
   },
   {
     "id": "bulwark_matrix",
@@ -178,7 +180,7 @@
     "id": "grand_taunt",
     "name": "Grand Taunt",
     "type": "DEBUFF",
-    "targetType": "ALL_ENEMIES",
+    "targetType": "SELF",
     "cooldown": 9,
     "power": 0,
     "duration": 5,
@@ -189,7 +191,7 @@
     "statusTurns": 3,
     "weaponType": "NONE",
     "masteryUpgradeId": "",
-    "uniqueSkillId": ""
+    "uniqueSkillId": "gravity_well"
   },
   {
     "id": "seismic_break",
@@ -219,7 +221,7 @@
     "speedCost": 98,
     "weaponType": "GUN",
     "masteryUpgradeId": "",
-    "uniqueSkillId": ""
+    "uniqueSkillId": "bullet_storm"
   },
   {
     "id": "revitalise_wave",
@@ -239,7 +241,7 @@
   {
     "id": "nanite_field",
     "name": "Nanite Field",
-    "type": "HEAL",
+    "type": "BUFF",
     "targetType": "ALL_ALLIES",
     "cooldown": 16,
     "power": 10,
@@ -247,9 +249,11 @@
     "description": "A restorative field that keeps repairing the team",
     "element": "WATER",
     "speedCost": 90,
+    "appliedStatus": "REGEN",
+    "statusTurns": 3,
     "weaponType": "STAFF",
     "masteryUpgradeId": "",
-    "uniqueSkillId": ""
+    "uniqueSkillId": "genesis_field"
   },
   {
     "id": "phantom_drive",
@@ -312,6 +316,497 @@
     "element": "WATER",
     "speedCost": 105,
     "weaponType": "STAFF",
+    "masteryUpgradeId": "",
+    "uniqueSkillId": ""
+  },
+
+  {
+    "id": "omniscience_eye",
+    "name": "Omniscience Eye",
+    "type": "UTILITY",
+    "targetType": "SINGLE_ENEMY",
+    "cooldown": 18,
+    "power": 0,
+    "duration": 0,
+    "description": "Unique skill evolved from Scan. Performs a full system breach on one enemy — permanently reveals all stats and weaknesses for the entire party, then applies Weaken and Slow. Scout-class only.",
+    "element": "NONE",
+    "speedCost": 45,
+    "appliedStatus": "WEAKEN",
+    "statusTurns": 3,
+    "secondaryStatus": "SLOW",
+    "secondaryStatusTurns": 3,
+    "weaponType": "NONE",
+    "masteryUpgradeId": "",
+    "uniqueSkillId": ""
+  },
+
+  {
+    "id": "gravity_well",
+    "name": "Gravity Well",
+    "type": "DEBUFF",
+    "targetType": "ALL_ENEMIES",
+    "cooldown": 20,
+    "power": 0,
+    "duration": 0,
+    "description": "Unique skill evolved from Taunt. Creates a gravitational field that Slows every enemy simultaneously, collapsing their timeline. The guardian also gains Protect for the duration.",
+    "element": "NONE",
+    "speedCost": 88,
+    "appliedStatus": "SLOW",
+    "statusTurns": 3,
+    "secondaryStatus": "PROTECT",
+    "secondaryStatusTurns": 3,
+    "secondaryTargetType": "SELF",
+    "weaponType": "NONE",
+    "masteryUpgradeId": "",
+    "uniqueSkillId": ""
+  },
+
+  {
+    "id": "bullet_storm",
+    "name": "Bullet Storm",
+    "type": "DAMAGE",
+    "targetType": "ALL_ENEMIES",
+    "cooldown": 20,
+    "power": 45,
+    "duration": 0,
+    "description": "Unique skill evolved from Rapid Fire. Unleashes an overwhelming barrage of wind-charged rounds across every enemy. Higher power per target than Storm Barrage. Striker/Scout-class gun users only.",
+    "element": "WIND",
+    "speedCost": 130,
+    "weaponType": "GUN",
+    "masteryUpgradeId": "",
+    "uniqueSkillId": ""
+  },
+
+  {
+    "id": "genesis_field",
+    "name": "Genesis Field",
+    "type": "BUFF",
+    "targetType": "ALL_ALLIES",
+    "cooldown": 28,
+    "power": 0,
+    "duration": 0,
+    "description": "Unique skill evolved from Repair Aura. Projects a regenerative shell across the entire party, applying both Regen and Shell simultaneously. The combination sustains allies through sustained fire and ability pressure alike. Support-class only.",
+    "element": "WATER",
+    "speedCost": 110,
+    "appliedStatus": "REGEN",
+    "statusTurns": 4,
+    "secondaryStatus": "SHELL",
+    "secondaryStatusTurns": 4,
+    "weaponType": "STAFF",
+    "masteryUpgradeId": "",
+    "uniqueSkillId": ""
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // COMBAT ARTS — unlocked via weapon proficiency at levels 3, 6, and 10.
+  // Art I = level 3 (reliable power), Art II = level 6 (status/AoE twist),
+  // Art III = level 10 (signature finisher).
+  // Naming convention: {weapon}_{art_key}
+  // ═══════════════════════════════════════════════════════════════════════
+
+  // ── SWORD ──────────────────────────────────────────────────────────────
+  {
+    "id": "sword_cleave",
+    "name": "Cleave",
+    "type": "DAMAGE",
+    "targetType": "SINGLE_ENEMY",
+    "cooldown": 4,
+    "power": 38,
+    "duration": 0,
+    "description": "Art I. A decisive overhead blow that deals reliable physical damage. The foundation of Sword mastery.",
+    "element": "EARTH",
+    "speedCost": 90,
+    "weaponType": "SWORD",
+    "masteryUpgradeId": "",
+    "uniqueSkillId": ""
+  },
+  {
+    "id": "sword_guard_break",
+    "name": "Guard Break",
+    "type": "DAMAGE",
+    "targetType": "SINGLE_ENEMY",
+    "cooldown": 6,
+    "power": 32,
+    "duration": 0,
+    "description": "Art II. A strike aimed at the joints and seams of armour. Deals damage and applies Weaken, reducing the target's physical output for 2 turns.",
+    "element": "EARTH",
+    "speedCost": 95,
+    "appliedStatus": "WEAKEN",
+    "statusTurns": 2,
+    "weaponType": "SWORD",
+    "masteryUpgradeId": "",
+    "uniqueSkillId": ""
+  },
+  {
+    "id": "sword_last_rites",
+    "name": "Last Rites",
+    "type": "DAMAGE",
+    "targetType": "SINGLE_ENEMY",
+    "cooldown": 14,
+    "power": 85,
+    "duration": 0,
+    "description": "Art III. A full-body surge channelled into one irreversible strike. Highest single-target burst in the Sword line. Best used as a finishing blow.",
+    "element": "LIGHTNING",
+    "speedCost": 128,
+    "weaponType": "SWORD",
+    "masteryUpgradeId": "",
+    "uniqueSkillId": ""
+  },
+
+  // ── AXE ────────────────────────────────────────────────────────────────
+  {
+    "id": "axe_skull_crush",
+    "name": "Skull Crush",
+    "type": "DAMAGE",
+    "targetType": "SINGLE_ENEMY",
+    "cooldown": 5,
+    "power": 42,
+    "duration": 0,
+    "description": "Art I. A wild overhead smash that hits harder than any basic attack. Slow to wind up but punishing on contact.",
+    "element": "EARTH",
+    "speedCost": 110,
+    "weaponType": "AXE",
+    "masteryUpgradeId": "",
+    "uniqueSkillId": ""
+  },
+  {
+    "id": "axe_maim",
+    "name": "Maim",
+    "type": "DAMAGE",
+    "targetType": "SINGLE_ENEMY",
+    "cooldown": 7,
+    "power": 32,
+    "duration": 0,
+    "description": "Art II. A crippling blow aimed at critical systems. Applies both Weaken and Slow for 2 turns — the target hits less and acts less.",
+    "element": "EARTH",
+    "speedCost": 108,
+    "appliedStatus": "WEAKEN",
+    "statusTurns": 2,
+    "secondaryStatus": "SLOW",
+    "secondaryStatusTurns": 2,
+    "weaponType": "AXE",
+    "masteryUpgradeId": "",
+    "uniqueSkillId": ""
+  },
+  {
+    "id": "axe_devastate",
+    "name": "Devastate",
+    "type": "DAMAGE",
+    "targetType": "ALL_ENEMIES",
+    "cooldown": 16,
+    "power": 36,
+    "duration": 0,
+    "description": "Art III. A spinning horizontal sweep that hits every enemy on the field. The only Axe art that goes wide — worth saving for crowded encounters.",
+    "element": "EARTH",
+    "speedCost": 132,
+    "weaponType": "AXE",
+    "masteryUpgradeId": "",
+    "uniqueSkillId": ""
+  },
+
+  // ── LANCE ──────────────────────────────────────────────────────────────
+  {
+    "id": "lance_skewer",
+    "name": "Skewer",
+    "type": "DAMAGE",
+    "targetType": "SINGLE_ENEMY",
+    "cooldown": 4,
+    "power": 36,
+    "duration": 0,
+    "description": "Art I. A direct thrust at close range. Fast execution, solid damage — the Lance art you use most often.",
+    "element": "WIND",
+    "speedCost": 88,
+    "weaponType": "LANCE",
+    "masteryUpgradeId": "",
+    "uniqueSkillId": ""
+  },
+  {
+    "id": "lance_sweep",
+    "name": "Lance Sweep",
+    "type": "DAMAGE",
+    "targetType": "ALL_ENEMIES",
+    "cooldown": 8,
+    "power": 22,
+    "duration": 0,
+    "description": "Art II. A wide rotational swing that clips every enemy in the formation. Lower per-target damage but excellent field coverage.",
+    "element": "WIND",
+    "speedCost": 102,
+    "weaponType": "LANCE",
+    "masteryUpgradeId": "",
+    "uniqueSkillId": ""
+  },
+  {
+    "id": "lance_meteor_thrust",
+    "name": "Meteor Thrust",
+    "type": "DAMAGE",
+    "targetType": "SINGLE_ENEMY",
+    "cooldown": 14,
+    "power": 78,
+    "duration": 0,
+    "description": "Art III. A full-extension charge that drives the lance home with crushing force. Applies Stun for 1 turn — the target loses their next action.",
+    "element": "WIND",
+    "speedCost": 122,
+    "appliedStatus": "STUN",
+    "statusTurns": 1,
+    "weaponType": "LANCE",
+    "masteryUpgradeId": "",
+    "uniqueSkillId": ""
+  },
+
+  // ── STAFF ──────────────────────────────────────────────────────────────
+  {
+    "id": "staff_ether_bolt",
+    "name": "Ether Bolt",
+    "type": "DAMAGE",
+    "targetType": "SINGLE_ENEMY",
+    "cooldown": 4,
+    "power": 30,
+    "duration": 0,
+    "description": "Art I. A focused discharge of ether energy. Scales off INT and STR together, making it the fastest-firing damaging art in the Staff line.",
+    "element": "LIGHTNING",
+    "speedCost": 72,
+    "weaponType": "STAFF",
+    "masteryUpgradeId": "",
+    "uniqueSkillId": ""
+  },
+  {
+    "id": "staff_mana_surge",
+    "name": "Mana Surge",
+    "type": "DAMAGE",
+    "targetType": "ALL_ENEMIES",
+    "cooldown": 9,
+    "power": 25,
+    "duration": 0,
+    "description": "Art II. An unstable burst of Ice-type mana that floods the field. Hits every enemy and applies Slow for 2 turns — freezing cold slows reaction time.",
+    "element": "ICE",
+    "speedCost": 98,
+    "appliedStatus": "SLOW",
+    "statusTurns": 2,
+    "weaponType": "STAFF",
+    "masteryUpgradeId": "",
+    "uniqueSkillId": ""
+  },
+  {
+    "id": "staff_genesis_ray",
+    "name": "Genesis Ray",
+    "type": "DAMAGE",
+    "targetType": "SINGLE_ENEMY",
+    "cooldown": 15,
+    "power": 68,
+    "duration": 0,
+    "description": "Art III. A concentrated beam drawn from the staff's core resonance. Deals heavy Lightning damage and applies Silence for 2 turns, preventing the target from using abilities.",
+    "element": "LIGHTNING",
+    "speedCost": 112,
+    "appliedStatus": "SILENCE",
+    "statusTurns": 2,
+    "weaponType": "STAFF",
+    "masteryUpgradeId": "",
+    "uniqueSkillId": ""
+  },
+
+  // ── BOW ────────────────────────────────────────────────────────────────
+  {
+    "id": "bow_snipe",
+    "name": "Snipe",
+    "type": "DAMAGE",
+    "targetType": "SINGLE_ENEMY",
+    "cooldown": 4,
+    "power": 32,
+    "duration": 0,
+    "description": "Art I. A precisely aimed shot that exploits the enemy's sightline. Fast speed cost makes it one of the quickest offensive arts available.",
+    "element": "WIND",
+    "speedCost": 74,
+    "weaponType": "BOW",
+    "masteryUpgradeId": "",
+    "uniqueSkillId": ""
+  },
+  {
+    "id": "bow_rain_of_arrows",
+    "name": "Rain of Arrows",
+    "type": "DAMAGE",
+    "targetType": "ALL_ENEMIES",
+    "cooldown": 10,
+    "power": 20,
+    "duration": 0,
+    "description": "Art II. A volley that blankets the entire field. Each arrow carries a targeting-interference payload — applies Blind for 2 turns to all targets.",
+    "element": "WIND",
+    "speedCost": 102,
+    "appliedStatus": "BLIND",
+    "statusTurns": 2,
+    "weaponType": "BOW",
+    "masteryUpgradeId": "",
+    "uniqueSkillId": ""
+  },
+  {
+    "id": "bow_void_shot",
+    "name": "Void Shot",
+    "type": "DAMAGE",
+    "targetType": "SINGLE_ENEMY",
+    "cooldown": 14,
+    "power": 74,
+    "duration": 0,
+    "description": "Art III. An arrow charged to the point of system disruption. Heavy single-target damage and applies Paralyze for 1 turn — a 30% chance the target loses their next action entirely.",
+    "element": "WIND",
+    "speedCost": 116,
+    "appliedStatus": "PARALYZE",
+    "statusTurns": 1,
+    "weaponType": "BOW",
+    "masteryUpgradeId": "",
+    "uniqueSkillId": ""
+  },
+
+  // ── FIST ───────────────────────────────────────────────────────────────
+  {
+    "id": "fist_iron_fist",
+    "name": "Iron Fist",
+    "type": "DAMAGE",
+    "targetType": "SINGLE_ENEMY",
+    "cooldown": 3,
+    "power": 42,
+    "duration": 0,
+    "description": "Art I. A concentrated full-body strike without any elemental loading. Pure kinetic output — the most reliable Fist art and one of the hardest-hitting at its tier.",
+    "element": "NONE",
+    "speedCost": 82,
+    "weaponType": "FIST",
+    "masteryUpgradeId": "",
+    "uniqueSkillId": ""
+  },
+  {
+    "id": "fist_concussive_blow",
+    "name": "Concussive Blow",
+    "type": "DAMAGE",
+    "targetType": "SINGLE_ENEMY",
+    "cooldown": 7,
+    "power": 35,
+    "duration": 0,
+    "description": "Art II. A precisely aimed strike targeting the target's neural cluster. Applies Stun for 1 turn. A guaranteed turn-skip on a single enemy when it lands.",
+    "element": "NONE",
+    "speedCost": 90,
+    "appliedStatus": "STUN",
+    "statusTurns": 1,
+    "weaponType": "FIST",
+    "masteryUpgradeId": "",
+    "uniqueSkillId": ""
+  },
+  {
+    "id": "fist_berserker_rush",
+    "name": "Berserker Rush",
+    "type": "DAMAGE",
+    "targetType": "SINGLE_ENEMY",
+    "cooldown": 13,
+    "power": 78,
+    "duration": 0,
+    "description": "Art III. An all-out assault that pushes the robot's combat systems past safe limits. Deals massive damage, but applies Berserk to the user for 2 turns — they can only Attack until it fades. High risk, maximum output.",
+    "element": "NONE",
+    "speedCost": 100,
+    "appliedStatus": "BERSERK",
+    "statusTurns": 2,
+    "secondaryTargetType": "SELF",
+    "weaponType": "FIST",
+    "masteryUpgradeId": "",
+    "uniqueSkillId": ""
+  },
+
+  // ── GUN ────────────────────────────────────────────────────────────────
+  {
+    "id": "gun_burst_shot",
+    "name": "Burst Shot",
+    "type": "DAMAGE",
+    "targetType": "SINGLE_ENEMY",
+    "cooldown": 4,
+    "power": 30,
+    "duration": 0,
+    "description": "Art I. A short controlled burst aimed at a single target. Fast and reliable — the Gun art you use every rotation.",
+    "element": "LIGHTNING",
+    "speedCost": 72,
+    "weaponType": "GUN",
+    "masteryUpgradeId": "",
+    "uniqueSkillId": ""
+  },
+  {
+    "id": "gun_suppressive_fire",
+    "name": "Suppressive Fire",
+    "type": "DAMAGE",
+    "targetType": "ALL_ENEMIES",
+    "cooldown": 10,
+    "power": 18,
+    "duration": 0,
+    "description": "Art II. A sweeping field suppression that pins all enemies under fire. Lower per-target damage but applies Slow to everyone for 2 turns — the entire enemy formation acts at half pace.",
+    "element": "WIND",
+    "speedCost": 102,
+    "appliedStatus": "SLOW",
+    "statusTurns": 2,
+    "weaponType": "GUN",
+    "masteryUpgradeId": "",
+    "uniqueSkillId": ""
+  },
+  {
+    "id": "gun_railgun",
+    "name": "Railgun",
+    "type": "DAMAGE",
+    "targetType": "SINGLE_ENEMY",
+    "cooldown": 16,
+    "power": 88,
+    "duration": 0,
+    "description": "Art III. A single electromagnetic slug fired at maximum charge. The highest single-target damage art in the Gun line. Applies Weaken for 2 turns — the impact disrupts the target's attack systems.",
+    "element": "LIGHTNING",
+    "speedCost": 132,
+    "appliedStatus": "WEAKEN",
+    "statusTurns": 2,
+    "weaponType": "GUN",
+    "masteryUpgradeId": "",
+    "uniqueSkillId": ""
+  },
+
+  // ── DUAL_BLADE ─────────────────────────────────────────────────────────
+  {
+    "id": "dual_dancing_blades",
+    "name": "Dancing Blades",
+    "type": "DAMAGE",
+    "targetType": "SINGLE_ENEMY",
+    "cooldown": 4,
+    "power": 44,
+    "duration": 0,
+    "description": "Art I. A rapid alternating slash from both blades that opens persistent wounds. Deals damage and applies Bleed for 3 turns — the target loses HP every time they act.",
+    "element": "WIND",
+    "speedCost": 86,
+    "appliedStatus": "BLEED",
+    "statusTurns": 3,
+    "weaponType": "DUAL_BLADE",
+    "masteryUpgradeId": "",
+    "uniqueSkillId": ""
+  },
+  {
+    "id": "dual_vortex_slash",
+    "name": "Vortex Slash",
+    "type": "DAMAGE",
+    "targetType": "ALL_ENEMIES",
+    "cooldown": 10,
+    "power": 24,
+    "duration": 0,
+    "description": "Art II. A spinning twin-blade storm that cuts across every enemy. Applies Bleed for 2 turns to all targets — the whole field starts bleeding.",
+    "element": "WIND",
+    "speedCost": 104,
+    "appliedStatus": "BLEED",
+    "statusTurns": 2,
+    "weaponType": "DUAL_BLADE",
+    "masteryUpgradeId": "",
+    "uniqueSkillId": ""
+  },
+  {
+    "id": "dual_phantom_cross",
+    "name": "Phantom Cross",
+    "type": "DAMAGE",
+    "targetType": "SINGLE_ENEMY",
+    "cooldown": 15,
+    "power": 76,
+    "duration": 0,
+    "description": "Art III. A crossing strike so fast the blades leave afterimages. Heavy damage and applies Blind for 2 turns — the target's targeting systems are overwhelmed by the phantom trail.",
+    "element": "LIGHTNING",
+    "speedCost": 118,
+    "appliedStatus": "BLIND",
+    "statusTurns": 2,
+    "weaponType": "DUAL_BLADE",
     "masteryUpgradeId": "",
     "uniqueSkillId": ""
   }

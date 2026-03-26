@@ -1,0 +1,381 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>HouseInteriorScreen.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core</a> &gt; <a href="index.source.html" class="el_package">com.rogueforge.game.screen</a> &gt; <span class="el_source">HouseInteriorScreen.java</span></div><h1>HouseInteriorScreen.java</h1><pre class="source lang-java linenums">package com.rogueforge.game.screen;
+
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
+import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.Texture.TextureFilter;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.math.Vector2;
+import com.rogueforge.game.core.RogueForgeGame;
+import com.rogueforge.game.core.ScreenManager;
+
+/**
+ * Lightweight interior map for houses, NPC conversation, and chest looting.
+ */
+public class HouseInteriorScreen implements Screen {
+    private static final float PLAYER_SIZE = 40f;
+    private static final float PLAYER_SPEED = 180f;
+    private static final float CHEST_SIZE = 32f;
+    private static final float NPC_SIZE = 22f;
+    private static final float FEATURE_SIZE = 36f;
+
+    private final RogueForgeGame game;
+    private final ScreenManager screenManager;
+    private final GameScreen gameScreen;
+    private final GameScreen.House house;
+    private final OrthographicCamera camera;
+    private final OrthographicCamera uiCamera;
+    private final SpriteBatch batch;
+    private final ShapeRenderer shapeRenderer;
+    private final BitmapFont font;
+<span class="nc" id="L38">    private final Vector2 playerPos = new Vector2(210f, 72f);</span>
+    private final Texture floorTile;
+    private final Texture wallTile;
+    private final Texture doorTexture;
+    private final Texture chestTexture;
+    private final Texture shadowTexture;
+    private final TextureRegion playerSprite;
+    private final TextureRegion[] npcSprites;
+
+    private String activeSpeaker;
+    private String activeDialog;
+    private String lootMessage;
+    private float lootTimer;
+<span class="nc" id="L51">    public HouseInteriorScreen(RogueForgeGame game, ScreenManager screenManager, GameScreen gameScreen, GameScreen.House house) {</span>
+<span class="nc" id="L52">        this.game = game;</span>
+<span class="nc" id="L53">        this.screenManager = screenManager;</span>
+<span class="nc" id="L54">        this.gameScreen = gameScreen;</span>
+<span class="nc" id="L55">        this.house = house;</span>
+<span class="nc" id="L56">        this.camera = new OrthographicCamera();</span>
+<span class="nc" id="L57">        this.camera.setToOrtho(false, 420f, 300f);</span>
+<span class="nc" id="L58">        this.uiCamera = new OrthographicCamera();</span>
+<span class="nc" id="L59">        this.uiCamera.setToOrtho(false, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());</span>
+<span class="nc" id="L60">        this.batch = new SpriteBatch();</span>
+<span class="nc" id="L61">        this.shapeRenderer = new ShapeRenderer();</span>
+<span class="nc" id="L62">        this.font = new BitmapFont();</span>
+<span class="nc" id="L63">        this.font.getData().setScale(1.15f);</span>
+<span class="nc" id="L64">        this.floorTile = loadTexture(&quot;2 Dungeon Tileset/1 Tiles/Tile_03.png&quot;);</span>
+<span class="nc" id="L65">        this.wallTile = loadTexture(&quot;2 Dungeon Tileset/1 Tiles/Tile_57.png&quot;);</span>
+<span class="nc" id="L66">        this.doorTexture = loadTexture(&quot;2 Dungeon Tileset/3 Animated objects/Door_S.png&quot;);</span>
+<span class="nc" id="L67">        this.chestTexture = loadTexture(&quot;2 Dungeon Tileset/3 Animated objects/Chest1_S.png&quot;);</span>
+<span class="nc" id="L68">        this.shadowTexture = loadTexture(&quot;1 Characters/Other/Shadow.png&quot;);</span>
+<span class="nc" id="L69">        this.playerSprite = loadStripFrame(&quot;1 Characters/1/D_Idle.png&quot;, 32, 32);</span>
+<span class="nc" id="L70">        this.npcSprites = new TextureRegion[] {</span>
+<span class="nc" id="L71">            loadStripFrame(&quot;1 Characters/2/S_Idle.png&quot;, 32, 32),</span>
+<span class="nc" id="L72">            loadStripFrame(&quot;1 Characters/3/S_Idle.png&quot;, 32, 32),</span>
+<span class="nc" id="L73">            loadStripFrame(&quot;1 Characters/1/S_Idle.png&quot;, 32, 32)</span>
+        };
+<span class="nc" id="L75">    }</span>
+
+    private Texture loadTexture(String relativePath) {
+<span class="nc" id="L78">        Texture texture = new Texture(Gdx.files.internal(relativePath));</span>
+<span class="nc" id="L79">        texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);</span>
+<span class="nc" id="L80">        return texture;</span>
+    }
+
+    private TextureRegion loadStripFrame(String relativePath, int frameWidth, int frameHeight) {
+<span class="nc" id="L84">        Texture texture = loadTexture(relativePath);</span>
+<span class="nc" id="L85">        return new TextureRegion(texture, 0, 0, Math.min(frameWidth, texture.getWidth()), Math.min(frameHeight, texture.getHeight()));</span>
+    }
+
+    @Override
+    public void show() {
+<span class="nc" id="L90">        Gdx.input.setInputProcessor(null);</span>
+<span class="nc" id="L91">    }</span>
+
+    @Override
+    public void render(float delta) {
+<span class="nc" id="L95">        update(delta);</span>
+
+<span class="nc" id="L97">        Gdx.gl.glClearColor(0.18f, 0.15f, 0.1f, 1f);</span>
+<span class="nc" id="L98">        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);</span>
+
+<span class="nc" id="L100">        camera.update();</span>
+<span class="nc" id="L101">        drawInterior();</span>
+<span class="nc" id="L102">        drawUi();</span>
+<span class="nc" id="L103">    }</span>
+
+    private void update(float delta) {
+<span class="nc bnc" id="L106" title="All 2 branches missed.">        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {</span>
+<span class="nc" id="L107">            gameScreen.pauseGame();</span>
+<span class="nc" id="L108">            return;</span>
+        }
+<span class="nc bnc" id="L110" title="All 2 branches missed.">        if (Gdx.input.isKeyJustPressed(Input.Keys.I)) {</span>
+<span class="nc" id="L111">            gameScreen.openWorkshop();</span>
+<span class="nc" id="L112">            return;</span>
+        }
+<span class="nc bnc" id="L114" title="All 2 branches missed.">        if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) {</span>
+<span class="nc" id="L115">            activeSpeaker = null;</span>
+<span class="nc" id="L116">            activeDialog = null;</span>
+<span class="nc" id="L117">            lootMessage = null;</span>
+<span class="nc" id="L118">            lootTimer = 0f;</span>
+        }
+
+<span class="nc" id="L121">        float dx = 0f;</span>
+<span class="nc" id="L122">        float dy = 0f;</span>
+
+<span class="nc bnc" id="L124" title="All 4 branches missed.">        if (Gdx.input.isKeyPressed(Input.Keys.W) || Gdx.input.isKeyPressed(Input.Keys.UP)) dy += 1f;</span>
+<span class="nc bnc" id="L125" title="All 4 branches missed.">        if (Gdx.input.isKeyPressed(Input.Keys.S) || Gdx.input.isKeyPressed(Input.Keys.DOWN)) dy -= 1f;</span>
+<span class="nc bnc" id="L126" title="All 4 branches missed.">        if (Gdx.input.isKeyPressed(Input.Keys.A) || Gdx.input.isKeyPressed(Input.Keys.LEFT)) dx -= 1f;</span>
+<span class="nc bnc" id="L127" title="All 4 branches missed.">        if (Gdx.input.isKeyPressed(Input.Keys.D) || Gdx.input.isKeyPressed(Input.Keys.RIGHT)) dx += 1f;</span>
+
+<span class="nc" id="L129">        float len = (float) Math.sqrt(dx * dx + dy * dy);</span>
+<span class="nc bnc" id="L130" title="All 2 branches missed.">        if (len &gt; 0f) {</span>
+<span class="nc" id="L131">            dx /= len;</span>
+<span class="nc" id="L132">            dy /= len;</span>
+        }
+
+<span class="nc" id="L135">        playerPos.x = clamp(playerPos.x + dx * PLAYER_SPEED * delta, 36f, 384f);</span>
+<span class="nc" id="L136">        playerPos.y = clamp(playerPos.y + dy * PLAYER_SPEED * delta, 48f, 264f);</span>
+
+<span class="nc bnc" id="L138" title="All 2 branches missed.">        if (Gdx.input.isKeyJustPressed(Input.Keys.E)) {</span>
+<span class="nc bnc" id="L139" title="All 2 branches missed.">            if (!tryExit()) {</span>
+<span class="nc bnc" id="L140" title="All 2 branches missed.">                if (!tryOpenChest()) {</span>
+<span class="nc bnc" id="L141" title="All 2 branches missed.">                    if (!tryInteractWithFeature()) {</span>
+<span class="nc" id="L142">                        interactWithNpc();</span>
+                    }
+                }
+            }
+        }
+
+<span class="nc bnc" id="L148" title="All 2 branches missed.">        if (lootTimer &gt; 0f) {</span>
+<span class="nc" id="L149">            lootTimer -= delta;</span>
+<span class="nc bnc" id="L150" title="All 2 branches missed.">            if (lootTimer &lt;= 0f) {</span>
+<span class="nc" id="L151">                lootMessage = null;</span>
+            }
+        }
+<span class="nc" id="L154">    }</span>
+
+    private boolean tryExit() {
+<span class="nc" id="L157">        Vector2 exitDoor = new Vector2(210f, 52f);</span>
+<span class="nc bnc" id="L158" title="All 2 branches missed.">        if (playerPos.dst(exitDoor) &lt;= 34f) {</span>
+<span class="nc" id="L159">            screenManager.pop();</span>
+<span class="nc" id="L160">            return true;</span>
+        }
+<span class="nc" id="L162">        return false;</span>
+    }
+
+    private boolean tryOpenChest() {
+<span class="nc bnc" id="L166" title="All 2 branches missed.">        for (GameScreen.Chest chest : house.chests) {</span>
+<span class="nc bnc" id="L167" title="All 4 branches missed.">            if (playerPos.dst(chest.pos) &lt;= 34f &amp;&amp; !chest.opened) {</span>
+<span class="nc" id="L168">                chest.opened = true;</span>
+<span class="nc" id="L169">                gameScreen.markChestOpened(house.zoneId, house.id, chest.id);</span>
+<span class="nc bnc" id="L170" title="All 2 branches missed.">                if (chest.goldReward &gt; 0) {</span>
+<span class="nc" id="L171">                    gameScreen.addGold(chest.goldReward);</span>
+                }
+<span class="nc bnc" id="L173" title="All 2 branches missed.">                if (chest.potionReward &gt; 0) {</span>
+<span class="nc" id="L174">                    gameScreen.addHealingPotions(chest.potionReward);</span>
+                }
+<span class="nc" id="L176">                gameScreen.onInteriorChestOpened(chest.id);</span>
+<span class="nc" id="L177">                activeSpeaker = &quot;Chest&quot;;</span>
+<span class="nc" id="L178">                activeDialog = &quot;You found &quot; + chest.goldReward + &quot; gold and &quot; + chest.potionReward + &quot; repair kit(s).&quot;;</span>
+<span class="nc" id="L179">                lootMessage = &quot;Loot secured from &quot; + house.name + &quot;.&quot;;</span>
+<span class="nc" id="L180">                lootTimer = 2.5f;</span>
+<span class="nc" id="L181">                return true;</span>
+            }
+<span class="nc" id="L183">        }</span>
+<span class="nc" id="L184">        return false;</span>
+    }
+
+    private void interactWithNpc() {
+<span class="nc" id="L188">        GameScreen.InteriorNpc closestNpc = null;</span>
+<span class="nc" id="L189">        float nearest = 48f;</span>
+
+<span class="nc bnc" id="L191" title="All 2 branches missed.">        for (GameScreen.InteriorNpc npc : house.interiorNpcs) {</span>
+<span class="nc" id="L192">            float dist = playerPos.dst(npc.pos);</span>
+<span class="nc bnc" id="L193" title="All 2 branches missed.">            if (dist &lt; nearest) {</span>
+<span class="nc" id="L194">                nearest = dist;</span>
+<span class="nc" id="L195">                closestNpc = npc;</span>
+            }
+<span class="nc" id="L197">        }</span>
+
+<span class="nc bnc" id="L199" title="All 2 branches missed.">        if (closestNpc != null) {</span>
+<span class="nc bnc" id="L200" title="All 4 branches missed.">            if (closestNpc.shopId != null &amp;&amp; !closestNpc.shopId.isEmpty()) {</span>
+<span class="nc bnc" id="L201" title="All 2 branches missed.">                if (&quot;forge&quot;.equals(closestNpc.shopId)) {</span>
+<span class="nc" id="L202">                    screenManager.push(new ForgeScreen(game, screenManager, gameScreen));</span>
+<span class="nc" id="L203">                    return;</span>
+                }
+<span class="nc" id="L205">                screenManager.push(new ShopScreen(game, screenManager, gameScreen, closestNpc.name, gameScreen.createShopInventory(closestNpc.shopId)));</span>
+<span class="nc" id="L206">                return;</span>
+            }
+<span class="nc" id="L208">            com.rogueforge.game.world.DialogueSystem.DialogueResult result =</span>
+<span class="nc" id="L209">                gameScreen.interactWithInteriorNpc(closestNpc.id, closestNpc.name);</span>
+<span class="nc bnc" id="L210" title="All 2 branches missed.">            activeSpeaker = result.speaker != null ? result.speaker : closestNpc.name;</span>
+<span class="nc bnc" id="L211" title="All 4 branches missed.">            activeDialog = result.text != null &amp;&amp; !result.text.isEmpty() ? result.text : closestNpc.dialog;</span>
+<span class="nc" id="L212">        } else {</span>
+<span class="nc" id="L213">            activeSpeaker = null;</span>
+<span class="nc" id="L214">            activeDialog = null;</span>
+        }
+<span class="nc" id="L216">    }</span>
+
+    private boolean tryInteractWithFeature() {
+<span class="nc" id="L219">        GameScreen.InteriorFeature closestFeature = null;</span>
+<span class="nc" id="L220">        float nearest = 44f;</span>
+<span class="nc bnc" id="L221" title="All 2 branches missed.">        for (GameScreen.InteriorFeature feature : house.interiorFeatures) {</span>
+<span class="nc" id="L222">            float dist = playerPos.dst(feature.pos);</span>
+<span class="nc bnc" id="L223" title="All 2 branches missed.">            if (dist &lt; nearest) {</span>
+<span class="nc" id="L224">                nearest = dist;</span>
+<span class="nc" id="L225">                closestFeature = feature;</span>
+            }
+<span class="nc" id="L227">        }</span>
+<span class="nc bnc" id="L228" title="All 2 branches missed.">        if (closestFeature == null) {</span>
+<span class="nc" id="L229">            return false;</span>
+        }
+<span class="nc bnc" id="L231" title="All 2 branches missed.">        if (&quot;forge&quot;.equals(closestFeature.actionType)) {</span>
+<span class="nc" id="L232">            activeSpeaker = &quot;Forge&quot;;</span>
+<span class="nc" id="L233">            activeDialog = closestFeature.dialog;</span>
+<span class="nc" id="L234">            screenManager.push(new ForgeScreen(game, screenManager, gameScreen));</span>
+<span class="nc" id="L235">            return true;</span>
+        }
+<span class="nc" id="L237">        activeSpeaker = closestFeature.label;</span>
+<span class="nc" id="L238">        activeDialog = closestFeature.dialog;</span>
+<span class="nc" id="L239">        return true;</span>
+    }
+
+    private void drawInterior() {
+<span class="nc" id="L243">        batch.setProjectionMatrix(camera.combined);</span>
+<span class="nc" id="L244">        batch.begin();</span>
+<span class="nc bnc" id="L245" title="All 2 branches missed.">        for (float x = 20f; x &lt; 400f; x += 24f) {</span>
+<span class="nc bnc" id="L246" title="All 2 branches missed.">            for (float y = 20f; y &lt; 270f; y += 24f) {</span>
+<span class="nc" id="L247">                batch.draw(floorTile, x, y, 24f, 24f);</span>
+            }
+        }
+<span class="nc bnc" id="L250" title="All 2 branches missed.">        for (float x = 20f; x &lt; 400f; x += 24f) {</span>
+<span class="nc" id="L251">            batch.draw(wallTile, x, 20f, 24f, 24f);</span>
+<span class="nc" id="L252">            batch.draw(wallTile, x, 246f, 24f, 24f);</span>
+        }
+<span class="nc bnc" id="L254" title="All 2 branches missed.">        for (float y = 44f; y &lt; 246f; y += 24f) {</span>
+<span class="nc" id="L255">            batch.draw(wallTile, 20f, y, 24f, 24f);</span>
+<span class="nc" id="L256">            batch.draw(wallTile, 376f, y, 24f, 24f);</span>
+        }
+<span class="nc" id="L258">        batch.draw(doorTexture, 185f, 20f, 50f, 24f);</span>
+<span class="nc bnc" id="L259" title="All 2 branches missed.">        for (GameScreen.Chest chest : house.chests) {</span>
+<span class="nc bnc" id="L260" title="All 6 branches missed.">            if (chest.hidden &amp;&amp; !chest.opened &amp;&amp; playerPos.dst(chest.pos) &gt; 60f) {</span>
+<span class="nc" id="L261">                continue;</span>
+            }
+<span class="nc bnc" id="L263" title="All 2 branches missed.">            batch.setColor(1f, 1f, 1f, chest.opened ? 0.55f : 1f);</span>
+<span class="nc" id="L264">            batch.draw(chestTexture, chest.pos.x - CHEST_SIZE / 2f, chest.pos.y - CHEST_SIZE / 2f, CHEST_SIZE, CHEST_SIZE);</span>
+<span class="nc" id="L265">        }</span>
+<span class="nc bnc" id="L266" title="All 2 branches missed.">        for (GameScreen.InteriorFeature feature : house.interiorFeatures) {</span>
+<span class="nc" id="L267">            drawShadow(feature.pos.x, feature.pos.y, 50f, 18f, 0.45f);</span>
+<span class="nc bnc" id="L268" title="All 2 branches missed.">            if (&quot;forge&quot;.equals(feature.actionType)) {</span>
+<span class="nc" id="L269">                batch.setColor(0.88f, 0.46f, 0.18f, 1f);</span>
+<span class="nc" id="L270">                batch.draw(wallTile, feature.pos.x - FEATURE_SIZE / 2f, feature.pos.y - FEATURE_SIZE / 2f, FEATURE_SIZE, FEATURE_SIZE);</span>
+<span class="nc" id="L271">                batch.setColor(1f, 0.85f, 0.35f, 1f);</span>
+<span class="nc" id="L272">                batch.draw(doorTexture, feature.pos.x - 14f, feature.pos.y + 4f, 28f, 14f);</span>
+<span class="nc" id="L273">                batch.setColor(Color.WHITE);</span>
+            } else {
+<span class="nc" id="L275">                batch.setColor(Color.LIGHT_GRAY);</span>
+<span class="nc" id="L276">                batch.draw(wallTile, feature.pos.x - FEATURE_SIZE / 2f, feature.pos.y - FEATURE_SIZE / 2f, FEATURE_SIZE, FEATURE_SIZE);</span>
+<span class="nc" id="L277">                batch.setColor(Color.WHITE);</span>
+            }
+<span class="nc" id="L279">        }</span>
+<span class="nc" id="L280">        batch.setColor(Color.WHITE);</span>
+<span class="nc" id="L281">        int npcIndex = 0;</span>
+<span class="nc bnc" id="L282" title="All 2 branches missed.">        for (GameScreen.InteriorNpc npc : house.interiorNpcs) {</span>
+<span class="nc" id="L283">            drawShadow(npc.pos.x, npc.pos.y, 40f, 14f, 0.4f);</span>
+<span class="nc" id="L284">            batch.draw(npcSprites[npcIndex % npcSprites.length], npc.pos.x - NPC_SIZE, npc.pos.y - NPC_SIZE, 44f, 44f);</span>
+<span class="nc" id="L285">            npcIndex++;</span>
+<span class="nc" id="L286">        }</span>
+<span class="nc" id="L287">        drawShadow(playerPos.x, playerPos.y, 46f, 18f, 0.5f);</span>
+<span class="nc" id="L288">        batch.draw(playerSprite, playerPos.x - PLAYER_SIZE / 2f, playerPos.y - PLAYER_SIZE / 2f, PLAYER_SIZE, PLAYER_SIZE);</span>
+<span class="nc" id="L289">        font.setColor(Color.WHITE);</span>
+<span class="nc" id="L290">        font.draw(batch, house.name, 34f, 286f);</span>
+<span class="nc" id="L291">        font.draw(batch, &quot;I: Roster  Esc: Pause&quot;, 226f, 286f);</span>
+<span class="nc" id="L292">        font.draw(batch, &quot;Exit&quot;, 192f, 54f);</span>
+<span class="nc bnc" id="L293" title="All 2 branches missed.">        for (GameScreen.InteriorNpc npc : house.interiorNpcs) {</span>
+<span class="nc" id="L294">            font.draw(batch, npc.name, npc.pos.x - 18f, npc.pos.y + 30f);</span>
+<span class="nc bnc" id="L295" title="All 2 branches missed.">            if (playerPos.dst(npc.pos) &lt;= 48f) {</span>
+<span class="nc" id="L296">                String prompt = &quot;E: Talk&quot;;</span>
+<span class="nc bnc" id="L297" title="All 2 branches missed.">                if (npc.shopId != null) {</span>
+<span class="nc" id="L298">                    prompt = &quot;E: Shop&quot;;</span>
+                }
+<span class="nc" id="L300">                font.draw(batch, prompt, npc.pos.x - 22f, npc.pos.y - 24f);</span>
+            }
+<span class="nc" id="L302">        }</span>
+<span class="nc bnc" id="L303" title="All 2 branches missed.">        for (GameScreen.InteriorFeature feature : house.interiorFeatures) {</span>
+<span class="nc" id="L304">            font.draw(batch, feature.label, feature.pos.x - 18f, feature.pos.y + 36f);</span>
+<span class="nc bnc" id="L305" title="All 2 branches missed.">            if (playerPos.dst(feature.pos) &lt;= 44f) {</span>
+<span class="nc bnc" id="L306" title="All 2 branches missed.">                String prompt = &quot;forge&quot;.equals(feature.actionType) ? &quot;E: Use Forge&quot; : &quot;E: Interact&quot;;</span>
+<span class="nc" id="L307">                font.draw(batch, prompt, feature.pos.x - 30f, feature.pos.y - 28f);</span>
+            }
+<span class="nc" id="L309">        }</span>
+<span class="nc bnc" id="L310" title="All 2 branches missed.">        for (GameScreen.Chest chest : house.chests) {</span>
+<span class="nc bnc" id="L311" title="All 4 branches missed.">            if (!chest.opened &amp;&amp; playerPos.dst(chest.pos) &lt;= 40f) {</span>
+<span class="nc" id="L312">                font.draw(batch, &quot;E: Open&quot;, chest.pos.x - 20f, chest.pos.y - 24f);</span>
+            }
+<span class="nc" id="L314">        }</span>
+<span class="nc" id="L315">        batch.end();</span>
+<span class="nc" id="L316">    }</span>
+
+    private void drawShadow(float x, float y, float width, float height, float alpha) {
+<span class="nc" id="L319">        batch.setColor(1f, 1f, 1f, alpha);</span>
+<span class="nc" id="L320">        batch.draw(shadowTexture, x - width / 2f, y - height / 2f - 10f, width, height);</span>
+<span class="nc" id="L321">        batch.setColor(Color.WHITE);</span>
+<span class="nc" id="L322">    }</span>
+
+    private void drawUi() {
+<span class="nc" id="L325">        uiCamera.setToOrtho(false, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());</span>
+
+<span class="nc bnc" id="L327" title="All 4 branches missed.">        if (activeDialog != null &amp;&amp; activeSpeaker != null) {</span>
+<span class="nc" id="L328">            shapeRenderer.setProjectionMatrix(uiCamera.combined);</span>
+<span class="nc" id="L329">            shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);</span>
+<span class="nc" id="L330">            shapeRenderer.setColor(0.05f, 0.06f, 0.1f, 0.92f);</span>
+<span class="nc" id="L331">            shapeRenderer.rect(28f, 28f, Gdx.graphics.getWidth() - 56f, 104f);</span>
+<span class="nc" id="L332">            shapeRenderer.end();</span>
+
+<span class="nc" id="L334">            batch.setProjectionMatrix(uiCamera.combined);</span>
+<span class="nc" id="L335">            batch.begin();</span>
+<span class="nc" id="L336">            font.setColor(Color.WHITE);</span>
+<span class="nc" id="L337">            font.draw(batch, activeSpeaker, 44f, 112f);</span>
+<span class="nc" id="L338">            font.draw(batch, activeDialog, 44f, 80f);</span>
+<span class="nc" id="L339">            batch.end();</span>
+        }
+
+<span class="nc bnc" id="L342" title="All 2 branches missed.">        if (lootMessage != null) {</span>
+<span class="nc" id="L343">            batch.setProjectionMatrix(uiCamera.combined);</span>
+<span class="nc" id="L344">            batch.begin();</span>
+<span class="nc" id="L345">            font.setColor(1f, 0.9f, 0.35f, 1f);</span>
+<span class="nc" id="L346">            font.draw(batch, lootMessage, 34f, Gdx.graphics.getHeight() - 24f);</span>
+<span class="nc" id="L347">            batch.end();</span>
+        }
+<span class="nc" id="L349">    }</span>
+
+
+    private float clamp(float value, float min, float max) {
+<span class="nc" id="L353">        return Math.max(min, Math.min(max, value));</span>
+    }
+
+    @Override
+    public void resize(int width, int height) {
+<span class="nc" id="L358">        uiCamera.setToOrtho(false, width, height);</span>
+<span class="nc" id="L359">    }</span>
+
+<span class="nc" id="L361">    @Override public void pause() {}</span>
+<span class="nc" id="L362">    @Override public void resume() {}</span>
+<span class="nc" id="L363">    @Override public void hide() {}</span>
+
+    @Override
+    public void dispose() {
+<span class="nc" id="L367">        floorTile.dispose();</span>
+<span class="nc" id="L368">        wallTile.dispose();</span>
+<span class="nc" id="L369">        doorTexture.dispose();</span>
+<span class="nc" id="L370">        chestTexture.dispose();</span>
+<span class="nc" id="L371">        shadowTexture.dispose();</span>
+<span class="nc" id="L372">        playerSprite.getTexture().dispose();</span>
+<span class="nc bnc" id="L373" title="All 2 branches missed.">        for (TextureRegion npcSprite : npcSprites) {</span>
+<span class="nc" id="L374">            npcSprite.getTexture().dispose();</span>
+        }
+<span class="nc" id="L376">        batch.dispose();</span>
+<span class="nc" id="L377">        shapeRenderer.dispose();</span>
+<span class="nc" id="L378">        font.dispose();</span>
+<span class="nc" id="L379">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>HUDOverlay.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core</a> &gt; <a href="index.source.html" class="el_package">com.rogueforge.game.screen</a> &gt; <span class="el_source">HUDOverlay.java</span></div><h1>HUDOverlay.java</h1><pre class="source lang-java linenums">package com.rogueforge.game.screen;
+
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.Texture.TextureFilter;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.utils.viewport.ScreenViewport;
+import com.badlogic.gdx.utils.viewport.Viewport;
+
+/**
+ * HUD overlay rendered on top of the game screen.
+ * Draws health bar, currency, and robot status using ShapeRenderer + BitmapFont (no skin needed).
+ */
+public class HUDOverlay {
+    private final SpriteBatch batch;
+    private final ShapeRenderer shapeRenderer;
+    private final BitmapFont font;
+    private final OrthographicCamera camera;
+    private final Viewport viewport;
+    private final Texture panelTexture;
+    private final Texture barTexture;
+    private final Texture iconTexture;
+
+<span class="nc" id="L29">    private float playerHealth = 100f;</span>
+<span class="nc" id="L30">    private float playerMaxHealth = 100f;</span>
+<span class="nc" id="L31">    private long currency = 0;</span>
+<span class="nc" id="L32">    private int playerExperience = 0;</span>
+<span class="nc" id="L33">    private int nextLevelExperience = 100;</span>
+<span class="nc" id="L34">    private String zoneName = &quot;Verdant Fields&quot;;</span>
+<span class="nc" id="L35">    private String objectiveText = &quot;Speak with Mira in Verdant Fields.&quot;;</span>
+<span class="nc" id="L36">    private float displayedHealth = 100f;</span>
+<span class="nc" id="L37">    private float displayedExperience = 0f;</span>
+<span class="nc" id="L38">    private float displayedGold = 0f;</span>
+<span class="nc" id="L39">    private float[] robotHealth = new float[0];</span>
+<span class="nc" id="L40">    private float[] robotMaxHealth = new float[0];</span>
+
+<span class="nc" id="L42">    public HUDOverlay() {</span>
+<span class="nc" id="L43">        this.batch = new SpriteBatch();</span>
+<span class="nc" id="L44">        this.shapeRenderer = new ShapeRenderer();</span>
+<span class="nc" id="L45">        this.font = new BitmapFont();</span>
+<span class="nc" id="L46">        this.font.getData().setScale(1.4f);</span>
+<span class="nc" id="L47">        this.camera = new OrthographicCamera();</span>
+<span class="nc" id="L48">        this.viewport = new ScreenViewport(camera);</span>
+<span class="nc" id="L49">        this.viewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);</span>
+<span class="nc" id="L50">        this.panelTexture = loadTexture(&quot;4 GUI/1 Frames/Interface windows.png&quot;);</span>
+<span class="nc" id="L51">        this.barTexture = loadTexture(&quot;4 GUI/2 Bars/HealthBar1.png&quot;);</span>
+<span class="nc" id="L52">        this.iconTexture = loadTexture(&quot;4 GUI/7 Numbers/plus.png&quot;);</span>
+<span class="nc" id="L53">    }</span>
+
+    private Texture loadTexture(String relativePath) {
+<span class="nc" id="L56">        Texture texture = new Texture(Gdx.files.internal(relativePath));</span>
+<span class="nc" id="L57">        texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);</span>
+<span class="nc" id="L58">        return texture;</span>
+    }
+
+    public void render() {
+<span class="nc" id="L62">        viewport.apply();</span>
+<span class="nc" id="L63">        float w = viewport.getWorldWidth();</span>
+<span class="nc" id="L64">        float h = viewport.getWorldHeight();</span>
+<span class="nc" id="L65">        animateDisplayedValues();</span>
+
+<span class="nc" id="L67">        float barX = 16f;</span>
+<span class="nc" id="L68">        float panelY = h - 168f;</span>
+<span class="nc" id="L69">        float barW = 240f;</span>
+<span class="nc" id="L70">        float barH = 16f;</span>
+<span class="nc" id="L71">        float hpY = h - 40f;</span>
+<span class="nc" id="L72">        float expY = h - 68f;</span>
+<span class="nc" id="L73">        float goldY = h - 96f;</span>
+<span class="nc" id="L74">        float hpPct = Math.max(0f, Math.min(1f, displayedHealth / Math.max(1f, playerMaxHealth)));</span>
+<span class="nc" id="L75">        float expPct = Math.max(0f, Math.min(1f, displayedExperience / Math.max(1f, nextLevelExperience)));</span>
+<span class="nc" id="L76">        float goldWindow = Math.max(100f, (float) (Math.ceil(Math.max(100d, currency) / 100d) * 100d));</span>
+<span class="nc" id="L77">        float goldPct = Math.max(0f, Math.min(1f, displayedGold / goldWindow));</span>
+
+<span class="nc" id="L79">        Gdx.gl.glEnable(GL20.GL_BLEND);</span>
+
+<span class="nc" id="L81">        batch.setProjectionMatrix(camera.combined);</span>
+<span class="nc" id="L82">        batch.begin();</span>
+<span class="nc" id="L83">        batch.draw(panelTexture, 8f, panelY, 460f, 160f);</span>
+<span class="nc" id="L84">        batch.draw(iconTexture, barX + 4f, hpY - 8f, 18f, 18f);</span>
+<span class="nc" id="L85">        batch.end();</span>
+
+<span class="nc" id="L87">        shapeRenderer.setProjectionMatrix(camera.combined);</span>
+<span class="nc" id="L88">        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);</span>
+<span class="nc" id="L89">        drawBarBack(barX, hpY, barW, barH);</span>
+<span class="nc" id="L90">        drawBarBack(barX, expY, barW, barH);</span>
+<span class="nc" id="L91">        drawBarBack(barX, goldY, barW, barH);</span>
+<span class="nc" id="L92">        shapeRenderer.end();</span>
+
+<span class="nc" id="L94">        batch.setProjectionMatrix(camera.combined);</span>
+<span class="nc" id="L95">        batch.begin();</span>
+<span class="nc bnc" id="L96" title="All 2 branches missed.">        batch.setColor(hpPct &gt; 0.25f ? new Color(0.52f, 0.95f, 0.58f, 1f) : new Color(1f, 0.45f, 0.45f, 1f));</span>
+<span class="nc" id="L97">        batch.draw(barTexture, barX, hpY, barW * hpPct, barH);</span>
+<span class="nc" id="L98">        batch.setColor(new Color(0.48f, 0.74f, 1f, 1f));</span>
+<span class="nc" id="L99">        batch.draw(barTexture, barX, expY, barW * expPct, barH);</span>
+<span class="nc" id="L100">        batch.setColor(new Color(1f, 0.82f, 0.3f, 1f));</span>
+<span class="nc" id="L101">        batch.draw(barTexture, barX, goldY, barW * goldPct, barH);</span>
+<span class="nc" id="L102">        batch.setColor(Color.WHITE);</span>
+<span class="nc" id="L103">        font.setColor(Color.WHITE);</span>
+<span class="nc" id="L104">        font.draw(batch, &quot;HP  &quot; + (int) displayedHealth + &quot;/&quot; + (int) playerMaxHealth, barX + 8f, hpY + 14f);</span>
+<span class="nc" id="L105">        font.draw(batch, &quot;EXP  &quot; + (int) displayedExperience + &quot;/&quot; + nextLevelExperience, barX + 8f, expY + 14f);</span>
+<span class="nc" id="L106">        font.draw(batch, &quot;Gold  &quot; + (long) displayedGold, barX + 8f, goldY + 14f);</span>
+<span class="nc bnc" id="L107" title="All 2 branches missed.">        for (int i = 0; i &lt; robotHealth.length; i++) {</span>
+<span class="nc bnc" id="L108" title="All 2 branches missed.">            String robotStatus = robotHealth[i] &gt; 0</span>
+<span class="nc" id="L109">                ? &quot;Bot &quot; + (i + 1) + &quot;: &quot; + (int) robotHealth[i] + &quot;/&quot; + (int) robotMaxHealth[i]</span>
+<span class="nc" id="L110">                : &quot;Bot &quot; + (i + 1) + &quot;: DOWN&quot;;</span>
+<span class="nc" id="L111">            font.draw(batch, robotStatus, 290f, h - 40f - (i * 22f));</span>
+        }
+<span class="nc" id="L113">        font.draw(batch, zoneName, w - 200, h - 18);</span>
+<span class="nc" id="L114">        font.draw(batch, objectiveText, 18f, 28f);</span>
+<span class="nc" id="L115">        batch.end();</span>
+<span class="nc" id="L116">    }</span>
+
+    private void animateDisplayedValues() {
+<span class="nc" id="L119">        float delta = Gdx.graphics.getDeltaTime();</span>
+<span class="nc" id="L120">        displayedHealth = moveTowards(displayedHealth, playerHealth, delta * Math.max(30f, playerMaxHealth));</span>
+<span class="nc" id="L121">        displayedExperience = moveTowards(displayedExperience, playerExperience, delta * Math.max(60f, nextLevelExperience));</span>
+<span class="nc" id="L122">        displayedGold = moveTowards(displayedGold, currency, delta * Math.max(120f, Math.max(100f, currency)));</span>
+<span class="nc" id="L123">    }</span>
+
+    private float moveTowards(float current, float target, float amount) {
+<span class="nc bnc" id="L126" title="All 2 branches missed.">        if (current &lt; target) {</span>
+<span class="nc" id="L127">            return Math.min(target, current + amount);</span>
+        }
+<span class="nc" id="L129">        return Math.max(target, current - amount);</span>
+    }
+
+    private void drawBarBack(float x, float y, float width, float height) {
+<span class="nc" id="L133">        shapeRenderer.setColor(0.1f, 0.1f, 0.16f, 0.9f);</span>
+<span class="nc" id="L134">        shapeRenderer.rect(x, y, width, height);</span>
+<span class="nc" id="L135">    }</span>
+
+    public void resize(int width, int height) {
+<span class="nc" id="L138">        viewport.update(width, height, true);</span>
+<span class="nc" id="L139">    }</span>
+
+    public void setPlayerHealth(float current, float max) {
+<span class="nc" id="L142">        this.playerHealth = current;</span>
+<span class="nc" id="L143">        this.playerMaxHealth = max;</span>
+<span class="nc" id="L144">    }</span>
+
+<span class="nc" id="L146">    public void setCurrency(long amount) { this.currency = amount; }</span>
+    public void setExperience(int current, int nextLevel) {
+<span class="nc" id="L148">        this.playerExperience = Math.max(0, current);</span>
+<span class="nc" id="L149">        this.nextLevelExperience = Math.max(1, nextLevel);</span>
+<span class="nc" id="L150">    }</span>
+<span class="nc" id="L151">    public void setZoneName(String name) { this.zoneName = name; }</span>
+    public void setObjectiveText(String objectiveText) {
+<span class="nc bnc" id="L153" title="All 2 branches missed.">        this.objectiveText = objectiveText != null ? objectiveText : &quot;&quot;;</span>
+<span class="nc" id="L154">    }</span>
+
+    public void setRobotHealth(float[] current, float[] max) {
+<span class="nc bnc" id="L157" title="All 2 branches missed.">        this.robotHealth = current != null ? current.clone() : new float[0];</span>
+<span class="nc bnc" id="L158" title="All 2 branches missed.">        this.robotMaxHealth = max != null ? max.clone() : new float[0];</span>
+<span class="nc" id="L159">    }</span>
+
+    public void dispose() {
+<span class="nc" id="L162">        batch.dispose();</span>
+<span class="nc" id="L163">        shapeRenderer.dispose();</span>
+<span class="nc" id="L164">        font.dispose();</span>
+<span class="nc" id="L165">        panelTexture.dispose();</span>
+<span class="nc" id="L166">        barTexture.dispose();</span>
+<span class="nc" id="L167">        iconTexture.dispose();</span>
+<span class="nc" id="L168">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

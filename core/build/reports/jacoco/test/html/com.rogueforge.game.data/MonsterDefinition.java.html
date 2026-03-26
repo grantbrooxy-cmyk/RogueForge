@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MonsterDefinition.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core</a> &gt; <a href="index.source.html" class="el_package">com.rogueforge.game.data</a> &gt; <span class="el_source">MonsterDefinition.java</span></div><h1>MonsterDefinition.java</h1><pre class="source lang-java linenums">package com.rogueforge.game.data;
+
+import com.rogueforge.game.combat.Element;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Data POJO for monster definitions loaded from JSON.
+ * Represents the base stats and configuration of a monster type.
+ */
+public class MonsterDefinition {
+
+    private String id;
+    private String name;
+    private String rank;
+    private int hp;
+    private int attack;
+    private int defense;
+    private int speed;
+    private int baseLoot;
+    private String aiProfile;
+    private String[] lootTableIds;
+    private String[] weaknesses;
+    private String[] resistances;
+    private String[] absorbs;
+
+    /**
+     * No-arg constructor required for JSON deserialization.
+     */
+<span class="nc" id="L30">    public MonsterDefinition() {</span>
+<span class="nc" id="L31">    }</span>
+
+    public MonsterDefinition(String id, String name, String rank, int hp, int attack,
+<span class="nc" id="L34">                           int defense, int speed, int baseLoot, String aiProfile, String[] lootTableIds) {</span>
+<span class="nc" id="L35">        this.id = id;</span>
+<span class="nc" id="L36">        this.name = name;</span>
+<span class="nc" id="L37">        this.rank = rank;</span>
+<span class="nc" id="L38">        this.hp = hp;</span>
+<span class="nc" id="L39">        this.attack = attack;</span>
+<span class="nc" id="L40">        this.defense = defense;</span>
+<span class="nc" id="L41">        this.speed = speed;</span>
+<span class="nc" id="L42">        this.baseLoot = baseLoot;</span>
+<span class="nc" id="L43">        this.aiProfile = aiProfile;</span>
+<span class="nc" id="L44">        this.lootTableIds = lootTableIds;</span>
+<span class="nc" id="L45">    }</span>
+
+    public String getId() {
+<span class="nc" id="L48">        return id;</span>
+    }
+
+    public String getName() {
+<span class="nc" id="L52">        return name;</span>
+    }
+
+    public String getRank() {
+<span class="nc" id="L56">        return rank;</span>
+    }
+
+    public int getHp() {
+<span class="nc" id="L60">        return hp;</span>
+    }
+
+    public int getAttack() {
+<span class="nc" id="L64">        return attack;</span>
+    }
+
+    public int getDefense() {
+<span class="nc" id="L68">        return defense;</span>
+    }
+
+    public int getSpeed() {
+<span class="nc" id="L72">        return speed;</span>
+    }
+
+    public int getBaseLoot() {
+<span class="nc" id="L76">        return baseLoot;</span>
+    }
+
+    public String getAiProfile() {
+<span class="nc" id="L80">        return aiProfile;</span>
+    }
+
+    public String[] getLootTableIds() {
+<span class="nc" id="L84">        return lootTableIds;</span>
+    }
+
+    public String[] getWeaknesses() {
+<span class="nc bnc" id="L88" title="All 2 branches missed.">        return weaknesses != null ? weaknesses : new String[0];</span>
+    }
+
+    public String[] getResistances() {
+<span class="nc bnc" id="L92" title="All 2 branches missed.">        return resistances != null ? resistances : new String[0];</span>
+    }
+
+    public String[] getAbsorbs() {
+<span class="nc bnc" id="L96" title="All 2 branches missed.">        return absorbs != null ? absorbs : new String[0];</span>
+    }
+
+    public List&lt;Element&gt; getWeaknessElements() {
+<span class="nc" id="L100">        return toElements(getWeaknesses());</span>
+    }
+
+    public List&lt;Element&gt; getResistanceElements() {
+<span class="nc" id="L104">        return toElements(getResistances());</span>
+    }
+
+    public List&lt;Element&gt; getAbsorbElements() {
+<span class="nc" id="L108">        return toElements(getAbsorbs());</span>
+    }
+
+    private List&lt;Element&gt; toElements(String[] values) {
+<span class="nc" id="L112">        List&lt;Element&gt; elements = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L113" title="All 2 branches missed.">        for (String value : values) {</span>
+<span class="nc" id="L114">            Element element = Element.fromString(value);</span>
+<span class="nc bnc" id="L115" title="All 2 branches missed.">            if (element != Element.NONE) {</span>
+<span class="nc" id="L116">                elements.add(element);</span>
+            }
+        }
+<span class="nc" id="L119">        return elements;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

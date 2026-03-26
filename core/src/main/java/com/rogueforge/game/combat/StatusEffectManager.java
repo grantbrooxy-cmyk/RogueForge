@@ -6,6 +6,47 @@ import java.util.List;
 
 /**
  * Tracks active statuses on a combatant and resolves turn-based effects.
+ *
+ * All 15 game-design statuses are mechanically active. Quick reference:
+ *
+ *  Damage-over-time (beginTurn):
+ *    BURN     — 5 % max HP fire damage per turn
+ *    POISON   — 8 % max HP poison damage per turn
+ *    BLEED    — 3 % max HP on action taken (onActionTaken)
+ *
+ *  Healing-over-time (beginTurn):
+ *    REGEN    — 5 % max HP healing per turn
+ *
+ *  Speed modifiers (getSpeedMultiplier → TurnTimeline delay):
+ *    SLOW     — 0.5× speed → double tick delay → acts half as often
+ *    HASTE    — 1.5× speed → two-thirds tick delay → acts 50 % more often
+ *
+ *  Turn-skip control (shouldSkipTurn → battle screen skips the turn):
+ *    STUN     — always skips turn
+ *    FREEZE   — always skips turn, also +50 % physical damage taken
+ *    PARALYZE — 30 % chance to skip turn
+ *
+ *  Damage-reduction buffs (getPhysicalDamageTakenMultiplier /
+ *                          getAbilityDamageTakenMultiplier):
+ *    DEFENDING — −50 % physical, −25 % ability (set by Defend command)
+ *    PROTECT   — −30 % physical
+ *    SHELL     — −30 % ability
+ *
+ *  Attacker modifiers:
+ *    BLIND    — 50 % physical hit chance (getPhysicalHitChanceMultiplier;
+ *               miss returns 0 from CombatResolver.resolvePhysicalDamage)
+ *    WEAKEN   — −25 % physical damage dealt (getPhysicalDamageDealtMultiplier)
+ *    BERSERK  — +50 % physical damage dealt; forces Attack-only commands
+ *               (canAttackOnly — battle screen enforces the restriction)
+ *
+ *  Command-block:
+ *    SILENCE  — blocks Ability command (canUseAbilities returns false;
+ *               battle screen must check before showing Ability menu)
+ *
+ *  Also tracked: TAUNT (forces enemies to target the taunting unit;
+ *                enforced by enemy AI in the battle screen, not here).
+ *  DEFENDING is cleared at the start of the actor's next turn by the
+ *  normal tick-down in endTurn().
  */
 public class StatusEffectManager {
     private final List<ActiveStatusEffect> activeEffects = new ArrayList<>();
@@ -44,6 +85,15 @@ public class StatusEffectManager {
         return new ArrayList<>(activeEffects);
     }
 
+    /**
+     * Applies all begin-of-turn effects (DoTs, HoTs) and returns log lines.
+     *
+     * Status coverage:
+     *   BURN    — 5 % max HP fire damage
+     *   POISON  — 8 % max HP poison damage
+     *   REGEN   — 5 % max HP healing
+     *   (BLEED fires in onActionTaken, not here)
+     */
     public List<String> beginTurn(BattleCombatant combatant) {
         List<String> log = new ArrayList<>();
         if (combatant == null || !combatant.isAlive()) {
@@ -64,6 +114,17 @@ public class StatusEffectManager {
             int healing = Math.max(1, Math.round(combatant.getMaxHealth() * 0.05f));
             combatant.heal(healing);
             log.add(combatant.getName() + " regenerates " + healing + " HP.");
+        }
+        if (combatant.hasUniqueBoost("AUTO_REPAIR")) {
+            int healing = Math.max(1, Math.round(combatant.getMaxHealth() * 0.06f));
+            combatant.heal(healing);
+            log.add(combatant.getName() + "'s auto-repair restores " + healing + " HP.");
+        }
+
+        // BERSERK reminder: command restriction is enforced by canAttackOnly() —
+        // the battle screen must check that before building its command menu.
+        if (has(StatusEffectType.BERSERK)) {
+            log.add(combatant.getName() + " is berserk and can only attack!");
         }
         return log;
     }
@@ -149,8 +210,24 @@ public class StatusEffectManager {
         return multiplier;
     }
 
+    /**
+     * BLIND: physical attacks (Attack command, physical-type abilities) have
+     * a 50 % chance to miss. CombatResolver.resolvePhysicalDamage() checks
+     * this and returns 0 on a miss. The caller should log "{name} missed!"
+     */
     public float getPhysicalHitChanceMultiplier() {
         return has(StatusEffectType.BLIND) ? 0.5f : 1f;
+    }
+
+    /**
+     * BERSERK command lock: when true the battle screen must restrict the
+     * actor's command menu to Attack only. Berserk boosts physical output
+     * (handled by getPhysicalDamageDealtMultiplier) but removes tactical choice.
+     *
+     * SILENCE is the ability-blocking equivalent — use canUseAbilities().
+     */
+    public boolean canAttackOnly() {
+        return has(StatusEffectType.BERSERK);
     }
 
     private String prettify(StatusEffectType type) {

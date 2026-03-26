@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ZoneManager.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core</a> &gt; <a href="index.source.html" class="el_package">com.rogueforge.game.world</a> &gt; <span class="el_source">ZoneManager.java</span></div><h1>ZoneManager.java</h1><pre class="source lang-java linenums">package com.rogueforge.game.world;
+
+import com.badlogic.gdx.assets.AssetManager;
+import com.badlogic.gdx.maps.tiled.TiledMap;
+import com.rogueforge.game.data.ZoneDefinition;
+import com.rogueforge.game.core.EventBus;
+import com.rogueforge.game.event.ZoneChangedEvent;
+
+import java.util.HashMap;
+import java.util.Map;
+
+public class ZoneManager {
+    private ZoneDefinition currentZone;
+    private TiledMap currentMap;
+    private final AssetManager assetManager;
+    private final EventBus eventBus;
+<span class="nc" id="L17">    private final Map&lt;String, ZoneDefinition&gt; zones = new HashMap&lt;&gt;();</span>
+
+<span class="nc" id="L19">    public ZoneManager(AssetManager assetManager, EventBus eventBus) {</span>
+<span class="nc" id="L20">        this.assetManager = assetManager;</span>
+<span class="nc" id="L21">        this.eventBus = eventBus;</span>
+<span class="nc" id="L22">        this.currentZone = null;</span>
+<span class="nc" id="L23">        this.currentMap = null;</span>
+<span class="nc" id="L24">    }</span>
+
+    /** Register a zone definition so it can be loaded by id. */
+    public void registerZone(ZoneDefinition zone) {
+<span class="nc bnc" id="L28" title="All 4 branches missed.">        if (zone != null &amp;&amp; zone.getId() != null) {</span>
+<span class="nc" id="L29">            zones.put(zone.getId(), zone);</span>
+        }
+<span class="nc" id="L31">    }</span>
+
+    public void loadZone(String zoneId) {
+<span class="nc bnc" id="L34" title="All 2 branches missed.">        if (currentMap != null) {</span>
+            try {
+<span class="nc bnc" id="L36" title="All 2 branches missed.">                String oldPath = currentZone != null ? currentZone.getTilemapPath() : null;</span>
+<span class="nc bnc" id="L37" title="All 2 branches missed.">                if (oldPath != null) assetManager.unload(oldPath);</span>
+<span class="nc" id="L38">            } catch (Exception e) { /* already unloaded */ }</span>
+<span class="nc" id="L39">            currentMap = null;</span>
+        }
+
+<span class="nc" id="L42">        currentZone = zones.get(zoneId);</span>
+<span class="nc bnc" id="L43" title="All 2 branches missed.">        if (currentZone != null) {</span>
+<span class="nc" id="L44">            String mapPath = currentZone.getTilemapPath();</span>
+<span class="nc" id="L45">            assetManager.load(mapPath, TiledMap.class);</span>
+<span class="nc" id="L46">            assetManager.finishLoading();</span>
+<span class="nc" id="L47">            currentMap = assetManager.get(mapPath, TiledMap.class);</span>
+
+<span class="nc" id="L49">            eventBus.fire(new ZoneChangedEvent(currentZone));</span>
+        }
+<span class="nc" id="L51">    }</span>
+
+    public ZoneDefinition getCurrentZone() {
+<span class="nc" id="L54">        return currentZone;</span>
+    }
+
+    public TiledMap getCurrentMap() {
+<span class="nc" id="L58">        return currentMap;</span>
+    }
+
+    public String getZoneRankFloor() {
+<span class="nc bnc" id="L62" title="All 2 branches missed.">        return currentZone != null ? currentZone.getRankFloor() : &quot;G&quot;;</span>
+    }
+
+    public String getZoneRankCeiling() {
+<span class="nc bnc" id="L66" title="All 2 branches missed.">        return currentZone != null ? currentZone.getRankCeiling() : &quot;G&quot;;</span>
+    }
+
+    public void dispose() {
+<span class="nc bnc" id="L70" title="All 2 branches missed.">        if (currentMap != null) {</span>
+            try {
+<span class="nc bnc" id="L72" title="All 2 branches missed.">                String mapPath = currentZone != null ? currentZone.getTilemapPath() : &quot;&quot;;</span>
+<span class="nc" id="L73">                assetManager.unload(mapPath);</span>
+<span class="nc" id="L74">            } catch (Exception e) { /* silent */ }</span>
+<span class="nc" id="L75">            currentMap = null;</span>
+        }
+<span class="nc" id="L77">        currentZone = null;</span>
+<span class="nc" id="L78">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

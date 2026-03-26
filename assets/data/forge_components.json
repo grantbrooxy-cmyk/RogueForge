@@ -1,0 +1,10 @@
+[
+  { "id": "scrap_alloy", "name": "Scrap Alloy", "description": "Recovered alloy plating used in basic reforging jobs.", "rarity": "COMMON", "dropTags": ["common_drop"] },
+  { "id": "slime_resin", "name": "Slime Resin", "description": "Conductive resin harvested from volatile slimes.", "rarity": "COMMON", "dropTags": ["slime_g", "common_drop"] },
+  { "id": "scout_gyro", "name": "Scout Gyro", "description": "A stabilizer assembly prized for agile weapon builds.", "rarity": "UNCOMMON", "dropTags": ["goblin_gear"] },
+  { "id": "bone_fiber", "name": "Bone Fiber", "description": "Rigid fibers useful for reinforcing limb assemblies.", "rarity": "UNCOMMON", "dropTags": ["uncommon_drop"] },
+  { "id": "hex_crystal", "name": "Hex Crystal", "description": "A spell-reactive crystal fragment from caster enemies.", "rarity": "RARE", "dropTags": ["magic_gear"] },
+  { "id": "fortress_plate", "name": "Fortress Plate", "description": "Dense armor plate suitable for heavy frames.", "rarity": "RARE", "dropTags": ["rare_drop"] },
+  { "id": "drake_heart", "name": "Drake Heart", "description": "A blazing core used in elite forge projects.", "rarity": "EPIC", "dropTags": ["boss_drop"] },
+  { "id": "primal_core", "name": "Primal Core", "description": "An unstable energy core that can anchor experimental parts.", "rarity": "EPIC", "dropTags": ["boss_drop", "rare_drop"] }
+]

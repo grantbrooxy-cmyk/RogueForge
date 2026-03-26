@@ -324,7 +324,8 @@ public class WorkshopScreen implements Screen {
             ? "Level " + gameScreen.getPlayerLevel() + "  Unlock Grade " + gameScreen.getUnlockedGrade()
             : "Level " + gameScreen.getRobotLevel(selectedPartyMember - 1)
                 + "  Grade " + gameScreen.getRobotGrade(selectedPartyMember - 1)
-                + "  Evo " + gameScreen.getRobotEvolutionTier(selectedPartyMember - 1),
+                + "  Evo " + gameScreen.getRobotEvolutionTier(selectedPartyMember - 1)
+                + "  Class " + gameScreen.getRobotClass(selectedPartyMember - 1),
             x, y - 24f);
         boolean activeRobotSelected = !playerSelected && gameScreen.hasActiveRobotAt(selectedPartyMember - 1);
         if (!playerSelected && !activeRobotSelected) {
@@ -424,19 +425,22 @@ public class WorkshopScreen implements Screen {
             bodyFont.draw(batch, "Strength: " + (int) stats.strength, leftX, topY - 130f);
             bodyFont.draw(batch, "Intelligence: " + (int) stats.intelligence, leftX, topY - 160f);
             bodyFont.draw(batch, "Stamina: " + (int) stats.stamina, leftX, topY - 190f);
+            if (!playerSelected) {
+                bodyFont.draw(batch, "Derived Class: " + gameScreen.getRobotClass(selectedPartyMember - 1), leftX, topY - 220f);
+            }
         } else {
             bodyFont.draw(batch, "This slot is empty.", leftX, topY - 70f);
         }
 
-        bodyFont.draw(batch, "Equipment:", leftX, topY - 240f);
+        bodyFont.draw(batch, "Equipment:", leftX, topY - 270f);
         if (equipped.isEmpty()) {
-            bodyFont.draw(batch, "No equipment assigned.", leftX, topY - 270f);
+            bodyFont.draw(batch, "No equipment assigned.", leftX, topY - 300f);
         } else {
             int row = 0;
             for (Map.Entry<String, String> entry : equipped.entrySet()) {
                 EquipmentItem item = gameScreen.findEquipmentItem(entry.getValue());
                 String itemName = item != null ? item.getName() : entry.getValue();
-                bodyFont.draw(batch, entry.getKey() + ": " + itemName, leftX, topY - 270f - (row * 26f));
+                bodyFont.draw(batch, entry.getKey() + ": " + itemName, leftX, topY - 300f - (row * 26f));
                 row++;
             }
         }
@@ -658,9 +662,35 @@ public class WorkshopScreen implements Screen {
             if (sb.length() > 0) {
                 sb.append("  ");
             }
-            sb.append(item.getUniqueBoost());
+            sb.append(formatUniqueBoost(item.getUniqueBoost()));
         }
         return sb.toString();
+    }
+
+    private String formatUniqueBoost(String uniqueBoost) {
+        if (uniqueBoost == null || uniqueBoost.isEmpty()) {
+            return "";
+        }
+        switch (uniqueBoost) {
+            case "XP_BOOST":
+                return "XP Boost";
+            case "FIRST_STRIKE":
+                return "First Strike";
+            case "ARCANE_SURGE":
+                return "Arcane Surge";
+            case "LIFE_TAP":
+                return "Life Tap";
+            case "OVERDRIVE_LINK":
+                return "Overdrive";
+            case "COUNTER_FIELD":
+                return "Counter Field";
+            case "BARRIER_MATRIX":
+                return "Barrier Matrix";
+            case "AUTO_REPAIR":
+                return "Auto Repair";
+            default:
+                return uniqueBoost;
+        }
     }
 
     private void appendStat(StringBuilder sb, String label, int value) {

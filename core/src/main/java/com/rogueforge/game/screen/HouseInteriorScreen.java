@@ -24,6 +24,7 @@ public class HouseInteriorScreen implements Screen {
     private static final float PLAYER_SPEED = 180f;
     private static final float CHEST_SIZE = 32f;
     private static final float NPC_SIZE = 22f;
+    private static final float FEATURE_SIZE = 36f;
 
     private final RogueForgeGame game;
     private final ScreenManager screenManager;
@@ -137,7 +138,9 @@ public class HouseInteriorScreen implements Screen {
         if (Gdx.input.isKeyJustPressed(Input.Keys.E)) {
             if (!tryExit()) {
                 if (!tryOpenChest()) {
-                    interactWithNpc();
+                    if (!tryInteractWithFeature()) {
+                        interactWithNpc();
+                    }
                 }
             }
         }
@@ -195,6 +198,10 @@ public class HouseInteriorScreen implements Screen {
 
         if (closestNpc != null) {
             if (closestNpc.shopId != null && !closestNpc.shopId.isEmpty()) {
+                if ("forge".equals(closestNpc.shopId)) {
+                    screenManager.push(new ForgeScreen(game, screenManager, gameScreen));
+                    return;
+                }
                 screenManager.push(new ShopScreen(game, screenManager, gameScreen, closestNpc.name, gameScreen.createShopInventory(closestNpc.shopId)));
                 return;
             }
@@ -206,6 +213,30 @@ public class HouseInteriorScreen implements Screen {
             activeSpeaker = null;
             activeDialog = null;
         }
+    }
+
+    private boolean tryInteractWithFeature() {
+        GameScreen.InteriorFeature closestFeature = null;
+        float nearest = 44f;
+        for (GameScreen.InteriorFeature feature : house.interiorFeatures) {
+            float dist = playerPos.dst(feature.pos);
+            if (dist < nearest) {
+                nearest = dist;
+                closestFeature = feature;
+            }
+        }
+        if (closestFeature == null) {
+            return false;
+        }
+        if ("forge".equals(closestFeature.actionType)) {
+            activeSpeaker = "Forge";
+            activeDialog = closestFeature.dialog;
+            screenManager.push(new ForgeScreen(game, screenManager, gameScreen));
+            return true;
+        }
+        activeSpeaker = closestFeature.label;
+        activeDialog = closestFeature.dialog;
+        return true;
     }
 
     private void drawInterior() {
@@ -232,6 +263,20 @@ public class HouseInteriorScreen implements Screen {
             batch.setColor(1f, 1f, 1f, chest.opened ? 0.55f : 1f);
             batch.draw(chestTexture, chest.pos.x - CHEST_SIZE / 2f, chest.pos.y - CHEST_SIZE / 2f, CHEST_SIZE, CHEST_SIZE);
         }
+        for (GameScreen.InteriorFeature feature : house.interiorFeatures) {
+            drawShadow(feature.pos.x, feature.pos.y, 50f, 18f, 0.45f);
+            if ("forge".equals(feature.actionType)) {
+                batch.setColor(0.88f, 0.46f, 0.18f, 1f);
+                batch.draw(wallTile, feature.pos.x - FEATURE_SIZE / 2f, feature.pos.y - FEATURE_SIZE / 2f, FEATURE_SIZE, FEATURE_SIZE);
+                batch.setColor(1f, 0.85f, 0.35f, 1f);
+                batch.draw(doorTexture, feature.pos.x - 14f, feature.pos.y + 4f, 28f, 14f);
+                batch.setColor(Color.WHITE);
+            } else {
+                batch.setColor(Color.LIGHT_GRAY);
+                batch.draw(wallTile, feature.pos.x - FEATURE_SIZE / 2f, feature.pos.y - FEATURE_SIZE / 2f, FEATURE_SIZE, FEATURE_SIZE);
+                batch.setColor(Color.WHITE);
+            }
+        }
         batch.setColor(Color.WHITE);
         int npcIndex = 0;
         for (GameScreen.InteriorNpc npc : house.interiorNpcs) {
@@ -248,7 +293,18 @@ public class HouseInteriorScreen implements Screen {
         for (GameScreen.InteriorNpc npc : house.interiorNpcs) {
             font.draw(batch, npc.name, npc.pos.x - 18f, npc.pos.y + 30f);
             if (playerPos.dst(npc.pos) <= 48f) {
-                font.draw(batch, npc.shopId != null ? "E: Shop" : "E: Talk", npc.pos.x - 22f, npc.pos.y - 24f);
+                String prompt = "E: Talk";
+                if (npc.shopId != null) {
+                    prompt = "E: Shop";
+                }
+                font.draw(batch, prompt, npc.pos.x - 22f, npc.pos.y - 24f);
+            }
+        }
+        for (GameScreen.InteriorFeature feature : house.interiorFeatures) {
+            font.draw(batch, feature.label, feature.pos.x - 18f, feature.pos.y + 36f);
+            if (playerPos.dst(feature.pos) <= 44f) {
+                String prompt = "forge".equals(feature.actionType) ? "E: Use Forge" : "E: Interact";
+                font.draw(batch, prompt, feature.pos.x - 30f, feature.pos.y - 28f);
             }
         }
         for (GameScreen.Chest chest : house.chests) {

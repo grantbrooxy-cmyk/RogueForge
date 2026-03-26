@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.10.2" orientation="orthogonal" renderorder="right-down" width="42" height="30" tilewidth="48" tileheight="48" infinite="0" nextlayerid="7" nextobjectid="26">
+<map version="1.10" tiledversion="1.10.2" orientation="orthogonal" renderorder="right-down" width="42" height="30" tilewidth="48" tileheight="48" infinite="0" nextlayerid="7" nextobjectid="29">
  <properties>
   <property name="groundStyle" value="peak"/>
  </properties>
@@ -36,6 +36,11 @@
     <property name="spawnId" value="foothill"/>
    </properties>
   </object>
+  <object id="26" name="from_sky" type="player" x="1650" y="320">
+   <properties>
+    <property name="spawnId" value="from_sky"/>
+   </properties>
+  </object>
   <object id="12" name="enemy_1" type="enemy" x="760" y="980"/>
   <object id="13" name="enemy_2" type="enemy" x="1160" y="780"/>
   <object id="14" name="enemy_3" type="enemy" x="1360" y="620"/>
@@ -47,6 +52,14 @@
     <property name="label" value="Verdant Fields"/>
     <property name="targetZone" value="verdant_fields"/>
     <property name="targetSpawn" value="from_peak"/>
+   </properties>
+  </object>
+  <object id="27" name="sky_fortress_gate" x="1602" y="320" width="80" height="80">
+   <properties>
+    <property name="label" value="Sky Fortress"/>
+    <property name="targetZone" value="sky_fortress"/>
+    <property name="targetSpawn" value="from_peak"/>
+    <property name="lockMessage" value="The air rail above the peak climbs toward an ancient fortress in the clouds."/>
    </properties>
   </object>
  </objectgroup>

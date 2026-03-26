@@ -1,7 +1,9 @@
 package com.rogueforge.game.combat;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Runtime combatant used by the turn-based battle system.
@@ -13,6 +15,7 @@ public class BattleCombatant {
     private final int partyIndex;
     private final String rank;
     private final String aiProfile;
+    private final String combatClass;
     private final List<AbilityInstance> abilities;
     private final List<Element> weaknesses;
     private final List<Element> resistances;
@@ -21,6 +24,8 @@ public class BattleCombatant {
     private final int rewardGold;
     private final int rewardExperience;
     private final Object sourceReference;
+    private final Set<Element> elementalBreaks = new HashSet<>();
+    private final Set<String> uniqueBoosts;
 
     private float health;
     private final float maxHealth;
@@ -28,18 +33,21 @@ public class BattleCombatant {
     private final float strength;
     private final float intelligence;
     private final float stamina;
+    private Element lastElementHit = Element.NONE;
+    private int consecutiveElementHits;
 
     public BattleCombatant(String id, String name, boolean ally, int partyIndex, String rank, String aiProfile,
-                           float health, float maxHealth, float agility, float strength,
+                           String combatClass, float health, float maxHealth, float agility, float strength,
                            float intelligence, float stamina, List<AbilityInstance> abilities,
                            List<Element> weaknesses, List<Element> resistances, List<Element> absorbs,
-                           int rewardGold, int rewardExperience, Object sourceReference) {
+                           int rewardGold, int rewardExperience, Object sourceReference, List<String> uniqueBoosts) {
         this.id = id;
         this.name = name;
         this.ally = ally;
         this.partyIndex = partyIndex;
         this.rank = rank;
         this.aiProfile = aiProfile;
+        this.combatClass = combatClass != null ? combatClass : "";
         this.health = health;
         this.maxHealth = maxHealth;
         this.agility = agility;
@@ -53,6 +61,10 @@ public class BattleCombatant {
         this.rewardGold = rewardGold;
         this.rewardExperience = rewardExperience;
         this.sourceReference = sourceReference;
+        this.uniqueBoosts = new HashSet<>();
+        if (uniqueBoosts != null) {
+            this.uniqueBoosts.addAll(uniqueBoosts);
+        }
     }
 
     public String getId() {
@@ -77,6 +89,23 @@ public class BattleCombatant {
 
     public String getRank() {
         return rank;
+    }
+
+    public String getCombatClass() {
+        return combatClass;
+    }
+
+    public boolean isCombatClass(String value) {
+        if (value == null || combatClass == null || combatClass.isEmpty()) {
+            return false;
+        }
+        String[] parts = combatClass.split("/");
+        for (String part : parts) {
+            if (value.equalsIgnoreCase(part.trim())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public float getHealth() {
@@ -133,6 +162,36 @@ public class BattleCombatant {
 
     public Object getSourceReference() {
         return sourceReference;
+    }
+
+    public boolean hasUniqueBoost(String uniqueBoost) {
+        return uniqueBoost != null && uniqueBoosts.contains(uniqueBoost);
+    }
+
+    public Set<String> getUniqueBoosts() {
+        return new HashSet<>(uniqueBoosts);
+    }
+
+    public boolean hasElementalBreak(Element element) {
+        return element != null && elementalBreaks.contains(element);
+    }
+
+    public int registerElementalHit(Element element) {
+        if (element == null || element == Element.NONE) {
+            lastElementHit = Element.NONE;
+            consecutiveElementHits = 0;
+            return 0;
+        }
+        if (element == lastElementHit) {
+            consecutiveElementHits++;
+        } else {
+            lastElementHit = element;
+            consecutiveElementHits = 1;
+        }
+        if (consecutiveElementHits >= 3) {
+            elementalBreaks.add(element);
+        }
+        return consecutiveElementHits;
     }
 
     public boolean isAlive() {

@@ -1,5 +1,6 @@
 plugins {
     id 'java-library'
+    id 'jacoco'
 }
 
 sourceSets {
@@ -14,4 +15,20 @@ dependencies {
     api "com.badlogicgames.gdx:gdx:${gdxVersion}"
     api "com.badlogicgames.gdx:gdx-box2d:${gdxVersion}"
     api "com.badlogicgames.gdx:gdx-freetype:${gdxVersion}"
+
+    testImplementation platform('org.junit:junit-bom:5.10.2')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+jacocoTestReport {
+    dependsOn test
+
+    reports {
+        xml.required = true
+        html.required = true
+    }
 }

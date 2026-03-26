@@ -1,0 +1,626 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GameState.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core</a> &gt; <a href="index.source.html" class="el_package">com.rogueforge.game.core</a> &gt; <span class="el_source">GameState.java</span></div><h1>GameState.java</h1><pre class="source lang-java linenums">package com.rogueforge.game.core;
+
+import com.badlogic.gdx.math.Vector2;
+import com.rogueforge.game.data.EquipmentItem;
+import com.rogueforge.game.data.SaveFile;
+import com.rogueforge.game.progression.RobotProgressionState;
+import com.rogueforge.game.world.SettlementState;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.function.IntUnaryOperator;
+
+/**
+ * Central game state container. Holds all mutable player, robot, equipment,
+ * and progression data. Extracted from GameScreen to decouple state from rendering.
+ */
+public class GameState {
+    // Grade progression order
+<span class="fc" id="L23">    private static final String[] GRADE_ORDER = {&quot;G&quot;, &quot;F&quot;, &quot;E&quot;, &quot;D&quot;, &quot;C&quot;, &quot;B&quot;, &quot;A&quot;, &quot;S&quot;, &quot;S+&quot;, &quot;S++&quot;, &quot;S+++&quot;};</span>
+
+    // Player base stats (before equipment/level)
+    private static final float BASE_PLAYER_AGILITY = 26f;
+    private static final float BASE_PLAYER_STRENGTH = 18f;
+    private static final float BASE_PLAYER_INTELLIGENCE = 14f;
+    private static final float BASE_PLAYER_STAMINA = 20f;
+    private static final float BASE_PLAYER_MAX_HEALTH = 100f;
+
+    // Player state
+    private String playerName;
+<span class="fc" id="L34">    private final Vector2 playerPos = new Vector2(640, 360);</span>
+<span class="fc" id="L35">    private float playerHealth = 100f;</span>
+<span class="fc" id="L36">    private float playerMaxHealth = 100f;</span>
+<span class="fc" id="L37">    private int playerLevel = 1;</span>
+<span class="fc" id="L38">    private int playerExperience = 0;</span>
+<span class="fc" id="L39">    private int healingPotions = 3;</span>
+<span class="fc" id="L40">    private long totalGold = 0;</span>
+<span class="fc" id="L41">    private int totalEnemiesKilled = 0;</span>
+<span class="fc" id="L42">    private float survivalTime = 0f;</span>
+<span class="fc" id="L43">    private String currentZoneId = &quot;verdant_fields&quot;;</span>
+<span class="fc" id="L44">    private int currentSaveSlot = 0;</span>
+
+    // Equipment
+<span class="fc" id="L47">    private final Map&lt;String, String&gt; playerEquipment = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L48">    private final Map&lt;String, Map&lt;String, String&gt;&gt; robotEquipment = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L49">    private final List&lt;EquipmentItem&gt; equipmentCatalog = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L50">    private final List&lt;String&gt; ownedEquipmentIds = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L51">    private final Map&lt;String, Boolean&gt; questFlags = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L52">    private final Map&lt;String, String&gt; questStates = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L53">    private final List&lt;String&gt; keyItems = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L54">    private final Map&lt;String, Integer&gt; bestiaryScanLevels = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L55">    private final Map&lt;String, Boolean&gt; worldStateFlags = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L56">    private final Map&lt;String, SettlementState&gt; settlementUpgrades = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L57">    private final Map&lt;String, RobotProgressionState&gt; robotProgressionStates = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L58">    private final Map&lt;String, Integer&gt; forgeComponents = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L59">    private final Map&lt;String, Integer&gt; shardInventory = new HashMap&lt;&gt;();</span>
+
+    // Forge Core level (1 = base, 2/3/4 unlocked by boss milestones)
+    // Gates robot evolution tiers: Tier 2 requires Lv2, Tier 3 requires Lv3.
+<span class="fc" id="L63">    private int forgeCoreLevel = 1;</span>
+
+    // Robot roster tracking
+<span class="fc" id="L66">    private final List&lt;String&gt; collectedRobotIds = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L67">    private final List&lt;String&gt; activeRobotIds = new ArrayList&lt;&gt;();</span>
+
+<span class="fc" id="L69">    public GameState(String playerName) {</span>
+<span class="pc bpc" id="L70" title="1 of 2 branches missed.">        this.playerName = playerName != null ? playerName : &quot;Player&quot;;</span>
+<span class="fc" id="L71">    }</span>
+
+    // --- Player accessors ---
+<span class="nc" id="L74">    public String getPlayerName() { return playerName; }</span>
+<span class="nc" id="L75">    public Vector2 getPlayerPos() { return playerPos; }</span>
+<span class="nc" id="L76">    public float getPlayerHealth() { return playerHealth; }</span>
+<span class="nc" id="L77">    public void setPlayerHealth(float hp) { this.playerHealth = Math.max(0f, hp); }</span>
+<span class="nc" id="L78">    public float getPlayerMaxHealth() { return playerMaxHealth; }</span>
+<span class="nc" id="L79">    public void setPlayerMaxHealth(float maxHp) { this.playerMaxHealth = maxHp; }</span>
+<span class="nc" id="L80">    public int getPlayerLevel() { return playerLevel; }</span>
+<span class="fc" id="L81">    public void setPlayerLevel(int level) { this.playerLevel = Math.max(1, level); }</span>
+<span class="nc" id="L82">    public int getPlayerExperience() { return playerExperience; }</span>
+<span class="nc" id="L83">    public void setPlayerExperience(int xp) { this.playerExperience = Math.max(0, xp); }</span>
+<span class="nc" id="L84">    public int getHealingPotions() { return healingPotions; }</span>
+<span class="nc" id="L85">    public void setHealingPotions(int potions) { this.healingPotions = potions; }</span>
+<span class="nc" id="L86">    public void addHealingPotions(int amount) { this.healingPotions += amount; }</span>
+<span class="nc" id="L87">    public long getTotalGold() { return totalGold; }</span>
+<span class="nc" id="L88">    public void addGold(long amount) { this.totalGold += amount; }</span>
+<span class="nc" id="L89">    public void setTotalGold(long gold) { this.totalGold = gold; }</span>
+    public boolean spendGold(long amount) {
+<span class="nc bnc" id="L91" title="All 4 branches missed.">        if (amount &lt; 0 || totalGold &lt; amount) {</span>
+<span class="nc" id="L92">            return false;</span>
+        }
+<span class="nc" id="L94">        totalGold -= amount;</span>
+<span class="nc" id="L95">        return true;</span>
+    }
+<span class="nc" id="L97">    public int getTotalEnemiesKilled() { return totalEnemiesKilled; }</span>
+<span class="nc" id="L98">    public void incrementEnemiesKilled() { this.totalEnemiesKilled++; }</span>
+<span class="nc" id="L99">    public void setTotalEnemiesKilled(int count) { this.totalEnemiesKilled = count; }</span>
+<span class="nc" id="L100">    public float getSurvivalTime() { return survivalTime; }</span>
+<span class="nc" id="L101">    public void addSurvivalTime(float delta) { this.survivalTime += delta; }</span>
+<span class="nc" id="L102">    public void setSurvivalTime(float time) { this.survivalTime = time; }</span>
+<span class="nc" id="L103">    public String getCurrentZoneId() { return currentZoneId; }</span>
+<span class="nc" id="L104">    public void setCurrentZoneId(String zoneId) { this.currentZoneId = zoneId; }</span>
+<span class="nc" id="L105">    public int getCurrentSaveSlot() { return currentSaveSlot; }</span>
+<span class="nc" id="L106">    public void setCurrentSaveSlot(int slot) { this.currentSaveSlot = slot; }</span>
+
+    // --- Experience and leveling ---
+    public int getExperienceForNextLevel() {
+<span class="nc" id="L110">        return 40 + (playerLevel * 20);</span>
+    }
+
+    public void addExperience(int amount) {
+<span class="nc" id="L114">        addExperience(amount, level -&gt; 40 + (level * 20));</span>
+<span class="nc" id="L115">    }</span>
+
+    public void addExperience(int amount, IntUnaryOperator experienceRequirementProvider) {
+<span class="nc" id="L118">        int adjustedAmount = Math.max(0, applyUniqueExperienceBoost(amount));</span>
+<span class="nc" id="L119">        playerExperience += adjustedAmount;</span>
+<span class="nc bnc" id="L120" title="All 2 branches missed.">        IntUnaryOperator provider = experienceRequirementProvider != null</span>
+<span class="nc" id="L121">            ? experienceRequirementProvider</span>
+<span class="nc" id="L122">            : level -&gt; 40 + (level * 20);</span>
+<span class="nc bnc" id="L123" title="All 2 branches missed.">        while (playerExperience &gt;= provider.applyAsInt(playerLevel)) {</span>
+<span class="nc" id="L124">            playerExperience -= provider.applyAsInt(playerLevel);</span>
+<span class="nc" id="L125">            playerLevel++;</span>
+            // Heal a bit on level up
+<span class="nc" id="L127">            StatBlock stats = getPlayerStats();</span>
+<span class="nc" id="L128">            playerHealth = Math.min(stats.maxHealth, playerHealth + 18f);</span>
+<span class="nc" id="L129">        }</span>
+<span class="nc" id="L130">    }</span>
+
+    // --- Forge Core ---
+    /** Returns the current Forge Core level (1–4). */
+    public int getForgeCoreLevel() {
+<span class="nc" id="L135">        return forgeCoreLevel;</span>
+    }
+
+    /**
+     * Sets the Forge Core level, clamped to [1, 4].
+     * Level 1 is the starting state; levels 2–4 are unlocked by boss milestones.
+     */
+    public void setForgeCoreLevel(int level) {
+<span class="nc" id="L143">        this.forgeCoreLevel = Math.max(1, Math.min(4, level));</span>
+<span class="nc" id="L144">    }</span>
+
+    // --- Grade system ---
+    public String getUnlockedGrade() {
+<span class="fc" id="L148">        return getGradeForLevel(playerLevel);</span>
+    }
+
+    public String getGradeForLevel(int level) {
+<span class="pc bpc" id="L152" title="1 of 2 branches missed.">        if (level &gt;= 99) return &quot;S+++&quot;;</span>
+<span class="pc bpc" id="L153" title="1 of 2 branches missed.">        if (level &gt;= 90) return &quot;S++&quot;;</span>
+<span class="pc bpc" id="L154" title="1 of 2 branches missed.">        if (level &gt;= 80) return &quot;S+&quot;;</span>
+<span class="pc bpc" id="L155" title="1 of 2 branches missed.">        if (level &gt;= 70) return &quot;S&quot;;</span>
+<span class="pc bpc" id="L156" title="1 of 2 branches missed.">        if (level &gt;= 60) return &quot;A&quot;;</span>
+<span class="pc bpc" id="L157" title="1 of 2 branches missed.">        if (level &gt;= 50) return &quot;B&quot;;</span>
+<span class="pc bpc" id="L158" title="1 of 2 branches missed.">        if (level &gt;= 40) return &quot;C&quot;;</span>
+<span class="pc bpc" id="L159" title="1 of 2 branches missed.">        if (level &gt;= 30) return &quot;D&quot;;</span>
+<span class="fc bfc" id="L160" title="All 2 branches covered.">        if (level &gt;= 20) return &quot;E&quot;;</span>
+<span class="pc bpc" id="L161" title="1 of 2 branches missed.">        if (level &gt;= 10) return &quot;F&quot;;</span>
+<span class="fc" id="L162">        return &quot;G&quot;;</span>
+    }
+
+    public boolean gradeMeetsRequirement(String ownerGrade, String requiredGrade) {
+<span class="fc bfc" id="L166" title="All 2 branches covered.">        return getGradeIndex(ownerGrade) &gt;= getGradeIndex(requiredGrade);</span>
+    }
+
+    private int getGradeIndex(String grade) {
+<span class="pc bpc" id="L170" title="2 of 4 branches missed.">        if (grade == null || grade.isEmpty()) return 0;</span>
+<span class="pc bpc" id="L171" title="1 of 2 branches missed.">        for (int i = 0; i &lt; GRADE_ORDER.length; i++) {</span>
+<span class="fc bfc" id="L172" title="All 2 branches covered.">            if (GRADE_ORDER[i].equals(grade)) return i;</span>
+        }
+<span class="nc" id="L174">        return 0;</span>
+    }
+
+    // --- Equipment catalog ---
+    public List&lt;EquipmentItem&gt; getEquipmentCatalog() {
+<span class="nc" id="L179">        return new ArrayList&lt;&gt;(equipmentCatalog);</span>
+    }
+
+    public void addEquipmentToCatalog(EquipmentItem item) {
+<span class="fc" id="L183">        equipmentCatalog.add(item);</span>
+<span class="fc" id="L184">    }</span>
+
+    public List&lt;String&gt; getOwnedEquipmentIds() {
+<span class="fc" id="L187">        return new ArrayList&lt;&gt;(ownedEquipmentIds);</span>
+    }
+
+    public void setOwnedEquipmentIds(List&lt;String&gt; itemIds) {
+<span class="nc" id="L191">        ownedEquipmentIds.clear();</span>
+<span class="nc bnc" id="L192" title="All 2 branches missed.">        if (itemIds != null) {</span>
+<span class="nc" id="L193">            ownedEquipmentIds.addAll(itemIds);</span>
+        }
+<span class="nc" id="L195">    }</span>
+
+    public boolean unlockEquipment(String itemId) {
+<span class="pc bpc" id="L198" title="2 of 4 branches missed.">        if (itemId == null || itemId.isEmpty()) {</span>
+<span class="nc" id="L199">            return false;</span>
+        }
+<span class="pc bpc" id="L201" title="1 of 2 branches missed.">        if (findEquipmentItem(itemId) == null) {</span>
+<span class="nc" id="L202">            return false;</span>
+        }
+<span class="pc bpc" id="L204" title="1 of 2 branches missed.">        if (!ownedEquipmentIds.contains(itemId)) {</span>
+<span class="fc" id="L205">            ownedEquipmentIds.add(itemId);</span>
+        }
+<span class="fc" id="L207">        return true;</span>
+    }
+
+    public boolean removeOwnedEquipment(String itemId) {
+<span class="nc" id="L211">        return ownedEquipmentIds.remove(itemId);</span>
+    }
+
+    public EquipmentItem findEquipmentItem(String itemId) {
+<span class="pc bpc" id="L215" title="1 of 2 branches missed.">        for (EquipmentItem item : equipmentCatalog) {</span>
+<span class="pc bpc" id="L216" title="1 of 2 branches missed.">            if (item.getId().equals(itemId)) return item;</span>
+<span class="nc" id="L217">        }</span>
+<span class="nc" id="L218">        return null;</span>
+    }
+
+    // --- Player equipment ---
+    public Map&lt;String, String&gt; getPlayerEquipmentSlots() {
+<span class="fc" id="L223">        return new HashMap&lt;&gt;(playerEquipment);</span>
+    }
+
+    public boolean equipPlayerItem(EquipmentItem item) {
+<span class="pc bpc" id="L227" title="1 of 4 branches missed.">        if (item == null || !gradeMeetsRequirement(getUnlockedGrade(), item.getGradeRequirement())) {</span>
+<span class="fc" id="L228">            return false;</span>
+        }
+<span class="fc" id="L230">        unlockEquipment(item.getId());</span>
+<span class="fc" id="L231">        playerEquipment.put(item.getSlotType(), item.getId());</span>
+<span class="fc" id="L232">        playerHealth = Math.min(getPlayerStats().maxHealth, playerHealth);</span>
+<span class="fc" id="L233">        return true;</span>
+    }
+
+    public void setPlayerEquipment(Map&lt;String, String&gt; equipment) {
+<span class="nc" id="L237">        playerEquipment.clear();</span>
+<span class="nc bnc" id="L238" title="All 2 branches missed.">        if (equipment != null) playerEquipment.putAll(equipment);</span>
+<span class="nc" id="L239">    }</span>
+
+    // --- Robot equipment ---
+    public Map&lt;String, String&gt; getRobotEquipmentSlots(String robotId) {
+<span class="fc" id="L243">        Map&lt;String, String&gt; slots = robotEquipment.get(robotId);</span>
+<span class="pc bpc" id="L244" title="1 of 2 branches missed.">        return slots != null ? new HashMap&lt;&gt;(slots) : new HashMap&lt;&gt;();</span>
+    }
+
+    public boolean equipRobotItem(String robotId, String robotGrade, EquipmentItem item) {
+<span class="pc bpc" id="L248" title="1 of 2 branches missed.">        if (item == null</span>
+<span class="fc bfc" id="L249" title="All 2 branches covered.">            || !gradeMeetsRequirement(robotGrade, item.getGradeRequirement())) {</span>
+<span class="fc" id="L250">            return false;</span>
+        }
+<span class="fc" id="L252">        unlockEquipment(item.getId());</span>
+<span class="fc" id="L253">        robotEquipment.computeIfAbsent(robotId, k -&gt; new HashMap&lt;&gt;());</span>
+<span class="fc" id="L254">        robotEquipment.get(robotId).put(item.getSlotType(), item.getId());</span>
+<span class="fc" id="L255">        return true;</span>
+    }
+
+    public Map&lt;String, Map&lt;String, String&gt;&gt; getRobotEquipment() {
+<span class="nc" id="L259">        return robotEquipment;</span>
+    }
+
+    public void setRobotEquipment(Map&lt;String, Map&lt;String, String&gt;&gt; equipment) {
+<span class="nc" id="L263">        robotEquipment.clear();</span>
+<span class="nc bnc" id="L264" title="All 2 branches missed.">        if (equipment == null) return;</span>
+<span class="nc bnc" id="L265" title="All 2 branches missed.">        for (Map.Entry&lt;String, Map&lt;String, String&gt;&gt; entry : equipment.entrySet()) {</span>
+<span class="nc" id="L266">            robotEquipment.put(entry.getKey(),</span>
+<span class="nc bnc" id="L267" title="All 2 branches missed.">                entry.getValue() != null ? new HashMap&lt;&gt;(entry.getValue()) : new HashMap&lt;&gt;());</span>
+<span class="nc" id="L268">        }</span>
+<span class="nc" id="L269">    }</span>
+
+    public Map&lt;String, Integer&gt; getForgeComponents() {
+<span class="fc" id="L272">        return new HashMap&lt;&gt;(forgeComponents);</span>
+    }
+
+    public void setForgeComponents(Map&lt;String, Integer&gt; components) {
+<span class="fc" id="L276">        forgeComponents.clear();</span>
+<span class="pc bpc" id="L277" title="1 of 2 branches missed.">        if (components == null) {</span>
+<span class="nc" id="L278">            return;</span>
+        }
+<span class="fc bfc" id="L280" title="All 2 branches covered.">        for (Map.Entry&lt;String, Integer&gt; entry : components.entrySet()) {</span>
+<span class="pc bpc" id="L281" title="2 of 8 branches missed.">            if (entry.getKey() != null &amp;&amp; !entry.getKey().isEmpty() &amp;&amp; entry.getValue() != null &amp;&amp; entry.getValue() &gt; 0) {</span>
+<span class="fc" id="L282">                forgeComponents.put(entry.getKey(), entry.getValue());</span>
+            }
+<span class="fc" id="L284">        }</span>
+<span class="fc" id="L285">    }</span>
+
+    public int getForgeComponentCount(String componentId) {
+<span class="fc" id="L288">        return forgeComponents.getOrDefault(componentId, 0);</span>
+    }
+
+    public void addForgeComponent(String componentId, int amount) {
+<span class="pc bpc" id="L292" title="3 of 6 branches missed.">        if (componentId == null || componentId.isEmpty() || amount == 0) {</span>
+<span class="nc" id="L293">            return;</span>
+        }
+<span class="fc" id="L295">        forgeComponents.put(componentId, Math.max(0, forgeComponents.getOrDefault(componentId, 0) + amount));</span>
+<span class="pc bpc" id="L296" title="1 of 2 branches missed.">        if (forgeComponents.get(componentId) &lt;= 0) {</span>
+<span class="nc" id="L297">            forgeComponents.remove(componentId);</span>
+        }
+<span class="fc" id="L299">    }</span>
+
+    public boolean consumeForgeComponents(Map&lt;String, Integer&gt; costs) {
+<span class="pc bpc" id="L302" title="2 of 4 branches missed.">        if (costs == null || costs.isEmpty()) {</span>
+<span class="nc" id="L303">            return true;</span>
+        }
+<span class="fc bfc" id="L305" title="All 2 branches covered.">        for (Map.Entry&lt;String, Integer&gt; entry : costs.entrySet()) {</span>
+<span class="fc bfc" id="L306" title="All 2 branches covered.">            if (getForgeComponentCount(entry.getKey()) &lt; Math.max(0, entry.getValue())) {</span>
+<span class="fc" id="L307">                return false;</span>
+            }
+<span class="fc" id="L309">        }</span>
+<span class="fc bfc" id="L310" title="All 2 branches covered.">        for (Map.Entry&lt;String, Integer&gt; entry : costs.entrySet()) {</span>
+<span class="fc" id="L311">            addForgeComponent(entry.getKey(), -Math.max(0, entry.getValue()));</span>
+<span class="fc" id="L312">        }</span>
+<span class="fc" id="L313">        return true;</span>
+    }
+
+    public Map&lt;String, Integer&gt; getShardInventory() {
+<span class="fc" id="L317">        return new HashMap&lt;&gt;(shardInventory);</span>
+    }
+
+    public void setShardInventory(Map&lt;String, Integer&gt; shards) {
+<span class="fc" id="L321">        shardInventory.clear();</span>
+<span class="pc bpc" id="L322" title="1 of 2 branches missed.">        if (shards == null) {</span>
+<span class="nc" id="L323">            return;</span>
+        }
+<span class="fc bfc" id="L325" title="All 2 branches covered.">        for (Map.Entry&lt;String, Integer&gt; entry : shards.entrySet()) {</span>
+<span class="pc bpc" id="L326" title="3 of 8 branches missed.">            if (entry.getKey() != null &amp;&amp; !entry.getKey().isEmpty() &amp;&amp; entry.getValue() != null &amp;&amp; entry.getValue() &gt; 0) {</span>
+<span class="fc" id="L327">                shardInventory.put(entry.getKey(), entry.getValue());</span>
+            }
+<span class="fc" id="L329">        }</span>
+<span class="fc" id="L330">    }</span>
+
+    public int getShardCount(String grade) {
+<span class="fc" id="L333">        return shardInventory.getOrDefault(grade, 0);</span>
+    }
+
+    public void addShard(String grade, int amount) {
+<span class="pc bpc" id="L337" title="3 of 6 branches missed.">        if (grade == null || grade.isEmpty() || amount == 0) {</span>
+<span class="nc" id="L338">            return;</span>
+        }
+<span class="fc" id="L340">        shardInventory.put(grade, Math.max(0, shardInventory.getOrDefault(grade, 0) + amount));</span>
+<span class="pc bpc" id="L341" title="1 of 2 branches missed.">        if (shardInventory.get(grade) &lt;= 0) {</span>
+<span class="nc" id="L342">            shardInventory.remove(grade);</span>
+        }
+<span class="fc" id="L344">    }</span>
+
+    public boolean consumeShards(String grade, int amount) {
+<span class="pc bpc" id="L347" title="1 of 2 branches missed.">        if (amount &lt;= 0) {</span>
+<span class="nc" id="L348">            return true;</span>
+        }
+<span class="fc bfc" id="L350" title="All 2 branches covered.">        if (getShardCount(grade) &lt; amount) {</span>
+<span class="fc" id="L351">            return false;</span>
+        }
+<span class="fc" id="L353">        addShard(grade, -amount);</span>
+<span class="fc" id="L354">        return true;</span>
+    }
+
+    // --- Robot roster ---
+<span class="fc" id="L358">    public List&lt;String&gt; getCollectedRobotIds() { return new ArrayList&lt;&gt;(collectedRobotIds); }</span>
+<span class="fc" id="L359">    public List&lt;String&gt; getActiveRobotIds() { return new ArrayList&lt;&gt;(activeRobotIds); }</span>
+    public void setCollectedRobotIds(List&lt;String&gt; ids) {
+<span class="fc" id="L361">        collectedRobotIds.clear();</span>
+<span class="pc bpc" id="L362" title="1 of 2 branches missed.">        if (ids != null) {</span>
+<span class="fc bfc" id="L363" title="All 2 branches covered.">            for (String id : ids) {</span>
+<span class="fc bfc" id="L364" title="All 4 branches covered.">                if (id != null &amp;&amp; !id.isEmpty()) {</span>
+<span class="fc" id="L365">                    collectedRobotIds.add(id);</span>
+                }
+<span class="fc" id="L367">            }</span>
+        }
+<span class="fc" id="L369">    }</span>
+    public void setActiveRobotIds(List&lt;String&gt; ids) {
+<span class="fc" id="L371">        activeRobotIds.clear();</span>
+<span class="pc bpc" id="L372" title="1 of 2 branches missed.">        if (ids != null) {</span>
+<span class="fc" id="L373">            activeRobotIds.addAll(ids);</span>
+        }
+<span class="fc" id="L375">    }</span>
+
+    public Map&lt;String, RobotProgressionState&gt; getRobotProgressionStates() {
+<span class="fc" id="L378">        return new HashMap&lt;&gt;(robotProgressionStates);</span>
+    }
+
+    public void setRobotProgressionStates(Map&lt;String, RobotProgressionState&gt; states) {
+<span class="fc" id="L382">        robotProgressionStates.clear();</span>
+<span class="pc bpc" id="L383" title="1 of 2 branches missed.">        if (states != null) {</span>
+<span class="fc" id="L384">            robotProgressionStates.putAll(states);</span>
+        }
+<span class="fc" id="L386">    }</span>
+
+    public RobotProgressionState getRobotProgressionState(String robotId) {
+<span class="nc" id="L389">        return robotProgressionStates.get(robotId);</span>
+    }
+
+    public void putRobotProgressionState(RobotProgressionState state) {
+<span class="nc bnc" id="L393" title="All 4 branches missed.">        if (state != null &amp;&amp; state.getRobotId() != null) {</span>
+<span class="nc" id="L394">            robotProgressionStates.put(state.getRobotId(), state);</span>
+        }
+<span class="nc" id="L396">    }</span>
+
+    public void removeRobotProgressionState(String robotId) {
+<span class="nc bnc" id="L399" title="All 2 branches missed.">        if (robotId != null) {</span>
+<span class="nc" id="L400">            robotProgressionStates.remove(robotId);</span>
+        }
+<span class="nc" id="L402">    }</span>
+
+    public Map&lt;String, Boolean&gt; getQuestFlags() {
+<span class="nc" id="L405">        return new HashMap&lt;&gt;(questFlags);</span>
+    }
+
+    public void setQuestFlags(Map&lt;String, Boolean&gt; flags) {
+<span class="nc" id="L409">        questFlags.clear();</span>
+<span class="nc bnc" id="L410" title="All 2 branches missed.">        if (flags != null) {</span>
+<span class="nc" id="L411">            questFlags.putAll(flags);</span>
+        }
+<span class="nc" id="L413">    }</span>
+
+    public boolean hasQuestFlag(String flag) {
+<span class="fc" id="L416">        return Boolean.TRUE.equals(questFlags.get(flag));</span>
+    }
+
+    public void setQuestFlag(String flag, boolean value) {
+<span class="fc" id="L420">        questFlags.put(flag, value);</span>
+<span class="fc" id="L421">    }</span>
+
+    public Map&lt;String, String&gt; getQuestStates() {
+<span class="fc" id="L424">        return new HashMap&lt;&gt;(questStates);</span>
+    }
+
+    public void setQuestStates(Map&lt;String, String&gt; states) {
+<span class="nc" id="L428">        questStates.clear();</span>
+<span class="nc bnc" id="L429" title="All 2 branches missed.">        if (states != null) {</span>
+<span class="nc" id="L430">            questStates.putAll(states);</span>
+        }
+<span class="nc" id="L432">    }</span>
+
+    public String getQuestState(String questId) {
+<span class="fc" id="L435">        return questStates.getOrDefault(questId, &quot;NOT_STARTED&quot;);</span>
+    }
+
+    public void setQuestState(String questId, String state) {
+<span class="pc bpc" id="L439" title="2 of 4 branches missed.">        if (questId != null &amp;&amp; !questId.isEmpty()) {</span>
+<span class="pc bpc" id="L440" title="1 of 2 branches missed.">            questStates.put(questId, state != null ? state : &quot;NOT_STARTED&quot;);</span>
+        }
+<span class="fc" id="L442">    }</span>
+
+    public List&lt;String&gt; getKeyItems() {
+<span class="nc" id="L445">        return new ArrayList&lt;&gt;(keyItems);</span>
+    }
+
+    public void setKeyItems(List&lt;String&gt; items) {
+<span class="nc" id="L449">        keyItems.clear();</span>
+<span class="nc bnc" id="L450" title="All 2 branches missed.">        if (items != null) {</span>
+<span class="nc" id="L451">            keyItems.addAll(items);</span>
+        }
+<span class="nc" id="L453">    }</span>
+
+    public boolean hasKeyItem(String keyItem) {
+<span class="fc" id="L456">        return keyItems.contains(keyItem);</span>
+    }
+
+    public void addKeyItem(String keyItem) {
+<span class="nc bnc" id="L460" title="All 6 branches missed.">        if (keyItem != null &amp;&amp; !keyItem.isEmpty() &amp;&amp; !keyItems.contains(keyItem)) {</span>
+<span class="nc" id="L461">            keyItems.add(keyItem);</span>
+        }
+<span class="nc" id="L463">    }</span>
+
+    public Map&lt;String, Integer&gt; getBestiaryScanLevels() {
+<span class="nc" id="L466">        return new HashMap&lt;&gt;(bestiaryScanLevels);</span>
+    }
+
+    public void setBestiaryScanLevels(Map&lt;String, Integer&gt; scanLevels) {
+<span class="nc" id="L470">        bestiaryScanLevels.clear();</span>
+<span class="nc bnc" id="L471" title="All 2 branches missed.">        if (scanLevels != null) {</span>
+<span class="nc" id="L472">            bestiaryScanLevels.putAll(scanLevels);</span>
+        }
+<span class="nc" id="L474">    }</span>
+
+    public int getBestiaryScanLevel(String monsterId) {
+<span class="nc" id="L477">        return bestiaryScanLevels.getOrDefault(monsterId, 0);</span>
+    }
+
+    public void setBestiaryScanLevel(String monsterId, int scanLevel) {
+<span class="nc bnc" id="L481" title="All 4 branches missed.">        if (monsterId != null &amp;&amp; !monsterId.isEmpty()) {</span>
+<span class="nc" id="L482">            bestiaryScanLevels.put(monsterId, Math.max(0, Math.min(3, scanLevel)));</span>
+        }
+<span class="nc" id="L484">    }</span>
+
+    public Map&lt;String, Boolean&gt; getWorldStateFlags() {
+<span class="fc" id="L487">        return new HashMap&lt;&gt;(worldStateFlags);</span>
+    }
+
+    public void setWorldStateFlags(Map&lt;String, Boolean&gt; flags) {
+<span class="nc" id="L491">        worldStateFlags.clear();</span>
+<span class="nc bnc" id="L492" title="All 2 branches missed.">        if (flags != null) {</span>
+<span class="nc" id="L493">            worldStateFlags.putAll(flags);</span>
+        }
+<span class="nc" id="L495">    }</span>
+
+    public boolean isWorldStateFlagActive(String flag) {
+<span class="fc" id="L498">        return Boolean.TRUE.equals(worldStateFlags.get(flag));</span>
+    }
+
+    public void setWorldStateFlag(String flag, boolean value) {
+<span class="pc bpc" id="L502" title="2 of 4 branches missed.">        if (flag != null &amp;&amp; !flag.isEmpty()) {</span>
+<span class="fc" id="L503">            worldStateFlags.put(flag, value);</span>
+        }
+<span class="fc" id="L505">    }</span>
+
+    public Map&lt;String, SettlementState&gt; getSettlementUpgrades() {
+<span class="nc" id="L508">        return new HashMap&lt;&gt;(settlementUpgrades);</span>
+    }
+
+    public void setSettlementUpgrades(Map&lt;String, SettlementState&gt; upgrades) {
+<span class="nc" id="L512">        settlementUpgrades.clear();</span>
+<span class="nc bnc" id="L513" title="All 2 branches missed.">        if (upgrades != null) {</span>
+<span class="nc" id="L514">            settlementUpgrades.putAll(upgrades);</span>
+        }
+<span class="nc" id="L516">    }</span>
+
+    public SettlementState getSettlementUpgrade(String upgradeId) {
+<span class="nc" id="L519">        return settlementUpgrades.get(upgradeId);</span>
+    }
+
+    public void putSettlementUpgrade(SettlementState state) {
+<span class="nc bnc" id="L523" title="All 4 branches missed.">        if (state != null &amp;&amp; state.getUpgradeId() != null) {</span>
+<span class="nc" id="L524">            settlementUpgrades.put(state.getUpgradeId(), state);</span>
+        }
+<span class="nc" id="L526">    }</span>
+
+    // --- Equipment stat calculations ---
+    public EquipmentTotals getPlayerEquipmentTotals() {
+<span class="fc" id="L530">        EquipmentTotals totals = new EquipmentTotals();</span>
+<span class="fc bfc" id="L531" title="All 2 branches covered.">        for (String itemId : playerEquipment.values()) {</span>
+<span class="fc" id="L532">            EquipmentItem item = findEquipmentItem(itemId);</span>
+<span class="pc bpc" id="L533" title="1 of 2 branches missed.">            if (item != null) applyEquipmentToTotals(totals, item);</span>
+<span class="fc" id="L534">        }</span>
+<span class="fc" id="L535">        return totals;</span>
+    }
+
+    public EquipmentTotals getEquipmentTotals(String robotId) {
+<span class="nc" id="L539">        EquipmentTotals totals = new EquipmentTotals();</span>
+<span class="nc" id="L540">        Map&lt;String, String&gt; equipped = robotEquipment.get(robotId);</span>
+<span class="nc bnc" id="L541" title="All 2 branches missed.">        if (equipped == null) return totals;</span>
+<span class="nc bnc" id="L542" title="All 2 branches missed.">        for (String itemId : equipped.values()) {</span>
+<span class="nc" id="L543">            EquipmentItem item = findEquipmentItem(itemId);</span>
+<span class="nc bnc" id="L544" title="All 2 branches missed.">            if (item != null) applyEquipmentToTotals(totals, item);</span>
+<span class="nc" id="L545">        }</span>
+<span class="nc" id="L546">        return totals;</span>
+    }
+
+    private void applyEquipmentToTotals(EquipmentTotals totals, EquipmentItem item) {
+<span class="fc" id="L550">        totals.hpBonus += item.getHpBonus();</span>
+<span class="fc" id="L551">        totals.strengthBonus += item.getAttackBonus();</span>
+<span class="fc" id="L552">        totals.staminaBonus += item.getDefenseBonus();</span>
+<span class="fc" id="L553">        totals.agilityBonus += item.getSpeedBonus();</span>
+<span class="fc" id="L554">        totals.intelligenceBonus += item.getIntelligenceBonus();</span>
+<span class="pc bpc" id="L555" title="1 of 2 branches missed.">        if (&quot;XP_BOOST&quot;.equals(item.getUniqueBoost())) {</span>
+<span class="nc" id="L556">            totals.xpMultiplier += 0.2f;</span>
+<span class="pc bpc" id="L557" title="1 of 2 branches missed.">        } else if (&quot;FIRST_STRIKE&quot;.equals(item.getUniqueBoost())) {</span>
+<span class="nc" id="L558">            totals.strengthBonus += 4f;</span>
+<span class="pc bpc" id="L559" title="1 of 2 branches missed.">        } else if (&quot;ARCANE_SURGE&quot;.equals(item.getUniqueBoost())) {</span>
+<span class="nc" id="L560">            totals.intelligenceBonus += 6f;</span>
+        }
+<span class="fc" id="L562">    }</span>
+
+    private int applyUniqueExperienceBoost(int amount) {
+<span class="nc" id="L565">        EquipmentTotals totals = getPlayerEquipmentTotals();</span>
+<span class="nc" id="L566">        return Math.round(amount * totals.getXpMultiplier());</span>
+    }
+
+    public int previewLevelUps(int amount) {
+<span class="nc" id="L570">        int levels = 0;</span>
+<span class="nc" id="L571">        int simulatedLevel = playerLevel;</span>
+<span class="nc" id="L572">        int simulatedExperience = playerExperience + Math.max(0, applyUniqueExperienceBoost(amount));</span>
+<span class="nc bnc" id="L573" title="All 2 branches missed.">        while (simulatedExperience &gt;= (40 + (simulatedLevel * 20))) {</span>
+<span class="nc" id="L574">            simulatedExperience -= (40 + (simulatedLevel * 20));</span>
+<span class="nc" id="L575">            simulatedLevel++;</span>
+<span class="nc" id="L576">            levels++;</span>
+        }
+<span class="nc" id="L578">        return levels;</span>
+    }
+
+    // --- Stat blocks ---
+    public StatBlock getPlayerStats() {
+<span class="fc" id="L583">        EquipmentTotals eq = getPlayerEquipmentTotals();</span>
+<span class="fc" id="L584">        float levelOffset = playerLevel - 1;</span>
+<span class="fc" id="L585">        return new StatBlock(</span>
+            playerHealth,
+            playerMaxHealth + (levelOffset * 6f) + eq.hpBonus,
+            BASE_PLAYER_AGILITY + (levelOffset * 0.5f) + eq.agilityBonus,
+            BASE_PLAYER_STRENGTH + (levelOffset * 0.7f) + eq.strengthBonus,
+            BASE_PLAYER_INTELLIGENCE + (levelOffset * 0.65f) + eq.intelligenceBonus,
+            BASE_PLAYER_STAMINA + (levelOffset * 0.6f) + eq.staminaBonus
+        );
+    }
+
+    // --- Inner classes ---
+    public static class StatBlock {
+        public float currentHealth;
+        public float maxHealth;
+        public float agility;
+        public float strength;
+        public float intelligence;
+        public float stamina;
+
+        public StatBlock(float currentHealth, float maxHealth, float agility,
+<span class="fc" id="L605">                        float strength, float intelligence, float stamina) {</span>
+<span class="fc" id="L606">            this.currentHealth = currentHealth;</span>
+<span class="fc" id="L607">            this.maxHealth = maxHealth;</span>
+<span class="fc" id="L608">            this.agility = agility;</span>
+<span class="fc" id="L609">            this.strength = strength;</span>
+<span class="fc" id="L610">            this.intelligence = intelligence;</span>
+<span class="fc" id="L611">            this.stamina = stamina;</span>
+<span class="fc" id="L612">        }</span>
+    }
+
+<span class="fc" id="L615">    public static class EquipmentTotals {</span>
+        public float hpBonus;
+        public float agilityBonus;
+        public float strengthBonus;
+        public float intelligenceBonus;
+        public float staminaBonus;
+<span class="fc" id="L621">        public float xpMultiplier = 1f;</span>
+
+<span class="nc" id="L623">        public float getXpMultiplier() { return xpMultiplier; }</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

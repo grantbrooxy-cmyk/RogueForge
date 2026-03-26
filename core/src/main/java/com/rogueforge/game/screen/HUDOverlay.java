@@ -9,6 +9,8 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.Texture.TextureFilter;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.utils.viewport.ScreenViewport;
+import com.badlogic.gdx.utils.viewport.Viewport;
 
 /**
  * HUD overlay rendered on top of the game screen.
@@ -19,6 +21,7 @@ public class HUDOverlay {
     private final ShapeRenderer shapeRenderer;
     private final BitmapFont font;
     private final OrthographicCamera camera;
+    private final Viewport viewport;
     private final Texture panelTexture;
     private final Texture barTexture;
     private final Texture iconTexture;
@@ -42,7 +45,8 @@ public class HUDOverlay {
         this.font = new BitmapFont();
         this.font.getData().setScale(1.4f);
         this.camera = new OrthographicCamera();
-        this.camera.setToOrtho(false, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        this.viewport = new ScreenViewport(camera);
+        this.viewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
         this.panelTexture = loadTexture("4 GUI/1 Frames/Interface windows.png");
         this.barTexture = loadTexture("4 GUI/2 Bars/HealthBar1.png");
         this.iconTexture = loadTexture("4 GUI/7 Numbers/plus.png");
@@ -55,9 +59,9 @@ public class HUDOverlay {
     }
 
     public void render() {
-        float w = Gdx.graphics.getWidth();
-        float h = Gdx.graphics.getHeight();
-        camera.setToOrtho(false, w, h);
+        viewport.apply();
+        float w = viewport.getWorldWidth();
+        float h = viewport.getWorldHeight();
         animateDisplayedValues();
 
         float barX = 16f;
@@ -131,7 +135,7 @@ public class HUDOverlay {
     }
 
     public void resize(int width, int height) {
-        camera.setToOrtho(false, width, height);
+        viewport.update(width, height, true);
     }
 
     public void setPlayerHealth(float current, float max) {

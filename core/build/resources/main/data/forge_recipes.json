@@ -1,0 +1,122 @@
+[
+  {
+    "id": "hunter_blade_recipe",
+    "name": "Hunter Blade",
+    "category": "Player Weapon",
+    "description": "A forged sword built from frontier salvage. Reliable and fast enough for the player or any sword unit.",
+    "resultEquipmentId": "hunter_blade",
+    "goldCost": 120,
+    "shardGrade": "G",
+    "shardCost": 3,
+    "ingredients": [
+      { "componentId": "scrap_alloy", "quantity": 4 },
+      { "componentId": "slime_resin", "quantity": 2 },
+      { "componentId": "scout_gyro", "quantity": 1 }
+    ]
+  },
+  {
+    "id": "storm_carbine_recipe",
+    "name": "Storm Carbine",
+    "category": "Robot Weapon",
+    "description": "A high-rate rifle for fast striker and scout frames.",
+    "resultEquipmentId": "storm_carbine",
+    "goldCost": 160,
+    "shardGrade": "F",
+    "shardCost": 4,
+    "ingredients": [
+      { "componentId": "scrap_alloy", "quantity": 4 },
+      { "componentId": "scout_gyro", "quantity": 2 },
+      { "componentId": "hex_crystal", "quantity": 1 }
+    ]
+  },
+  {
+    "id": "oracle_staff_recipe",
+    "name": "Oracle Staff",
+    "category": "Robot Weapon",
+    "description": "A support weapon tuned for precision casting and repair work.",
+    "resultEquipmentId": "oracle_staff",
+    "goldCost": 175,
+    "shardGrade": "F",
+    "shardCost": 4,
+    "ingredients": [
+      { "componentId": "scrap_alloy", "quantity": 3 },
+      { "componentId": "bone_fiber", "quantity": 2 },
+      { "componentId": "hex_crystal", "quantity": 2 }
+    ]
+  },
+  {
+    "id": "reactive_arms_recipe",
+    "name": "Reactive Arms",
+    "category": "Robot Parts",
+    "description": "Servo-enhanced arms that improve striking power and battle tempo.",
+    "resultEquipmentId": "reactive_arms",
+    "goldCost": 140,
+    "shardGrade": "F",
+    "shardCost": 3,
+    "ingredients": [
+      { "componentId": "scrap_alloy", "quantity": 3 },
+      { "componentId": "bone_fiber", "quantity": 2 },
+      { "componentId": "scout_gyro", "quantity": 1 }
+    ]
+  },
+  {
+    "id": "thruster_legs_recipe",
+    "name": "Thruster Legs",
+    "category": "Robot Parts",
+    "description": "Leg assemblies built for evasive frames and rapid repositioning.",
+    "resultEquipmentId": "thruster_legs",
+    "goldCost": 150,
+    "shardGrade": "F",
+    "shardCost": 3,
+    "ingredients": [
+      { "componentId": "scrap_alloy", "quantity": 3 },
+      { "componentId": "slime_resin", "quantity": 2 },
+      { "componentId": "scout_gyro", "quantity": 2 }
+    ]
+  },
+  {
+    "id": "bulwark_chassis_recipe",
+    "name": "Bulwark Chassis",
+    "category": "Robot Parts",
+    "description": "A reinforced body shell for tankier builds.",
+    "resultEquipmentId": "bulwark_chassis",
+    "goldCost": 210,
+    "shardGrade": "E",
+    "shardCost": 5,
+    "ingredients": [
+      { "componentId": "bone_fiber", "quantity": 2 },
+      { "componentId": "fortress_plate", "quantity": 2 },
+      { "componentId": "primal_core", "quantity": 1 }
+    ]
+  },
+  {
+    "id": "oracle_headpiece_recipe",
+    "name": "Oracle Headpiece",
+    "category": "Robot Parts",
+    "description": "A signal-processing head module for support and caster robots.",
+    "resultEquipmentId": "oracle_headpiece",
+    "goldCost": 190,
+    "shardGrade": "E",
+    "shardCost": 5,
+    "ingredients": [
+      { "componentId": "bone_fiber", "quantity": 2 },
+      { "componentId": "hex_crystal", "quantity": 2 },
+      { "componentId": "primal_core", "quantity": 1 }
+    ]
+  },
+  {
+    "id": "drakescale_frame_recipe",
+    "name": "Drakescale Frame",
+    "category": "Elite Parts",
+    "description": "An advanced frame lined with draconic heat shielding.",
+    "resultEquipmentId": "drakescale_frame",
+    "goldCost": 320,
+    "shardGrade": "D",
+    "shardCost": 6,
+    "ingredients": [
+      { "componentId": "fortress_plate", "quantity": 3 },
+      { "componentId": "drake_heart", "quantity": 1 },
+      { "componentId": "primal_core", "quantity": 1 }
+    ]
+  }
+]

@@ -1,0 +1,301 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ShopScreen.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core</a> &gt; <a href="index.source.html" class="el_package">com.rogueforge.game.screen</a> &gt; <span class="el_source">ShopScreen.java</span></div><h1>ShopScreen.java</h1><pre class="source lang-java linenums">package com.rogueforge.game.screen;
+
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
+import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.Pixmap;
+import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.Texture.TextureFilter;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.GlyphLayout;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.rogueforge.game.core.RogueForgeGame;
+import com.rogueforge.game.core.ScreenManager;
+import com.rogueforge.game.data.EquipmentItem;
+import com.rogueforge.game.economy.ShopInventory;
+import java.util.List;
+
+/**
+ * Dedicated shop UI with buy and sell tabs.
+ */
+public class ShopScreen implements Screen {
+<span class="nc" id="L26">    private static final String[] TABS = {&quot;Buy&quot;, &quot;Sell&quot;};</span>
+    private static final float BACK_W = 140f;
+    private static final float BACK_H = 42f;
+
+    private final RogueForgeGame game;
+    private final ScreenManager screenManager;
+    private final GameScreen gameScreen;
+    private final String shopName;
+    private final ShopInventory inventory;
+    private final OrthographicCamera camera;
+    private final SpriteBatch batch;
+    private final ShapeRenderer shapeRenderer;
+    private final BitmapFont titleFont;
+    private final BitmapFont bodyFont;
+    private final GlyphLayout layout;
+    private final Texture backgroundTexture;
+    private final Texture uiTexture;
+
+<span class="nc" id="L44">    private int currentTab = 0;</span>
+<span class="nc" id="L45">    private int hoveredTab = -1;</span>
+<span class="nc" id="L46">    private int hoveredRow = -1;</span>
+    private boolean hoveredBack;
+<span class="nc" id="L48">    private String statusMessage = &quot;Welcome.&quot;;</span>
+
+<span class="nc" id="L50">    public ShopScreen(RogueForgeGame game, ScreenManager screenManager, GameScreen gameScreen, String shopName, ShopInventory inventory) {</span>
+<span class="nc" id="L51">        this.game = game;</span>
+<span class="nc" id="L52">        this.screenManager = screenManager;</span>
+<span class="nc" id="L53">        this.gameScreen = gameScreen;</span>
+<span class="nc" id="L54">        this.shopName = shopName;</span>
+<span class="nc" id="L55">        this.inventory = inventory;</span>
+<span class="nc" id="L56">        this.camera = new OrthographicCamera();</span>
+<span class="nc" id="L57">        this.camera.setToOrtho(false, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());</span>
+<span class="nc" id="L58">        this.batch = new SpriteBatch();</span>
+<span class="nc" id="L59">        this.shapeRenderer = new ShapeRenderer();</span>
+<span class="nc" id="L60">        this.titleFont = new BitmapFont();</span>
+<span class="nc" id="L61">        this.bodyFont = new BitmapFont();</span>
+<span class="nc" id="L62">        this.layout = new GlyphLayout();</span>
+<span class="nc" id="L63">        this.backgroundTexture = loadTexture(&quot;Backgrounds/background 2/orig_big.png&quot;);</span>
+<span class="nc" id="L64">        this.uiTexture = createUiTexture();</span>
+<span class="nc" id="L65">        this.titleFont.getData().setScale(2.4f);</span>
+<span class="nc" id="L66">        this.bodyFont.getData().setScale(1.1f);</span>
+<span class="nc" id="L67">    }</span>
+
+    private Texture loadTexture(String relativePath) {
+<span class="nc" id="L70">        Texture texture = new Texture(Gdx.files.internal(relativePath));</span>
+<span class="nc" id="L71">        texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);</span>
+<span class="nc" id="L72">        return texture;</span>
+    }
+
+    private Texture createUiTexture() {
+<span class="nc" id="L76">        Pixmap pm = new Pixmap(1, 1, Pixmap.Format.RGBA8888);</span>
+<span class="nc" id="L77">        pm.setColor(Color.WHITE);</span>
+<span class="nc" id="L78">        pm.fill();</span>
+<span class="nc" id="L79">        Texture texture = new Texture(pm);</span>
+<span class="nc" id="L80">        texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);</span>
+<span class="nc" id="L81">        pm.dispose();</span>
+<span class="nc" id="L82">        return texture;</span>
+    }
+
+    @Override
+    public void show() {
+<span class="nc" id="L87">        Gdx.input.setInputProcessor(null);</span>
+<span class="nc" id="L88">    }</span>
+
+    @Override
+    public void render(float delta) {
+<span class="nc" id="L92">        handleInput();</span>
+
+<span class="nc" id="L94">        float w = Gdx.graphics.getWidth();</span>
+<span class="nc" id="L95">        float h = Gdx.graphics.getHeight();</span>
+<span class="nc" id="L96">        camera.setToOrtho(false, w, h);</span>
+
+<span class="nc" id="L98">        Gdx.gl.glClearColor(0.07f, 0.08f, 0.12f, 1f);</span>
+<span class="nc" id="L99">        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);</span>
+
+<span class="nc" id="L101">        batch.setProjectionMatrix(camera.combined);</span>
+<span class="nc" id="L102">        batch.begin();</span>
+<span class="nc" id="L103">        batch.draw(backgroundTexture, 0f, 0f, w, h);</span>
+<span class="nc" id="L104">        batch.setColor(0f, 0f, 0f, 0.5f);</span>
+<span class="nc" id="L105">        batch.draw(uiTexture, 20f, 20f, w - 40f, h - 40f);</span>
+<span class="nc" id="L106">        batch.setColor(Color.WHITE);</span>
+<span class="nc" id="L107">        titleFont.setColor(1f, 0.88f, 0.55f, 1f);</span>
+<span class="nc" id="L108">        titleFont.draw(batch, shopName, 48f, h - 42f);</span>
+<span class="nc" id="L109">        bodyFont.setColor(Color.WHITE);</span>
+<span class="nc" id="L110">        bodyFont.draw(batch, &quot;Gold: &quot; + gameScreen.getGold() + &quot;   Repair Kits: &quot; + gameScreen.getHealingPotions(), 52f, h - 86f);</span>
+<span class="nc" id="L111">        batch.end();</span>
+
+<span class="nc" id="L113">        drawTabs(w, h);</span>
+<span class="nc" id="L114">        drawRows(w, h);</span>
+<span class="nc" id="L115">        drawFooter(w, h);</span>
+<span class="nc" id="L116">    }</span>
+
+    private void handleInput() {
+<span class="nc" id="L119">        float w = Gdx.graphics.getWidth();</span>
+<span class="nc" id="L120">        float h = Gdx.graphics.getHeight();</span>
+<span class="nc" id="L121">        float mx = Gdx.input.getX();</span>
+<span class="nc" id="L122">        float my = h - Gdx.input.getY();</span>
+
+<span class="nc" id="L124">        hoveredTab = -1;</span>
+<span class="nc" id="L125">        hoveredRow = -1;</span>
+<span class="nc" id="L126">        hoveredBack = isBackButtonHit(mx, my, w, h);</span>
+
+<span class="nc bnc" id="L128" title="All 2 branches missed.">        for (int i = 0; i &lt; TABS.length; i++) {</span>
+<span class="nc" id="L129">            float tx = 48f + i * 150f;</span>
+<span class="nc bnc" id="L130" title="All 8 branches missed.">            if (mx &gt;= tx &amp;&amp; mx &lt;= tx + 130f &amp;&amp; my &gt;= h - 148f &amp;&amp; my &lt;= h - 104f) {</span>
+<span class="nc" id="L131">                hoveredTab = i;</span>
+            }
+        }
+
+<span class="nc" id="L135">        int rowCount = getCurrentRowCount();</span>
+<span class="nc bnc" id="L136" title="All 2 branches missed.">        for (int i = 0; i &lt; rowCount; i++) {</span>
+<span class="nc" id="L137">            float rowY = h - 210f - (i * 54f);</span>
+<span class="nc bnc" id="L138" title="All 8 branches missed.">            if (mx &gt;= 48f &amp;&amp; mx &lt;= w - 48f &amp;&amp; my &gt;= rowY &amp;&amp; my &lt;= rowY + 44f) {</span>
+<span class="nc" id="L139">                hoveredRow = i;</span>
+            }
+        }
+
+<span class="nc bnc" id="L143" title="All 4 branches missed.">        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) || Gdx.input.isKeyJustPressed(Input.Keys.I)) {</span>
+<span class="nc" id="L144">            closeMenu();</span>
+<span class="nc" id="L145">            return;</span>
+        }
+<span class="nc bnc" id="L147" title="All 2 branches missed.">        if (Gdx.input.isKeyJustPressed(Input.Keys.TAB)) {</span>
+<span class="nc" id="L148">            currentTab = (currentTab + 1) % TABS.length;</span>
+<span class="nc" id="L149">            return;</span>
+        }
+
+<span class="nc bnc" id="L152" title="All 2 branches missed.">        if (Gdx.input.justTouched()) {</span>
+<span class="nc bnc" id="L153" title="All 2 branches missed.">            if (hoveredBack) {</span>
+<span class="nc" id="L154">                closeMenu();</span>
+<span class="nc" id="L155">                return;</span>
+            }
+<span class="nc bnc" id="L157" title="All 2 branches missed.">            if (hoveredTab &gt;= 0) {</span>
+<span class="nc" id="L158">                currentTab = hoveredTab;</span>
+<span class="nc" id="L159">                return;</span>
+            }
+<span class="nc bnc" id="L161" title="All 2 branches missed.">            if (hoveredRow &gt;= 0) {</span>
+<span class="nc" id="L162">                activateRow(hoveredRow);</span>
+<span class="nc" id="L163">                return;</span>
+            }
+        }
+
+<span class="nc bnc" id="L167" title="All 2 branches missed.">        if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_1)) activateRow(0);</span>
+<span class="nc bnc" id="L168" title="All 2 branches missed.">        if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_2)) activateRow(1);</span>
+<span class="nc bnc" id="L169" title="All 2 branches missed.">        if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_3)) activateRow(2);</span>
+<span class="nc bnc" id="L170" title="All 2 branches missed.">        if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_4)) activateRow(3);</span>
+<span class="nc bnc" id="L171" title="All 2 branches missed.">        if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_5)) activateRow(4);</span>
+<span class="nc" id="L172">    }</span>
+
+    private void activateRow(int index) {
+<span class="nc bnc" id="L175" title="All 2 branches missed.">        if (currentTab == 0) {</span>
+<span class="nc" id="L176">            ShopInventory.ShopEntry entry = inventory.getItem(index);</span>
+<span class="nc bnc" id="L177" title="All 2 branches missed.">            if (entry != null) {</span>
+<span class="nc" id="L178">                statusMessage = gameScreen.buyShopEntry(entry);</span>
+            }
+<span class="nc" id="L180">            return;</span>
+        }
+<span class="nc" id="L182">        List&lt;EquipmentItem&gt; sellable = gameScreen.getSellableEquipment();</span>
+<span class="nc bnc" id="L183" title="All 4 branches missed.">        if (index &gt;= 0 &amp;&amp; index &lt; sellable.size()) {</span>
+<span class="nc" id="L184">            statusMessage = gameScreen.sellEquipment(sellable.get(index).getId());</span>
+        }
+<span class="nc" id="L186">    }</span>
+
+    private int getCurrentRowCount() {
+<span class="nc bnc" id="L189" title="All 2 branches missed.">        return currentTab == 0 ? inventory.getItemCount() : gameScreen.getSellableEquipment().size();</span>
+    }
+
+    private void drawTabs(float w, float h) {
+<span class="nc" id="L193">        batch.begin();</span>
+<span class="nc bnc" id="L194" title="All 2 branches missed.">        for (int i = 0; i &lt; TABS.length; i++) {</span>
+<span class="nc" id="L195">            float tx = 48f + i * 150f;</span>
+<span class="nc bnc" id="L196" title="All 2 branches missed.">            batch.setColor(i == currentTab ? new Color(0.72f, 0.46f, 0.2f, 1f)</span>
+<span class="nc bnc" id="L197" title="All 2 branches missed.">                : (i == hoveredTab ? new Color(0.3f, 0.34f, 0.46f, 1f) : new Color(0.18f, 0.2f, 0.28f, 1f)));</span>
+<span class="nc" id="L198">            batch.draw(uiTexture, tx, h - 148f, 130f, 44f);</span>
+<span class="nc" id="L199">            batch.setColor(Color.WHITE);</span>
+<span class="nc" id="L200">            layout.setText(bodyFont, TABS[i]);</span>
+<span class="nc" id="L201">            bodyFont.draw(batch, TABS[i], tx + (130f - layout.width) / 2f, h - 118f);</span>
+        }
+<span class="nc" id="L203">        float backX = backButtonX(w);</span>
+<span class="nc" id="L204">        float backY = h - 148f;</span>
+<span class="nc bnc" id="L205" title="All 2 branches missed.">        batch.setColor(hoveredBack ? new Color(0.68f, 0.28f, 0.24f, 1f) : new Color(0.32f, 0.18f, 0.18f, 1f));</span>
+<span class="nc" id="L206">        batch.draw(uiTexture, backX, backY, BACK_W, BACK_H);</span>
+<span class="nc" id="L207">        batch.setColor(Color.WHITE);</span>
+<span class="nc" id="L208">        layout.setText(bodyFont, &quot;Back&quot;);</span>
+<span class="nc" id="L209">        bodyFont.draw(batch, &quot;Back&quot;, backX + (BACK_W - layout.width) / 2f, h - 118f);</span>
+<span class="nc" id="L210">        batch.end();</span>
+<span class="nc" id="L211">    }</span>
+
+    private void drawRows(float w, float h) {
+<span class="nc" id="L214">        batch.begin();</span>
+<span class="nc bnc" id="L215" title="All 2 branches missed.">        if (currentTab == 0) {</span>
+<span class="nc bnc" id="L216" title="All 2 branches missed.">            for (int i = 0; i &lt; inventory.getItemCount(); i++) {</span>
+<span class="nc" id="L217">                ShopInventory.ShopEntry entry = inventory.getItem(i);</span>
+<span class="nc" id="L218">                float rowY = h - 210f - (i * 54f);</span>
+<span class="nc bnc" id="L219" title="All 2 branches missed.">                drawRowBackground(w, rowY, i == hoveredRow);</span>
+<span class="nc" id="L220">                String label = (i + 1) + &quot;. &quot; + entry.getLabel() + &quot; - &quot; + entry.getCost() + &quot;g&quot;;</span>
+<span class="nc" id="L221">                bodyFont.draw(batch, label, 60f, rowY + 30f);</span>
+<span class="nc bnc" id="L222" title="All 2 branches missed.">                if (entry.getEquipment() != null) {</span>
+<span class="nc" id="L223">                    EquipmentItem item = entry.getEquipment();</span>
+<span class="nc" id="L224">                    bodyFont.draw(batch, compactStatLine(item), 440f, rowY + 30f);</span>
+                }
+            }
+        } else {
+<span class="nc" id="L228">            List&lt;EquipmentItem&gt; sellable = gameScreen.getSellableEquipment();</span>
+<span class="nc bnc" id="L229" title="All 2 branches missed.">            for (int i = 0; i &lt; sellable.size(); i++) {</span>
+<span class="nc" id="L230">                EquipmentItem item = sellable.get(i);</span>
+<span class="nc" id="L231">                float rowY = h - 210f - (i * 54f);</span>
+<span class="nc bnc" id="L232" title="All 2 branches missed.">                drawRowBackground(w, rowY, i == hoveredRow);</span>
+<span class="nc" id="L233">                bodyFont.draw(batch, (i + 1) + &quot;. &quot; + item.getName() + &quot; - &quot; + gameScreen.getSellPrice(item) + &quot;g&quot;, 60f, rowY + 30f);</span>
+<span class="nc" id="L234">                bodyFont.draw(batch, compactStatLine(item), 440f, rowY + 30f);</span>
+            }
+<span class="nc bnc" id="L236" title="All 2 branches missed.">            if (sellable.isEmpty()) {</span>
+<span class="nc" id="L237">                bodyFont.draw(batch, &quot;No unequipped gear available to sell.&quot;, 60f, h - 210f + 30f);</span>
+            }
+        }
+<span class="nc" id="L240">        batch.end();</span>
+<span class="nc" id="L241">    }</span>
+
+    private void drawRowBackground(float w, float rowY, boolean hovered) {
+<span class="nc bnc" id="L244" title="All 2 branches missed.">        batch.setColor(hovered ? new Color(0.3f, 0.34f, 0.46f, 1f) : new Color(0.18f, 0.2f, 0.28f, 1f));</span>
+<span class="nc" id="L245">        batch.draw(uiTexture, 48f, rowY, w - 96f, 44f);</span>
+<span class="nc" id="L246">        batch.setColor(Color.WHITE);</span>
+<span class="nc" id="L247">    }</span>
+
+    private String compactStatLine(EquipmentItem item) {
+<span class="nc" id="L250">        StringBuilder sb = new StringBuilder();</span>
+<span class="nc bnc" id="L251" title="All 2 branches missed.">        if (item.getHpBonus() != 0) sb.append(&quot;HP &quot;).append(item.getHpBonus()).append(&quot;  &quot;);</span>
+<span class="nc bnc" id="L252" title="All 2 branches missed.">        if (item.getAttackBonus() != 0) sb.append(&quot;STR &quot;).append(item.getAttackBonus()).append(&quot;  &quot;);</span>
+<span class="nc bnc" id="L253" title="All 2 branches missed.">        if (item.getDefenseBonus() != 0) sb.append(&quot;STA &quot;).append(item.getDefenseBonus()).append(&quot;  &quot;);</span>
+<span class="nc bnc" id="L254" title="All 2 branches missed.">        if (item.getSpeedBonus() != 0) sb.append(&quot;AGI &quot;).append(item.getSpeedBonus()).append(&quot;  &quot;);</span>
+<span class="nc bnc" id="L255" title="All 2 branches missed.">        if (item.getIntelligenceBonus() != 0) sb.append(&quot;INT &quot;).append(item.getIntelligenceBonus()).append(&quot;  &quot;);</span>
+<span class="nc" id="L256">        sb.append(&quot;Grade &quot;).append(item.getGradeRequirement());</span>
+<span class="nc" id="L257">        return sb.toString();</span>
+    }
+
+    private void drawFooter(float w, float h) {
+<span class="nc" id="L261">        batch.begin();</span>
+<span class="nc" id="L262">        bodyFont.setColor(Color.WHITE);</span>
+<span class="nc" id="L263">        bodyFont.draw(batch, statusMessage, 52f, 74f);</span>
+<span class="nc" id="L264">        bodyFont.draw(batch, &quot;Tab: switch buy/sell   Esc: back&quot;, w - 290f, 74f);</span>
+<span class="nc" id="L265">        batch.end();</span>
+<span class="nc" id="L266">    }</span>
+
+    private float backButtonX(float width) {
+<span class="nc" id="L269">        return width - 48f - BACK_W;</span>
+    }
+
+    private boolean isBackButtonHit(float mx, float my, float width, float height) {
+<span class="nc" id="L273">        float x = backButtonX(width);</span>
+<span class="nc" id="L274">        float y = height - 148f;</span>
+<span class="nc bnc" id="L275" title="All 8 branches missed.">        return mx &gt;= x &amp;&amp; mx &lt;= x + BACK_W &amp;&amp; my &gt;= y &amp;&amp; my &lt;= y + BACK_H;</span>
+    }
+
+    private void closeMenu() {
+<span class="nc" id="L279">        screenManager.pop();</span>
+<span class="nc" id="L280">    }</span>
+
+    @Override
+    public void resize(int width, int height) {
+<span class="nc" id="L284">        camera.setToOrtho(false, width, height);</span>
+<span class="nc" id="L285">    }</span>
+
+<span class="nc" id="L287">    @Override public void pause() {}</span>
+<span class="nc" id="L288">    @Override public void resume() {}</span>
+<span class="nc" id="L289">    @Override public void hide() {}</span>
+
+    @Override
+    public void dispose() {
+<span class="nc" id="L293">        batch.dispose();</span>
+<span class="nc" id="L294">        shapeRenderer.dispose();</span>
+<span class="nc" id="L295">        titleFont.dispose();</span>
+<span class="nc" id="L296">        bodyFont.dispose();</span>
+<span class="nc" id="L297">        backgroundTexture.dispose();</span>
+<span class="nc" id="L298">        uiTexture.dispose();</span>
+<span class="nc" id="L299">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>EntitySpawner.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core</a> &gt; <a href="index.source.html" class="el_package">com.rogueforge.game.world</a> &gt; <span class="el_source">EntitySpawner.java</span></div><h1>EntitySpawner.java</h1><pre class="source lang-java linenums">package com.rogueforge.game.world;
+
+import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Vector2;
+import com.rogueforge.game.data.MonsterDefinition;
+import com.rogueforge.game.data.ZoneDefinition;
+import com.rogueforge.game.entity.MonsterEntity;
+import java.util.ArrayList;
+import java.util.List;
+
+public class EntitySpawner {
+    private List&lt;MonsterEntity&gt; activeMonsters;
+    private float respawnCooldown;
+    private float respawnTimer;
+    private final float spawnRadius;
+    private Vector2 spawnCenter;
+    private int monstersPerWave;
+
+<span class="nc" id="L19">    public EntitySpawner(float spawnRadius) {</span>
+<span class="nc" id="L20">        this.activeMonsters = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L21">        this.spawnRadius = spawnRadius;</span>
+<span class="nc" id="L22">        this.spawnCenter = new Vector2(0, 0);</span>
+<span class="nc" id="L23">        this.respawnCooldown = 5f; // 5 seconds between waves</span>
+<span class="nc" id="L24">        this.respawnTimer = respawnCooldown;</span>
+<span class="nc" id="L25">        this.monstersPerWave = 3;</span>
+<span class="nc" id="L26">    }</span>
+
+    public void spawnWave(ZoneDefinition zone) {
+<span class="nc bnc" id="L29" title="All 2 branches missed.">        if (zone == null) {</span>
+<span class="nc" id="L30">            return;</span>
+        }
+
+<span class="nc" id="L33">        String minRank = zone.getRankFloor();</span>
+<span class="nc" id="L34">        String maxRank = zone.getRankCeiling();</span>
+
+<span class="nc bnc" id="L36" title="All 2 branches missed.">        for (int i = 0; i &lt; monstersPerWave; i++) {</span>
+            // Spawn a placeholder monster (simplified - no dynamic rank-based selection)
+            // TODO: Implement proper monster selection from zone's monsterIds
+<span class="nc" id="L39">            Vector2 spawnPos = getRandomSpawnPosition();</span>
+            // MonsterDefinition monsterDef = zone.getMonsterForRank(MathUtils.random(minRank, maxRank));
+            // if (monsterDef != null) {
+            //     MonsterEntity monster = new MonsterEntity(monsterDef, spawnPos);
+            //     activeMonsters.add(monster);
+            // }
+        }
+<span class="nc" id="L46">    }</span>
+
+    private Vector2 getRandomSpawnPosition() {
+<span class="nc" id="L49">        float angle = MathUtils.random(360f);</span>
+<span class="nc" id="L50">        float distance = MathUtils.random(0f, spawnRadius);</span>
+<span class="nc" id="L51">        float x = spawnCenter.x + MathUtils.cos(MathUtils.degreesToRadians * angle) * distance;</span>
+<span class="nc" id="L52">        float y = spawnCenter.y + MathUtils.sin(MathUtils.degreesToRadians * angle) * distance;</span>
+<span class="nc" id="L53">        return new Vector2(x, y);</span>
+    }
+
+    public void setSpawnCenter(Vector2 center) {
+<span class="nc" id="L57">        this.spawnCenter.set(center);</span>
+<span class="nc" id="L58">    }</span>
+
+    public void setMonstersPerWave(int count) {
+<span class="nc" id="L61">        this.monstersPerWave = Math.max(1, count);</span>
+<span class="nc" id="L62">    }</span>
+
+    public void setRespawnCooldown(float seconds) {
+<span class="nc" id="L65">        this.respawnCooldown = seconds;</span>
+<span class="nc" id="L66">        this.respawnTimer = seconds;</span>
+<span class="nc" id="L67">    }</span>
+
+    public void update(float delta) {
+<span class="nc" id="L70">        respawnTimer -= delta;</span>
+
+        // Remove dead monsters
+<span class="nc bnc" id="L73" title="All 2 branches missed.">        activeMonsters.removeIf(monster -&gt; !monster.isAlive());</span>
+
+        // Respawn wave if timer elapsed
+<span class="nc bnc" id="L76" title="All 2 branches missed.">        if (respawnTimer &lt;= 0) {</span>
+<span class="nc" id="L77">            respawnTimer = respawnCooldown;</span>
+            // Spawning is handled by zone manager calling spawnWave
+        }
+<span class="nc" id="L80">    }</span>
+
+    public List&lt;MonsterEntity&gt; getActiveMonsters() {
+<span class="nc" id="L83">        return activeMonsters;</span>
+    }
+
+    public void clearMonsters() {
+<span class="nc" id="L87">        activeMonsters.clear();</span>
+<span class="nc" id="L88">        respawnTimer = respawnCooldown;</span>
+<span class="nc" id="L89">    }</span>
+
+    public int getMonsterCount() {
+<span class="nc" id="L92">        return activeMonsters.size();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

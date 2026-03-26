@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RankMultiplier.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core</a> &gt; <a href="index.source.html" class="el_package">com.rogueforge.game.economy</a> &gt; <span class="el_source">RankMultiplier.java</span></div><h1>RankMultiplier.java</h1><pre class="source lang-java linenums">package com.rogueforge.game.economy;
+
+/**
+ * Enum representing monster/loot rank tiers with corresponding currency multipliers.
+ * Ranks progress from G (lowest) to S+++ (highest).
+ */
+<span class="nc" id="L7">public enum RankMultiplier {</span>
+<span class="nc" id="L8">    G(1, &quot;G&quot;),</span>
+<span class="nc" id="L9">    F(2, &quot;F&quot;),</span>
+<span class="nc" id="L10">    E(4, &quot;E&quot;),</span>
+<span class="nc" id="L11">    D(8, &quot;D&quot;),</span>
+<span class="nc" id="L12">    C(16, &quot;C&quot;),</span>
+<span class="nc" id="L13">    B(32, &quot;B&quot;),</span>
+<span class="nc" id="L14">    A(64, &quot;A&quot;),</span>
+<span class="nc" id="L15">    S(128, &quot;S&quot;),</span>
+<span class="nc" id="L16">    S_PLUS(256, &quot;S+&quot;),</span>
+<span class="nc" id="L17">    S_PLUS_PLUS(512, &quot;S++&quot;),</span>
+<span class="nc" id="L18">    S_PLUS_PLUS_PLUS(1024, &quot;S+++&quot;);</span>
+
+    private final int multiplier;
+    private final String displayName;
+
+<span class="nc" id="L23">    RankMultiplier(int multiplier, String displayName) {</span>
+<span class="nc" id="L24">        this.multiplier = multiplier;</span>
+<span class="nc" id="L25">        this.displayName = displayName;</span>
+<span class="nc" id="L26">    }</span>
+
+    /**
+     * Gets the currency multiplier for this rank.
+     *
+     * @return The multiplier value
+     */
+    public int getMultiplier() {
+<span class="nc" id="L34">        return multiplier;</span>
+    }
+
+    /**
+     * Gets the display name for this rank.
+     *
+     * @return The display string (e.g., &quot;S+++&quot;)
+     */
+    public String getDisplayName() {
+<span class="nc" id="L43">        return displayName;</span>
+    }
+
+    /**
+     * Parses a rank from a string name.
+     *
+     * @param name The rank name (e.g., &quot;S+&quot;, &quot;S++&quot;, &quot;S+++&quot;, or enum name like &quot;S_PLUS&quot;)
+     * @return The RankMultiplier enum value, or null if not found
+     */
+    public static RankMultiplier fromString(String name) {
+<span class="nc bnc" id="L53" title="All 4 branches missed.">        if (name == null || name.isEmpty()) {</span>
+<span class="nc" id="L54">            return null;</span>
+        }
+
+        // Try to match by display name
+<span class="nc bnc" id="L58" title="All 2 branches missed.">        for (RankMultiplier rank : RankMultiplier.values()) {</span>
+<span class="nc bnc" id="L59" title="All 2 branches missed.">            if (rank.displayName.equalsIgnoreCase(name)) {</span>
+<span class="nc" id="L60">                return rank;</span>
+            }
+        }
+
+        // Try to match by enum name
+        try {
+<span class="nc" id="L66">            return RankMultiplier.valueOf(name.toUpperCase());</span>
+<span class="nc" id="L67">        } catch (IllegalArgumentException e) {</span>
+<span class="nc" id="L68">            return null;</span>
+        }
+    }
+
+    /**
+     * Gets the next rank in progression.
+     *
+     * @param current The current rank
+     * @return The next rank, or null if already at maximum (S+++)
+     */
+    public static RankMultiplier next(RankMultiplier current) {
+<span class="nc bnc" id="L79" title="All 2 branches missed.">        if (current == null) {</span>
+<span class="nc" id="L80">            return G;</span>
+        }
+
+<span class="nc bnc" id="L83" title="All 12 branches missed.">        switch (current) {</span>
+<span class="nc" id="L84">            case G: return F;</span>
+<span class="nc" id="L85">            case F: return E;</span>
+<span class="nc" id="L86">            case E: return D;</span>
+<span class="nc" id="L87">            case D: return C;</span>
+<span class="nc" id="L88">            case C: return B;</span>
+<span class="nc" id="L89">            case B: return A;</span>
+<span class="nc" id="L90">            case A: return S;</span>
+<span class="nc" id="L91">            case S: return S_PLUS;</span>
+<span class="nc" id="L92">            case S_PLUS: return S_PLUS_PLUS;</span>
+<span class="nc" id="L93">            case S_PLUS_PLUS: return S_PLUS_PLUS_PLUS;</span>
+<span class="nc" id="L94">            case S_PLUS_PLUS_PLUS: return null; // Max rank</span>
+<span class="nc" id="L95">            default: return null;</span>
+        }
+    }
+
+    /**
+     * Gets the previous rank in progression.
+     *
+     * @param current The current rank
+     * @return The previous rank, or null if already at minimum (G)
+     */
+    public static RankMultiplier previous(RankMultiplier current) {
+<span class="nc bnc" id="L106" title="All 2 branches missed.">        if (current == null) {</span>
+<span class="nc" id="L107">            return S_PLUS_PLUS_PLUS;</span>
+        }
+
+<span class="nc bnc" id="L110" title="All 12 branches missed.">        switch (current) {</span>
+<span class="nc" id="L111">            case G: return null; // Min rank</span>
+<span class="nc" id="L112">            case F: return G;</span>
+<span class="nc" id="L113">            case E: return F;</span>
+<span class="nc" id="L114">            case D: return E;</span>
+<span class="nc" id="L115">            case C: return D;</span>
+<span class="nc" id="L116">            case B: return C;</span>
+<span class="nc" id="L117">            case A: return B;</span>
+<span class="nc" id="L118">            case S: return A;</span>
+<span class="nc" id="L119">            case S_PLUS: return S;</span>
+<span class="nc" id="L120">            case S_PLUS_PLUS: return S_PLUS;</span>
+<span class="nc" id="L121">            case S_PLUS_PLUS_PLUS: return S_PLUS_PLUS;</span>
+<span class="nc" id="L122">            default: return null;</span>
+        }
+    }
+
+    /**
+     * Gets the rank index (0-based, where G=0, S+++= 10).
+     * Useful for comparisons and sorting.
+     *
+     * @return The rank index
+     */
+    public int getIndex() {
+<span class="nc" id="L133">        return this.ordinal();</span>
+    }
+
+    /**
+     * Checks if this rank is higher than another.
+     *
+     * @param other The rank to compare against
+     * @return true if this rank is higher
+     */
+    public boolean isHigherThan(RankMultiplier other) {
+<span class="nc bnc" id="L143" title="All 2 branches missed.">        return this.getIndex() &gt; other.getIndex();</span>
+    }
+
+    /**
+     * Checks if this rank is lower than another.
+     *
+     * @param other The rank to compare against
+     * @return true if this rank is lower
+     */
+    public boolean isLowerThan(RankMultiplier other) {
+<span class="nc bnc" id="L153" title="All 2 branches missed.">        return this.getIndex() &lt; other.getIndex();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.10.2" orientation="orthogonal" renderorder="right-down" width="40" height="28" tilewidth="48" tileheight="48" infinite="0" nextlayerid="7" nextobjectid="30">
+<map version="1.10" tiledversion="1.10.2" orientation="orthogonal" renderorder="right-down" width="40" height="28" tilewidth="48" tileheight="48" infinite="0" nextlayerid="7" nextobjectid="33">
  <properties>
   <property name="groundStyle" value="cave"/>
  </properties>
@@ -54,6 +54,11 @@
   <object id="13" name="enemy_2" type="enemy" x="1160" y="754"/>
   <object id="14" name="enemy_3" type="enemy" x="1380" y="540"/>
   <object id="15" name="enemy_4" type="enemy" x="1660" y="414"/>
+  <object id="30" name="from_crystal" type="player" x="1640" y="286">
+   <properties>
+    <property name="spawnId" value="from_crystal"/>
+   </properties>
+  </object>
  </objectgroup>
  <objectgroup id="4" name="doors">
   <object id="16" name="verdant_fields_exit" x="180" y="892" width="72" height="72">
@@ -61,6 +66,14 @@
     <property name="label" value="Verdant Fields"/>
     <property name="targetZone" value="verdant_fields"/>
     <property name="targetSpawn" value="from_caves"/>
+   </properties>
+  </object>
+  <object id="31" name="crystal_depths_gate" x="1610" y="248" width="72" height="72">
+   <properties>
+    <property name="label" value="Crystal Depths"/>
+    <property name="targetZone" value="crystal_depths"/>
+    <property name="targetSpawn" value="from_shadow"/>
+    <property name="lockMessage" value="The crystal tunnels ahead flare with unstable resonance. Better gear is recommended."/>
    </properties>
   </object>
  </objectgroup>

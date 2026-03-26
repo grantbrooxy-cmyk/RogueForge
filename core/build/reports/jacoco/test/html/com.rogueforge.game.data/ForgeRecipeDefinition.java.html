@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ForgeRecipeDefinition.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core</a> &gt; <a href="index.source.html" class="el_package">com.rogueforge.game.data</a> &gt; <span class="el_source">ForgeRecipeDefinition.java</span></div><h1>ForgeRecipeDefinition.java</h1><pre class="source lang-java linenums">package com.rogueforge.game.data;
+
+/**
+ * Forge recipe that turns dropped components into crafted equipment.
+ */
+public class ForgeRecipeDefinition {
+    private String id;
+    private String name;
+    private String category;
+    private String description;
+    private String resultEquipmentId;
+    private long goldCost;
+    private String shardGrade;
+    private int shardCost;
+    private ForgeIngredientDefinition[] ingredients;
+
+<span class="fc" id="L17">    public ForgeRecipeDefinition() {</span>
+<span class="fc" id="L18">    }</span>
+
+    public String getId() {
+<span class="nc" id="L21">        return id;</span>
+    }
+
+    public String getName() {
+<span class="nc bnc" id="L25" title="All 2 branches missed.">        return name != null ? name : &quot;&quot;;</span>
+    }
+
+    public String getCategory() {
+<span class="pc bpc" id="L29" title="1 of 2 branches missed.">        return category != null ? category : &quot;General&quot;;</span>
+    }
+
+    public String getDescription() {
+<span class="pc bpc" id="L33" title="1 of 2 branches missed.">        return description != null ? description : &quot;&quot;;</span>
+    }
+
+    public String getResultEquipmentId() {
+<span class="nc" id="L37">        return resultEquipmentId;</span>
+    }
+
+    public long getGoldCost() {
+<span class="fc" id="L41">        return Math.max(0L, goldCost);</span>
+    }
+
+    public String getShardGrade() {
+<span class="pc bpc" id="L45" title="1 of 2 branches missed.">        return shardGrade != null ? shardGrade : &quot;G&quot;;</span>
+    }
+
+    public int getShardCost() {
+<span class="fc" id="L49">        return Math.max(0, shardCost);</span>
+    }
+
+    public ForgeIngredientDefinition[] getIngredients() {
+<span class="pc bpc" id="L53" title="1 of 2 branches missed.">        return ingredients != null ? ingredients : new ForgeIngredientDefinition[0];</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

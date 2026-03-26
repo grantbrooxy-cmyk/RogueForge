@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>EquipmentSystem.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core</a> &gt; <a href="index.source.html" class="el_package">com.rogueforge.game.robot</a> &gt; <span class="el_source">EquipmentSystem.java</span></div><h1>EquipmentSystem.java</h1><pre class="source lang-java linenums">package com.rogueforge.game.robot;
+
+import com.rogueforge.game.data.EquipmentItem;
+
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * Manages equipment attachment to RobotDefinitions.
+ * Uses nested maps keyed by robot ID and equipment slot.
+ */
+public class EquipmentSystem {
+    /**
+     * Structure: robotId -&gt; (equipmentSlot -&gt; equipmentItem)
+     */
+    private Map&lt;String, Map&lt;RobotDefinition.EquipmentSlot, EquipmentItem&gt;&gt; robotEquipment;
+
+    /**
+     * Constructor initializing empty equipment map.
+     */
+<span class="nc" id="L21">    public EquipmentSystem() {</span>
+<span class="nc" id="L22">        this.robotEquipment = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L23">    }</span>
+
+    /**
+     * Equips an item to a robot in the appropriate equipment slot.
+     * Replaces any existing item in that slot and invalidates the robot's stat cache.
+     *
+     * @param robot The robot to equip
+     * @param item  The equipment item to attach
+     * @return true if equipment was successful, false if item slot doesn't match robot slots
+     */
+    public boolean equip(RobotDefinition robot, EquipmentItem item) {
+<span class="nc bnc" id="L34" title="All 4 branches missed.">        if (robot == null || item == null) {</span>
+<span class="nc" id="L35">            return false;</span>
+        }
+
+<span class="nc" id="L38">        robot.setEquipmentSystem(this);</span>
+
+<span class="nc" id="L40">        RobotDefinition.EquipmentSlot itemSlot = RobotDefinition.EquipmentSlot.valueOf(item.getSlotType());</span>
+
+        // Verify the robot can equip this item (has the slot available)
+<span class="nc" id="L43">        boolean hasSlot = false;</span>
+<span class="nc bnc" id="L44" title="All 2 branches missed.">        for (RobotDefinition.EquipmentSlot slot : robot.getEquipmentSlots()) {</span>
+<span class="nc bnc" id="L45" title="All 2 branches missed.">            if (slot == itemSlot) {</span>
+<span class="nc" id="L46">                hasSlot = true;</span>
+<span class="nc" id="L47">                break;</span>
+            }
+        }
+
+<span class="nc bnc" id="L51" title="All 2 branches missed.">        if (!hasSlot) {</span>
+<span class="nc" id="L52">            return false;</span>
+        }
+
+        // Get or create equipment map for this robot
+<span class="nc" id="L56">        String robotId = robot.getId();</span>
+<span class="nc" id="L57">        robotEquipment.computeIfAbsent(robotId, k -&gt; new HashMap&lt;&gt;());</span>
+<span class="nc" id="L58">        Map&lt;RobotDefinition.EquipmentSlot, EquipmentItem&gt; robotSlots = robotEquipment.get(robotId);</span>
+
+        // Equip the item
+<span class="nc" id="L61">        robotSlots.put(itemSlot, item);</span>
+
+        // Invalidate cached stats
+<span class="nc" id="L64">        robot.invalidateStats();</span>
+
+<span class="nc" id="L66">        return true;</span>
+    }
+
+    /**
+     * Unequips an item from a robot at the specified slot.
+     * Invalidates the robot's stat cache.
+     *
+     * @param robot The robot to unequip from
+     * @param slot  The equipment slot to clear
+     * @return true if an item was removed, false if slot was empty or robot not found
+     */
+    public boolean unequip(RobotDefinition robot, RobotDefinition.EquipmentSlot slot) {
+<span class="nc bnc" id="L78" title="All 4 branches missed.">        if (robot == null || slot == null) {</span>
+<span class="nc" id="L79">            return false;</span>
+        }
+
+<span class="nc" id="L82">        robot.setEquipmentSystem(this);</span>
+
+<span class="nc" id="L84">        String robotId = robot.getId();</span>
+<span class="nc" id="L85">        Map&lt;RobotDefinition.EquipmentSlot, EquipmentItem&gt; robotSlots = robotEquipment.get(robotId);</span>
+
+<span class="nc bnc" id="L87" title="All 2 branches missed.">        if (robotSlots == null) {</span>
+<span class="nc" id="L88">            return false;</span>
+        }
+
+<span class="nc bnc" id="L91" title="All 2 branches missed.">        boolean wasEquipped = robotSlots.remove(slot) != null;</span>
+
+<span class="nc bnc" id="L93" title="All 2 branches missed.">        if (wasEquipped) {</span>
+<span class="nc" id="L94">            robot.invalidateStats();</span>
+        }
+
+<span class="nc" id="L97">        return wasEquipped;</span>
+    }
+
+    /**
+     * Retrieves the currently equipped item in a specific slot.
+     *
+     * @param robot The robot to query
+     * @param slot  The equipment slot to check
+     * @return The equipped item, or null if nothing is equipped in that slot
+     */
+    public EquipmentItem getEquipped(RobotDefinition robot, RobotDefinition.EquipmentSlot slot) {
+<span class="nc bnc" id="L108" title="All 4 branches missed.">        if (robot == null || slot == null) {</span>
+<span class="nc" id="L109">            return null;</span>
+        }
+
+<span class="nc" id="L112">        String robotId = robot.getId();</span>
+<span class="nc" id="L113">        Map&lt;RobotDefinition.EquipmentSlot, EquipmentItem&gt; robotSlots = robotEquipment.get(robotId);</span>
+
+<span class="nc bnc" id="L115" title="All 2 branches missed.">        if (robotSlots == null) {</span>
+<span class="nc" id="L116">            return null;</span>
+        }
+
+<span class="nc" id="L119">        return robotSlots.get(slot);</span>
+    }
+
+    /**
+     * Returns all equipped items for a robot as a map.
+     *
+     * @param robot The robot to query
+     * @return Map of slot -&gt; equipment item, empty map if no equipment
+     */
+    public Map&lt;RobotDefinition.EquipmentSlot, EquipmentItem&gt; getAllEquipped(RobotDefinition robot) {
+<span class="nc bnc" id="L129" title="All 2 branches missed.">        if (robot == null) {</span>
+<span class="nc" id="L130">            return new HashMap&lt;&gt;();</span>
+        }
+
+<span class="nc" id="L133">        robot.setEquipmentSystem(this);</span>
+
+<span class="nc" id="L135">        String robotId = robot.getId();</span>
+<span class="nc" id="L136">        Map&lt;RobotDefinition.EquipmentSlot, EquipmentItem&gt; robotSlots = robotEquipment.get(robotId);</span>
+
+<span class="nc bnc" id="L138" title="All 2 branches missed.">        return robotSlots != null ? new HashMap&lt;&gt;(robotSlots) : new HashMap&lt;&gt;();</span>
+    }
+
+    /**
+     * Unequips all items from a robot.
+     *
+     * @param robot The robot to strip
+     */
+    public void unequipAll(RobotDefinition robot) {
+<span class="nc bnc" id="L147" title="All 2 branches missed.">        if (robot == null) {</span>
+<span class="nc" id="L148">            return;</span>
+        }
+
+<span class="nc" id="L151">        robot.setEquipmentSystem(this);</span>
+
+<span class="nc" id="L153">        String robotId = robot.getId();</span>
+<span class="nc" id="L154">        Map&lt;RobotDefinition.EquipmentSlot, EquipmentItem&gt; robotSlots = robotEquipment.get(robotId);</span>
+
+<span class="nc bnc" id="L156" title="All 4 branches missed.">        if (robotSlots != null &amp;&amp; !robotSlots.isEmpty()) {</span>
+<span class="nc" id="L157">            robotSlots.clear();</span>
+<span class="nc" id="L158">            robot.invalidateStats();</span>
+        }
+<span class="nc" id="L160">    }</span>
+
+    /**
+     * Calculates total stat bonuses from all equipped items for a robot.
+     * Used for stat computation in RobotDefinition.recalcStats().
+     *
+     * @param robot The robot to calculate bonuses for
+     * @return A Stats object representing equipment bonuses
+     */
+    public RobotDefinition.Stats calculateEquipmentBonuses(RobotDefinition robot) {
+<span class="nc" id="L170">        int hpBonus = 0;</span>
+<span class="nc" id="L171">        int attackBonus = 0;</span>
+<span class="nc" id="L172">        int defenseBonus = 0;</span>
+<span class="nc" id="L173">        int speedBonus = 0;</span>
+
+<span class="nc" id="L175">        Map&lt;RobotDefinition.EquipmentSlot, EquipmentItem&gt; equipped = getAllEquipped(robot);</span>
+
+<span class="nc bnc" id="L177" title="All 2 branches missed.">        for (EquipmentItem item : equipped.values()) {</span>
+<span class="nc" id="L178">            hpBonus += item.getHpBonus();</span>
+<span class="nc" id="L179">            attackBonus += item.getAttackBonus();</span>
+<span class="nc" id="L180">            defenseBonus += item.getDefenseBonus();</span>
+<span class="nc" id="L181">            speedBonus += item.getSpeedBonus();</span>
+<span class="nc" id="L182">        }</span>
+
+<span class="nc" id="L184">        return new RobotDefinition.Stats(hpBonus, attackBonus, defenseBonus, speedBonus);</span>
+    }
+
+    /**
+     * Checks if a robot has an item equipped in a specific slot.
+     *
+     * @param robot The robot to check
+     * @param slot  The slot to verify
+     * @return true if an item is equipped in that slot
+     */
+    public boolean hasEquipped(RobotDefinition robot, RobotDefinition.EquipmentSlot slot) {
+<span class="nc bnc" id="L195" title="All 2 branches missed.">        return getEquipped(robot, slot) != null;</span>
+    }
+
+    /**
+     * Removes all equipment data for a robot (e.g., when robot is released).
+     *
+     * @param robot The robot to clear equipment from
+     */
+    public void removeRobot(RobotDefinition robot) {
+<span class="nc bnc" id="L204" title="All 2 branches missed.">        if (robot == null) {</span>
+<span class="nc" id="L205">            return;</span>
+        }
+<span class="nc" id="L207">        robotEquipment.remove(robot.getId());</span>
+<span class="nc" id="L208">    }</span>
+
+    /**
+     * Clears all equipment data.
+     */
+    public void clearAll() {
+<span class="nc" id="L214">        robotEquipment.clear();</span>
+<span class="nc" id="L215">    }</span>
+
+    /**
+     * Returns the number of robots with equipment attached.
+     */
+    public int getRobotEquipmentCount() {
+<span class="nc" id="L221">        return robotEquipment.size();</span>
+    }
+
+    @Override
+    public String toString() {
+<span class="nc" id="L226">        return String.format(&quot;EquipmentSystem{equipmentRecords=%d}&quot;, robotEquipment.size());</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

@@ -1,0 +1,110 @@
+[
+  {
+    "id": "sunken_abyss_intro",
+    "triggerType": "ZONE_ENTER",
+    "triggerId": "sunken_abyss",
+    "onceFlag": "event.zone.sunken_abyss_intro",
+    "speaker": "Captain Maren",
+    "text": "The pressure locks groan around you. Somewhere in the drowned archive, a route chart still remembers the sky."
+  },
+  {
+    "id": "sky_fortress_intro",
+    "triggerType": "ZONE_ENTER",
+    "triggerId": "sky_fortress",
+    "onceFlag": "event.zone.sky_fortress_intro",
+    "speaker": "Commander Rex",
+    "text": "The fortress still holds formation over the clouds. Its command spine is damaged, but not dead."
+  },
+  {
+    "id": "clockwork_sanctum_intro",
+    "triggerType": "ZONE_ENTER",
+    "triggerId": "clockwork_sanctum",
+    "onceFlag": "event.zone.clockwork_sanctum_intro",
+    "speaker": "Clockmaker Echo",
+    "text": "Every corridor here was built with intention. If a command sigil survived anywhere, it would be in this sanctum."
+  },
+  {
+    "id": "abyssal_rift_intro",
+    "triggerType": "ZONE_ENTER",
+    "triggerId": "abyssal_rift",
+    "onceFlag": "event.zone.abyssal_rift_intro",
+    "speaker": "The Watcher",
+    "text": "The rift is not a place. It is a wound. Walk carefully, and listen for what the world is trying to forget."
+  },
+  {
+    "id": "the_void_intro",
+    "triggerType": "ZONE_ENTER",
+    "triggerId": "the_void",
+    "onceFlag": "event.zone.the_void_intro",
+    "speaker": "The Watcher",
+    "text": "Memory Lane lies ahead. Beyond it waits the Gauntlet of Trials, the Throne of Origin, and the last answer Mechara can give."
+  },
+  {
+    "id": "infinite_dungeon_intro",
+    "triggerType": "ZONE_ENTER",
+    "triggerId": "infinite_dungeon",
+    "onceFlag": "event.zone.infinite_dungeon_intro",
+    "speaker": "Bolt Simulation",
+    "text": "Challenge loop initialized. Descend, adapt, and return stronger. The dungeon does not end; it measures."
+  },
+  {
+    "id": "dragon_peak_boss",
+    "triggerType": "BOSS_DEFEAT",
+    "triggerId": "dragon_boss_b",
+    "onceFlag": "frontier.dragon_peak_secured",
+    "speaker": "Edda",
+    "text": "The Elder Drake falls, and the warding pylons hum back to life across Dragon Peak."
+  },
+  {
+    "id": "sky_fortress_boss",
+    "triggerType": "BOSS_DEFEAT",
+    "triggerId": "volt_specter_b",
+    "onceFlag": "frontier.sky_fortress_secured",
+    "speaker": "Commander Rex",
+    "text": "Volt Specter dissipates into the cloud deck. The fortress command lanes deeper inside are open now."
+  },
+  {
+    "id": "volcanic_core_boss",
+    "triggerType": "BOSS_DEFEAT",
+    "triggerId": "phoenix_a",
+    "onceFlag": "frontier.volcanic_core_tempered",
+    "speaker": "Forge Core",
+    "text": "The Ancient Phoenix is broken, and the Volcanic Core settles into a forgeable rhythm."
+  },
+  {
+    "id": "clockwork_sanctum_boss",
+    "triggerType": "BOSS_DEFEAT",
+    "triggerId": "clockwork_bishop_b",
+    "onceFlag": "frontier.clockwork_sanctum_secured",
+    "speaker": "Clockmaker Echo",
+    "text": "With the Clockwork Bishop defeated, the sanctum's preserved command vaults stand unguarded."
+  },
+  {
+    "id": "abyssal_rift_boss",
+    "triggerType": "BOSS_DEFEAT",
+    "triggerId": "the_unmaker_s",
+    "onceFlag": "frontier.abyssal_rift_secured",
+    "speaker": "The Watcher",
+    "text": "The Unmaker falls silent, and something bright remains where the breach was deepest."
+  },
+  {
+    "id": "origin_core_boss",
+    "triggerType": "BOSS_DEFEAT",
+    "triggerId": "origin_core_s",
+    "onceFlag": "frontier.origin_core_defeated",
+    "speaker": "The Watcher",
+    "text": "Origin collapses into silence. For the first time in ages, the world feels like it might belong to the living again.",
+    "setWorldFlag": "frontier.the_void_cleared",
+    "completeQuestId": "origin_descent",
+    "rewardExperience": 250
+  },
+  {
+    "id": "infinite_dungeon_boss",
+    "triggerType": "BOSS_DEFEAT",
+    "triggerId": "apex_predator_s",
+    "onceFlag": "postgame.infinite_dungeon_mastered",
+    "speaker": "Bolt Simulation",
+    "text": "Apex Predator defeated. The trial resets, but your mastery remains recorded in the ruin.",
+    "rewardExperience": 180
+  }
+]

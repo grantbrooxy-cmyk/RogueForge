@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RosterManager.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core</a> &gt; <a href="index.source.html" class="el_package">com.rogueforge.game.robot</a> &gt; <span class="el_source">RosterManager.java</span></div><h1>RosterManager.java</h1><pre class="source lang-java linenums">package com.rogueforge.game.robot;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Manages the robot roster: collected robots and active deployment.
+ * Enforces constraints on active robot count (max 8).
+ */
+public class RosterManager {
+    public static final int MAX_ACTIVE = 8;
+
+    private List&lt;RobotDefinition&gt; allRobots;
+    private List&lt;RobotDefinition&gt; activeRobots;
+
+    /**
+     * Constructor initializing empty lists.
+     */
+<span class="nc" id="L19">    public RosterManager() {</span>
+<span class="nc" id="L20">        this.allRobots = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L21">        this.activeRobots = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L22">    }</span>
+
+    /**
+     * Adds a robot to the collected roster.
+     * If already collected, does nothing.
+     */
+    public void collect(RobotDefinition robot) {
+<span class="nc bnc" id="L29" title="All 2 branches missed.">        if (robot == null) return;</span>
+<span class="nc bnc" id="L30" title="All 2 branches missed.">        if (!allRobots.contains(robot)) {</span>
+<span class="nc" id="L31">            allRobots.add(robot);</span>
+        }
+<span class="nc" id="L33">    }</span>
+
+    /**
+     * Removes a robot from both the collected roster and active deployment.
+     */
+    public void release(RobotDefinition robot) {
+<span class="nc bnc" id="L39" title="All 2 branches missed.">        if (robot == null) return;</span>
+<span class="nc" id="L40">        allRobots.remove(robot);</span>
+<span class="nc" id="L41">        activeRobots.remove(robot);</span>
+<span class="nc" id="L42">    }</span>
+
+    /**
+     * Deploys a robot to active slots if:
+     * - Robot is in collected roster
+     * - Not already active
+     * - Active count is below MAX_ACTIVE
+     */
+    public boolean deploy(RobotDefinition robot) {
+<span class="nc bnc" id="L51" title="All 4 branches missed.">        if (robot == null || !allRobots.contains(robot)) {</span>
+<span class="nc" id="L52">            return false;</span>
+        }
+
+<span class="nc bnc" id="L55" title="All 2 branches missed.">        if (activeRobots.contains(robot)) {</span>
+<span class="nc" id="L56">            return false; // Already deployed</span>
+        }
+
+<span class="nc bnc" id="L59" title="All 2 branches missed.">        if (activeRobots.size() &gt;= MAX_ACTIVE) {</span>
+<span class="nc" id="L60">            return false; // Roster full</span>
+        }
+
+<span class="nc" id="L63">        activeRobots.add(robot);</span>
+<span class="nc" id="L64">        return true;</span>
+    }
+
+    /**
+     * Removes a robot from active deployment (benches it).
+     * Robot remains in collected roster.
+     */
+    public boolean bench(RobotDefinition robot) {
+<span class="nc bnc" id="L72" title="All 2 branches missed.">        if (robot == null) {</span>
+<span class="nc" id="L73">            return false;</span>
+        }
+<span class="nc" id="L75">        return activeRobots.remove(robot);</span>
+    }
+
+    /**
+     * Returns the list of actively deployed robots.
+     */
+    public List&lt;RobotDefinition&gt; getActiveRobots() {
+<span class="nc" id="L82">        return new ArrayList&lt;&gt;(activeRobots);</span>
+    }
+
+    /**
+     * Returns the list of all collected robots.
+     */
+    public List&lt;RobotDefinition&gt; getAllRobots() {
+<span class="nc" id="L89">        return new ArrayList&lt;&gt;(allRobots);</span>
+    }
+
+    /**
+     * Returns the count of actively deployed robots.
+     */
+    public int getActiveCount() {
+<span class="nc" id="L96">        return activeRobots.size();</span>
+    }
+
+    /**
+     * Returns the count of all collected robots.
+     */
+    public int getTotalCount() {
+<span class="nc" id="L103">        return allRobots.size();</span>
+    }
+
+    /**
+     * Checks if a robot is actively deployed.
+     */
+    public boolean isActive(RobotDefinition robot) {
+<span class="nc bnc" id="L110" title="All 4 branches missed.">        return robot != null &amp;&amp; activeRobots.contains(robot);</span>
+    }
+
+    /**
+     * Checks if a robot is in the collected roster.
+     */
+    public boolean isCollected(RobotDefinition robot) {
+<span class="nc bnc" id="L117" title="All 4 branches missed.">        return robot != null &amp;&amp; allRobots.contains(robot);</span>
+    }
+
+    /**
+     * Returns available deployment slots (MAX_ACTIVE - current active count).
+     */
+    public int getAvailableSlots() {
+<span class="nc" id="L124">        return MAX_ACTIVE - activeRobots.size();</span>
+    }
+
+    /**
+     * Clears all robots from the roster.
+     */
+    public void clearAll() {
+<span class="nc" id="L131">        allRobots.clear();</span>
+<span class="nc" id="L132">        activeRobots.clear();</span>
+<span class="nc" id="L133">    }</span>
+
+    /**
+     * Benches all active robots without removing them from collected roster.
+     */
+    public void benchAll() {
+<span class="nc" id="L139">        activeRobots.clear();</span>
+<span class="nc" id="L140">    }</span>
+
+    @Override
+    public String toString() {
+<span class="nc" id="L144">        return String.format(&quot;RosterManager{collected=%d, active=%d/%d}&quot;,</span>
+<span class="nc" id="L145">                allRobots.size(), activeRobots.size(), MAX_ACTIVE);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

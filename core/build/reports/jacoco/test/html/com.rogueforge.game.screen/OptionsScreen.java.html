@@ -1,0 +1,247 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>OptionsScreen.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core</a> &gt; <a href="index.source.html" class="el_package">com.rogueforge.game.screen</a> &gt; <span class="el_source">OptionsScreen.java</span></div><h1>OptionsScreen.java</h1><pre class="source lang-java linenums">package com.rogueforge.game.screen;
+
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
+import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.GlyphLayout;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.Texture.TextureFilter;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.rogueforge.game.core.RogueForgeGame;
+import com.rogueforge.game.core.ScreenManager;
+import com.rogueforge.game.persistence.SettingsManager;
+
+/**
+ * Options screen for adjusting game settings.
+ * Rendered using ShapeRenderer for buttons and BitmapFont for text.
+ * Displays music volume, SFX volume, and fullscreen toggle as text with placeholder controls.
+ */
+public class OptionsScreen implements Screen {
+<span class="nc" id="L25">    private static final String[] DIFFICULTY_MODES = {&quot;EASY&quot;, &quot;NORMAL&quot;, &quot;HARD&quot;, &quot;HELL&quot;};</span>
+    private final RogueForgeGame game;
+    private final ScreenManager screenManager;
+    private final SettingsManager settingsManager;
+    private final SpriteBatch batch;
+    private final ShapeRenderer shapeRenderer;
+    private final BitmapFont titleFont;
+    private final BitmapFont labelFont;
+    private final BitmapFont buttonFont;
+    private final OrthographicCamera camera;
+    private final GlyphLayout layout;
+    private final Texture backgroundTexture;
+
+    private static final float BTN_W = 240f;
+    private static final float BTN_H = 50f;
+
+    // Settings values
+<span class="nc" id="L42">    private float musicVolume = 0.5f;</span>
+<span class="nc" id="L43">    private float sfxVolume = 0.7f;</span>
+<span class="nc" id="L44">    private boolean fullscreen = false;</span>
+<span class="nc" id="L45">    private String difficultyMode = &quot;NORMAL&quot;;</span>
+
+<span class="nc" id="L47">    private int hoveredButton = -1;</span>
+
+<span class="nc" id="L49">    public OptionsScreen(RogueForgeGame game, ScreenManager screenManager) {</span>
+<span class="nc" id="L50">        this.game = game;</span>
+<span class="nc" id="L51">        this.screenManager = screenManager;</span>
+<span class="nc" id="L52">        this.settingsManager = new SettingsManager();</span>
+<span class="nc" id="L53">        this.settingsManager.load();</span>
+<span class="nc" id="L54">        this.batch = new SpriteBatch();</span>
+<span class="nc" id="L55">        this.shapeRenderer = new ShapeRenderer();</span>
+<span class="nc" id="L56">        this.camera = new OrthographicCamera();</span>
+<span class="nc" id="L57">        this.camera.setToOrtho(false, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());</span>
+<span class="nc" id="L58">        this.layout = new GlyphLayout();</span>
+<span class="nc" id="L59">        this.backgroundTexture = loadTexture(&quot;Backgrounds/background 2/orig_big.png&quot;);</span>
+<span class="nc" id="L60">        this.musicVolume = settingsManager.getSettings().getMusicVolume();</span>
+<span class="nc" id="L61">        this.sfxVolume = settingsManager.getSettings().getSfxVolume();</span>
+<span class="nc" id="L62">        this.fullscreen = settingsManager.getSettings().isFullscreen();</span>
+<span class="nc" id="L63">        this.difficultyMode = settingsManager.getSettings().getDifficultyMode();</span>
+
+        // Setup fonts
+<span class="nc" id="L66">        titleFont = new BitmapFont();</span>
+<span class="nc" id="L67">        titleFont.getData().setScale(3.5f);</span>
+<span class="nc" id="L68">        titleFont.setColor(Color.WHITE);</span>
+
+<span class="nc" id="L70">        labelFont = new BitmapFont();</span>
+<span class="nc" id="L71">        labelFont.getData().setScale(1.5f);</span>
+<span class="nc" id="L72">        labelFont.setColor(Color.WHITE);</span>
+
+<span class="nc" id="L74">        buttonFont = new BitmapFont();</span>
+<span class="nc" id="L75">        buttonFont.getData().setScale(1.8f);</span>
+<span class="nc" id="L76">        buttonFont.setColor(Color.WHITE);</span>
+<span class="nc" id="L77">    }</span>
+
+    private Texture loadTexture(String relativePath) {
+<span class="nc" id="L80">        Texture texture = new Texture(Gdx.files.internal(relativePath));</span>
+<span class="nc" id="L81">        texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);</span>
+<span class="nc" id="L82">        return texture;</span>
+    }
+
+    @Override
+    public void show() {
+<span class="nc" id="L87">        Gdx.input.setInputProcessor(null);</span>
+<span class="nc" id="L88">    }</span>
+
+    @Override
+    public void render(float delta) {
+<span class="nc" id="L92">        float w = Gdx.graphics.getWidth();</span>
+<span class="nc" id="L93">        float h = Gdx.graphics.getHeight();</span>
+
+<span class="nc" id="L95">        Gdx.gl.glClearColor(0.02f, 0.02f, 0.03f, 1f);</span>
+<span class="nc" id="L96">        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);</span>
+
+        // Mouse position (flip Y for our camera)
+<span class="nc" id="L99">        float mx = Gdx.input.getX();</span>
+<span class="nc" id="L100">        float my = h - Gdx.input.getY();</span>
+
+        // Title area
+<span class="nc" id="L103">        float titleY = h - 80f;</span>
+
+        // Settings start position
+<span class="nc" id="L106">        float settingsX = 100f;</span>
+<span class="nc" id="L107">        float settingsStartY = titleY - 150f;</span>
+<span class="nc" id="L108">        float settingLineHeight = 80f;</span>
+
+<span class="nc" id="L110">        float difficultyButtonX = settingsX + 310f;</span>
+<span class="nc" id="L111">        float difficultyButtonY = settingsStartY - 2 * settingLineHeight - 34f;</span>
+
+        // Back button position
+<span class="nc" id="L114">        float backButtonX = (w - BTN_W) / 2f;</span>
+<span class="nc" id="L115">        float backButtonY = 50f;</span>
+
+        // Detect hover on back button
+<span class="nc" id="L118">        hoveredButton = -1;</span>
+<span class="nc bnc" id="L119" title="All 8 branches missed.">        if (mx &gt;= difficultyButtonX &amp;&amp; mx &lt;= difficultyButtonX + 220f &amp;&amp; my &gt;= difficultyButtonY &amp;&amp; my &lt;= difficultyButtonY + BTN_H) {</span>
+<span class="nc" id="L120">            hoveredButton = 1;</span>
+        }
+<span class="nc bnc" id="L122" title="All 8 branches missed.">        if (mx &gt;= backButtonX &amp;&amp; mx &lt;= backButtonX + BTN_W &amp;&amp; my &gt;= backButtonY &amp;&amp; my &lt;= backButtonY + BTN_H) {</span>
+<span class="nc" id="L123">            hoveredButton = 0;</span>
+        }
+
+        // Handle click
+<span class="nc bnc" id="L127" title="All 2 branches missed.">        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {</span>
+<span class="nc" id="L128">            onBack();</span>
+<span class="nc" id="L129">            return;</span>
+        }
+<span class="nc bnc" id="L131" title="All 2 branches missed.">        if (Gdx.input.justTouched()) {</span>
+<span class="nc bnc" id="L132" title="All 2 branches missed.">            if (hoveredButton == 0) {</span>
+<span class="nc" id="L133">                onBack();</span>
+<span class="nc bnc" id="L134" title="All 2 branches missed.">            } else if (hoveredButton == 1) {</span>
+<span class="nc" id="L135">                cycleDifficulty();</span>
+            }
+        }
+
+<span class="nc" id="L139">        batch.setProjectionMatrix(camera.combined);</span>
+<span class="nc" id="L140">        batch.begin();</span>
+<span class="nc" id="L141">        batch.draw(backgroundTexture, 0f, 0f, w, h);</span>
+<span class="nc" id="L142">        batch.end();</span>
+
+        // Draw back button
+<span class="nc" id="L145">        Gdx.gl.glEnable(GL20.GL_BLEND);</span>
+<span class="nc" id="L146">        shapeRenderer.setProjectionMatrix(camera.combined);</span>
+<span class="nc" id="L147">        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);</span>
+<span class="nc bnc" id="L148" title="All 8 branches missed.">        shapeRenderer.setColor(hoveredButton == 1 ? 0.9f : 0.2f, hoveredButton == 1 ? 0.45f : 0.2f, hoveredButton == 1 ? 0.1f : 0.28f, hoveredButton == 1 ? 0.9f : 0.85f);</span>
+<span class="nc" id="L149">        shapeRenderer.rect(difficultyButtonX, difficultyButtonY, 220f, BTN_H);</span>
+<span class="nc bnc" id="L150" title="All 2 branches missed.">        if (hoveredButton == 0) {</span>
+<span class="nc" id="L151">            shapeRenderer.setColor(0.9f, 0.45f, 0.1f, 0.9f);</span>
+        } else {
+<span class="nc" id="L153">            shapeRenderer.setColor(0.2f, 0.2f, 0.28f, 0.85f);</span>
+        }
+<span class="nc" id="L155">        shapeRenderer.rect(backButtonX, backButtonY, BTN_W, BTN_H);</span>
+<span class="nc" id="L156">        shapeRenderer.end();</span>
+
+        // Draw text
+<span class="nc" id="L159">        batch.setProjectionMatrix(camera.combined);</span>
+<span class="nc" id="L160">        batch.begin();</span>
+
+        // Title
+<span class="nc" id="L163">        layout.setText(titleFont, &quot;OPTIONS&quot;);</span>
+<span class="nc" id="L164">        titleFont.setColor(1f, 0.85f, 0.4f, 1f);</span>
+<span class="nc" id="L165">        titleFont.draw(batch, &quot;OPTIONS&quot;, (w - layout.width) / 2f, titleY);</span>
+
+        // Settings labels
+<span class="nc" id="L168">        labelFont.setColor(Color.WHITE);</span>
+
+<span class="nc" id="L170">        String musicText = &quot;Music Volume: &quot; + Math.round(musicVolume * 100) + &quot;%&quot;;</span>
+<span class="nc" id="L171">        labelFont.draw(batch, musicText, settingsX, settingsStartY);</span>
+
+<span class="nc" id="L173">        String sfxText = &quot;SFX Volume: &quot; + Math.round(sfxVolume * 100) + &quot;%&quot;;</span>
+<span class="nc" id="L174">        labelFont.draw(batch, sfxText, settingsX, settingsStartY - settingLineHeight);</span>
+
+<span class="nc bnc" id="L176" title="All 2 branches missed.">        String fullscreenText = &quot;Fullscreen: &quot; + (fullscreen ? &quot;On&quot; : &quot;Off&quot;);</span>
+<span class="nc" id="L177">        labelFont.draw(batch, fullscreenText, settingsX, settingsStartY - 2 * settingLineHeight);</span>
+
+<span class="nc" id="L179">        String difficultyText = &quot;Difficulty: &quot; + difficultyMode;</span>
+<span class="nc" id="L180">        labelFont.draw(batch, difficultyText, settingsX, settingsStartY - 3 * settingLineHeight);</span>
+<span class="nc" id="L181">        layout.setText(buttonFont, &quot;Change&quot;);</span>
+<span class="nc" id="L182">        buttonFont.draw(batch, &quot;Change&quot;,</span>
+            difficultyButtonX + (220f - layout.width) / 2f,
+            difficultyButtonY + (BTN_H + layout.height) / 2f);
+
+        // Back button text
+<span class="nc" id="L187">        layout.setText(buttonFont, &quot;Back&quot;);</span>
+<span class="nc" id="L188">        buttonFont.setColor(Color.WHITE);</span>
+<span class="nc" id="L189">        buttonFont.draw(batch, &quot;Back&quot;,</span>
+            backButtonX + (BTN_W - layout.width) / 2f,
+            backButtonY + (BTN_H + layout.height) / 2f);
+
+<span class="nc" id="L193">        batch.end();</span>
+<span class="nc" id="L194">    }</span>
+
+    private void onBack() {
+<span class="nc" id="L197">        saveSettings();</span>
+<span class="nc" id="L198">        screenManager.pop();</span>
+<span class="nc" id="L199">    }</span>
+
+    private void cycleDifficulty() {
+<span class="nc bnc" id="L202" title="All 2 branches missed.">        for (int i = 0; i &lt; DIFFICULTY_MODES.length; i++) {</span>
+<span class="nc bnc" id="L203" title="All 2 branches missed.">            if (DIFFICULTY_MODES[i].equals(difficultyMode)) {</span>
+<span class="nc" id="L204">                difficultyMode = DIFFICULTY_MODES[(i + 1) % DIFFICULTY_MODES.length];</span>
+<span class="nc" id="L205">                return;</span>
+            }
+        }
+<span class="nc" id="L208">        difficultyMode = &quot;NORMAL&quot;;</span>
+<span class="nc" id="L209">    }</span>
+
+    private void saveSettings() {
+<span class="nc" id="L212">        settingsManager.getSettings().setMusicVolume(musicVolume);</span>
+<span class="nc" id="L213">        settingsManager.getSettings().setSfxVolume(sfxVolume);</span>
+<span class="nc" id="L214">        settingsManager.getSettings().setFullscreen(fullscreen);</span>
+<span class="nc" id="L215">        settingsManager.getSettings().setDifficultyMode(difficultyMode);</span>
+<span class="nc" id="L216">        settingsManager.save();</span>
+<span class="nc" id="L217">        settingsManager.applySettings();</span>
+<span class="nc" id="L218">    }</span>
+
+    @Override
+    public void resize(int width, int height) {
+<span class="nc" id="L222">        camera.setToOrtho(false, width, height);</span>
+<span class="nc" id="L223">    }</span>
+
+    @Override
+    public void pause() {
+<span class="nc" id="L227">    }</span>
+
+    @Override
+    public void resume() {
+<span class="nc" id="L231">    }</span>
+
+    @Override
+    public void hide() {
+<span class="nc" id="L235">    }</span>
+
+    @Override
+    public void dispose() {
+<span class="nc" id="L239">        batch.dispose();</span>
+<span class="nc" id="L240">        shapeRenderer.dispose();</span>
+<span class="nc" id="L241">        titleFont.dispose();</span>
+<span class="nc" id="L242">        labelFont.dispose();</span>
+<span class="nc" id="L243">        buttonFont.dispose();</span>
+<span class="nc" id="L244">        backgroundTexture.dispose();</span>
+<span class="nc" id="L245">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

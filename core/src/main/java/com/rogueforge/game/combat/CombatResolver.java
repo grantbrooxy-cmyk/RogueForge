@@ -42,10 +42,21 @@ public class CombatResolver {
         if (attacker == null || defender == null) {
             return 0;
         }
+
+        // BLIND: physical attacks have a chance to miss entirely.
+        float hitChance = attacker.getStatusEffectManager().getPhysicalHitChanceMultiplier();
+        if (hitChance < 1f && Math.random() >= hitChance) {
+            // 0 signals a miss to the caller; caller should log "X missed!"
+            return 0;
+        }
+
         float baseDamage = (attacker.getStrength() * actionMultiplier)
             * Math.max(1f, weaponMultiplier)
             * attacker.getStatusEffectManager().getPhysicalDamageDealtMultiplier()
             - (defender.getEffectiveStamina() * DEFENSE_REDUCTION_FACTOR);
+        if (attacker.hasUniqueBoost("OVERDRIVE_LINK") && attacker.getHealth() >= (attacker.getMaxHealth() * 0.7f)) {
+            baseDamage *= 1.15f;
+        }
         float finalDamage = Math.max(MIN_DAMAGE, applyVariance(baseDamage));
         if (Math.random() < getCritChance(attacker)) {
             finalDamage *= 1.5f;
@@ -58,6 +69,25 @@ public class CombatResolver {
         return resolveAbilityDamage(caster, target, ability, 1f);
     }
 
+    /**
+     * Elemental Break sentinel: when the damage return value equals this constant,
+     * the caller knows that an Elemental Break was triggered on this hit and should
+     * display the break notification. The actual damage is encoded as
+     * {@code -(ELEMENTAL_BREAK_FLAG + damage)} — extract with
+     * {@link #extractBreakDamage(int)}.
+     */
+    public static final int ELEMENTAL_BREAK_FLAG = Integer.MIN_VALUE / 2;
+
+    /** Returns true when resolveAbilityDamage encoded a break in its return value. */
+    public static boolean wasElementalBreak(int result) {
+        return result <= ELEMENTAL_BREAK_FLAG;
+    }
+
+    /** Extracts the real damage value from an elemental-break encoded result. */
+    public static int extractBreakDamage(int result) {
+        return -(result - ELEMENTAL_BREAK_FLAG);
+    }
+
     public int resolveAbilityDamage(BattleCombatant caster, BattleCombatant target, AbilityDefinition ability, float proficiencyMultiplier) {
         if (caster == null || target == null || ability == null) {
             return 0;
@@ -67,15 +97,37 @@ public class CombatResolver {
             * Math.max(1f, proficiencyMultiplier)
             * Math.max(1f, offense)
             / Math.max(1f, target.getEffectiveStamina());
-        float multiplier = ElementalSystem.getMultiplier(ability.getElement(), target);
+        if (caster.hasUniqueBoost("OVERDRIVE_LINK") && caster.getHealth() >= (caster.getMaxHealth() * 0.7f)) {
+            baseDamage *= 1.15f;
+        }
+
+        // Register this elemental hit and check for Elemental Break.
+        // registerElementalHit returns the current consecutive-hit streak.
+        // A break fires at 3 consecutive hits of the same element.
+        Element element = ability.getElement();
+        boolean breakTriggered = false;
+        if (element != null && element != Element.NONE) {
+            int streak = target.registerElementalHit(element);
+            breakTriggered = (streak == 3); // exactly 3 triggers the break; subsequent hits are already broken
+        }
+
+        float multiplier = ElementalSystem.getMultiplier(element, target);
         if (multiplier < 0f) {
+            // Absorb: heals the target instead of damaging.
             int healing = Math.max(1, Math.round(Math.abs(baseDamage)));
             target.heal(healing);
             return -healing;
         }
         float finalDamage = Math.max(MIN_DAMAGE, applyVariance(baseDamage * multiplier));
         finalDamage *= target.getStatusEffectManager().getAbilityDamageTakenMultiplier();
-        return Math.max(1, Math.round(finalDamage));
+        int damage = Math.max(1, Math.round(finalDamage));
+
+        // Encode a break notification into the return value so the caller can
+        // display "Elemental Break!" without needing a separate out-param.
+        if (breakTriggered) {
+            return ELEMENTAL_BREAK_FLAG - damage; // caller uses wasElementalBreak() + extractBreakDamage()
+        }
+        return damage;
     }
 
     public int resolveHealing(BattleCombatant caster, AbilityDefinition ability) {
@@ -90,6 +142,9 @@ public class CombatResolver {
             * ((caster.getIntelligence() * 0.8f) + (caster.getStrength() * 0.2f))
             * 0.08f
             * Math.max(1f, proficiencyMultiplier);
+        if (caster.isCombatClass("Support")) {
+            healAmount *= 1.2f;
+        }
         return Math.max(1, Math.round(healAmount));
     }
 
@@ -202,6 +257,10 @@ public class CombatResolver {
     }
 
     private float getCritChance(BattleCombatant attacker) {
-        return Math.min(0.3f, 0.05f + (attacker.getEffectiveSpeed() / 1000f));
+        float critChance = 0.05f + (attacker.getEffectiveSpeed() / 1000f);
+        if (attacker != null && attacker.isCombatClass("Striker")) {
+            critChance += 0.08f;
+        }
+        return Math.min(0.4f, critChance);
     }
 }

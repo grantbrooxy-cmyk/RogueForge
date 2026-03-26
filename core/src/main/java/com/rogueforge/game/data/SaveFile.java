@@ -32,6 +32,9 @@ public class SaveFile {
     private List<String> keyItems;
     private Map<String, Boolean> worldStateFlags;
     private Map<String, SettlementState> settlementUpgrades;
+    private Map<String, Integer> forgeComponents;
+    private Map<String, Integer> shardInventory;
+    private List<String> defeatedBossIds;
 
     // Robot data: robotId -> Map of equipped items (slotType -> equipmentId)
     private Map<String, Map<String, String>> robotEquipment;
@@ -53,6 +56,9 @@ public class SaveFile {
     private List<EnemyState> enemies;
     private List<ChestState> chests;
 
+    // Forge Core progression
+    private int forgeCoreLevel = 1;
+
     // Progress tracking
     private long playTimeSeconds;
     private String saveTimestamp;
@@ -72,6 +78,9 @@ public class SaveFile {
         this.worldStateFlags = new HashMap<>();
         this.settlementUpgrades = new HashMap<>();
         this.robotProgressionStates = new HashMap<>();
+        this.forgeComponents = new HashMap<>();
+        this.shardInventory = new HashMap<>();
+        this.defeatedBossIds = new ArrayList<>();
     }
 
     public SaveFile(String playerName, int playerHp, int playerMaxHp, float playerX, float playerY,
@@ -97,6 +106,9 @@ public class SaveFile {
         this.worldStateFlags = new HashMap<>();
         this.settlementUpgrades = new HashMap<>();
         this.robotProgressionStates = new HashMap<>();
+        this.forgeComponents = new HashMap<>();
+        this.shardInventory = new HashMap<>();
+        this.defeatedBossIds = new ArrayList<>();
     }
 
     // Getters
@@ -186,6 +198,27 @@ public class SaveFile {
             settlementUpgrades = new HashMap<>();
         }
         return settlementUpgrades;
+    }
+
+    public Map<String, Integer> getForgeComponents() {
+        if (forgeComponents == null) {
+            forgeComponents = new HashMap<>();
+        }
+        return forgeComponents;
+    }
+
+    public Map<String, Integer> getShardInventory() {
+        if (shardInventory == null) {
+            shardInventory = new HashMap<>();
+        }
+        return shardInventory;
+    }
+
+    public List<String> getDefeatedBossIds() {
+        if (defeatedBossIds == null) {
+            defeatedBossIds = new ArrayList<>();
+        }
+        return defeatedBossIds;
     }
 
     public Map<String, Map<String, String>> getRobotEquipment() {
@@ -336,6 +369,18 @@ public class SaveFile {
         this.settlementUpgrades = settlementUpgrades != null ? settlementUpgrades : new HashMap<>();
     }
 
+    public void setForgeComponents(Map<String, Integer> forgeComponents) {
+        this.forgeComponents = forgeComponents != null ? forgeComponents : new HashMap<>();
+    }
+
+    public void setShardInventory(Map<String, Integer> shardInventory) {
+        this.shardInventory = shardInventory != null ? shardInventory : new HashMap<>();
+    }
+
+    public void setDefeatedBossIds(List<String> defeatedBossIds) {
+        this.defeatedBossIds = defeatedBossIds != null ? defeatedBossIds : new ArrayList<>();
+    }
+
     public void setRobotEquipment(Map<String, Map<String, String>> robotEquipment) {
         this.robotEquipment = robotEquipment;
     }
@@ -402,6 +447,14 @@ public class SaveFile {
 
     public void setSaveSlot(int saveSlot) {
         this.saveSlot = saveSlot;
+    }
+
+    public int getForgeCoreLevel() {
+        return forgeCoreLevel;
+    }
+
+    public void setForgeCoreLevel(int forgeCoreLevel) {
+        this.forgeCoreLevel = Math.max(1, Math.min(4, forgeCoreLevel));
     }
 
     /**
