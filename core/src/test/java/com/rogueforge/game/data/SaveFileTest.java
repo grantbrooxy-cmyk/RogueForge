@@ -28,6 +28,9 @@ class SaveFileTest {
         assertNotNull(saveFile.getShardInventory());
         assertNotNull(saveFile.getDefeatedBossIds());
         assertEquals(1, saveFile.getForgeCoreLevel());
+        assertEquals(0, saveFile.getInfiniteDungeonCurrentFloor());
+        assertEquals(0, saveFile.getInfiniteDungeonBestFloor());
+        assertEquals(0, saveFile.getInfiniteDungeonFloorsCleared());
     }
 
     @Test
@@ -56,6 +59,13 @@ class SaveFileTest {
 
         saveFile.setForgeCoreLevel(-3);
         assertEquals(1, saveFile.getForgeCoreLevel());
+
+        saveFile.setInfiniteDungeonCurrentFloor(-2);
+        saveFile.setInfiniteDungeonBestFloor(-4);
+        saveFile.setInfiniteDungeonFloorsCleared(-8);
+        assertEquals(0, saveFile.getInfiniteDungeonCurrentFloor());
+        assertEquals(0, saveFile.getInfiniteDungeonBestFloor());
+        assertEquals(0, saveFile.getInfiniteDungeonFloorsCleared());
     }
 
     @Test
@@ -71,6 +81,10 @@ class SaveFileTest {
         saveFile.setForgeComponents(Map.of("bone_fiber", 5));
         saveFile.setShardInventory(Map.of("C", 3));
         saveFile.setDefeatedBossIds(List.of("rusted_sovereign_c", "origin_core_s"));
+        saveFile.setInfiniteDungeonCurrentFloor(14);
+        saveFile.setInfiniteDungeonBestFloor(22);
+        saveFile.setInfiniteDungeonFloorsCleared(21);
+        saveFile.setInfiniteDungeonRunActive(true);
 
         assertEquals(List.of("bronze_sword"), saveFile.getOwnedEquipmentIds());
         assertEquals(List.of("workshop_pass"), saveFile.getKeyItems());
@@ -79,5 +93,9 @@ class SaveFileTest {
         assertEquals(5, saveFile.getForgeComponents().get("bone_fiber"));
         assertEquals(3, saveFile.getShardInventory().get("C"));
         assertEquals(List.of("rusted_sovereign_c", "origin_core_s"), saveFile.getDefeatedBossIds());
+        assertEquals(14, saveFile.getInfiniteDungeonCurrentFloor());
+        assertEquals(22, saveFile.getInfiniteDungeonBestFloor());
+        assertEquals(21, saveFile.getInfiniteDungeonFloorsCleared());
+        assertEquals(true, saveFile.isInfiniteDungeonRunActive());
     }
 }

@@ -35,6 +35,11 @@ import java.util.Map;
  * Turn-based battle screen that delegates rules to the combat package.
  */
 public class BattleScreen implements Screen {
+    static final String ORIGIN_CORE_ID = "origin_core_s";
+    static final String VOLT_SPECTER_ID = "volt_specter_b";
+    static final String NULL_WARDEN_ID = "null_warden_a";
+    static final String THE_UNMAKER_ID = "the_unmaker_s";
+
     private static final String[] ROOT_ACTIONS = {"Attack", "Ability", "Item", "Defend", "Analyze", "Flee"};
     private static final AttackMove[] ATTACK_MOVES = {
         new AttackMove("Quick Slash", 80, 1.0f, Element.NONE),
@@ -676,8 +681,14 @@ public class BattleScreen implements Screen {
             AbilityDefinition enemyAbility = createEnemyAbility(actor);
             int damage = combatResolver.resolveAbilityDamage(actor, target, enemyAbility);
             combatResolver.applyDamage(target, damage);
-            battleLog.add(actor.getName() + " unleashes " + enemyAbility.getName()
-                + " on " + target.getName() + " for " + Math.abs(damage) + " damage.");
+            if (damage < 0) {
+                battleLog.add(target.getName() + " absorbs " + enemyAbility.getName()
+                    + " and restores " + Math.abs(damage) + " HP.");
+            } else {
+                battleLog.add(actor.getName() + " unleashes " + enemyAbility.getName()
+                    + " on " + target.getName() + " for " + damage + " damage.");
+                applyEnemyAbilityStatus(target, enemyAbility);
+            }
             speedCost = 95;
         } else {
             int damage = combatResolver.resolvePhysicalDamage(actor, target, 1.2f);
@@ -688,6 +699,13 @@ public class BattleScreen implements Screen {
     }
 
     private AbilityDefinition createEnemyAbility(BattleCombatant actor) {
+        return createEnemyAbilityFor(
+            actor != null ? actor.getId() : null,
+            actor != null ? bossPhases.getOrDefault(actor.getId(), 1) : 1
+        );
+    }
+
+    static AbilityDefinition createEnemyAbilityFor(String actorId, int phase) {
         AbilityDefinition definition = new AbilityDefinition(
             "enemy_mind_lance",
             "Mind Lance",
@@ -700,8 +718,7 @@ public class BattleScreen implements Screen {
         );
         definition.setElement(Element.LIGHTNING);
         definition.setSpeedCost(95);
-        if (actor != null && "origin_core_s".equals(actor.getId())) {
-            int phase = bossPhases.getOrDefault(actor.getId(), 1);
+        if (ORIGIN_CORE_ID.equals(actorId)) {
             if (phase == 2) {
                 definition.setName("Entropy Spear");
                 definition.setElement(Element.FIRE);
@@ -715,6 +732,24 @@ public class BattleScreen implements Screen {
                 definition.setAppliedStatus(StatusEffectType.SLOW);
                 definition.setStatusTurns(2);
             }
+        } else if (VOLT_SPECTER_ID.equals(actorId) && phase >= 2) {
+            definition.setName("Thunder Refrain");
+            definition.setElement(Element.LIGHTNING);
+            definition.setPower(23f);
+            definition.setAppliedStatus(StatusEffectType.PARALYZE);
+            definition.setStatusTurns(2);
+        } else if (NULL_WARDEN_ID.equals(actorId) && phase >= 2) {
+            definition.setName("Null Lock");
+            definition.setElement(Element.WATER);
+            definition.setPower(24f);
+            definition.setAppliedStatus(StatusEffectType.SILENCE);
+            definition.setStatusTurns(2);
+        } else if (THE_UNMAKER_ID.equals(actorId) && phase >= 2) {
+            definition.setName("Ruin Wake");
+            definition.setElement(Element.FIRE);
+            definition.setPower(28f);
+            definition.setAppliedStatus(StatusEffectType.WEAKEN);
+            definition.setStatusTurns(3);
         }
         return definition;
     }
@@ -724,30 +759,62 @@ public class BattleScreen implements Screen {
             return;
         }
         for (BattleCombatant combatant : combatants) {
-            if (combatant != null && "origin_core_s".equals(combatant.getId())) {
+            if (combatant != null && isPhasedBoss(combatant.getId())) {
                 bossPhases.put(combatant.getId(), 1);
             }
         }
     }
 
     private void handleBossPhaseTransition(BattleCombatant target) {
-        if (target == null || !target.isAlive() || !"origin_core_s".equals(target.getId())) {
+        if (target == null || !target.isAlive() || !isPhasedBoss(target.getId())) {
             return;
         }
         int currentPhase = bossPhases.getOrDefault(target.getId(), 1);
-        float healthRatio = target.getHealth() / Math.max(1f, target.getMaxHealth());
-        if (currentPhase == 1 && healthRatio <= 0.66f) {
-            transitionOriginCore(target, 2);
-        } else if (currentPhase == 2 && healthRatio <= 0.33f) {
-            transitionOriginCore(target, 3);
+        int nextPhase = determineBossPhase(target.getId(), currentPhase, target.getHealth(), target.getMaxHealth());
+        if (nextPhase == currentPhase) {
+            return;
         }
+        if (ORIGIN_CORE_ID.equals(target.getId())) {
+            transitionOriginCore(target, nextPhase);
+        } else if (VOLT_SPECTER_ID.equals(target.getId())) {
+            transitionVoltSpecter(target, nextPhase);
+        } else if (NULL_WARDEN_ID.equals(target.getId())) {
+            transitionNullWarden(target, nextPhase);
+        } else if (THE_UNMAKER_ID.equals(target.getId())) {
+            transitionTheUnmaker(target, nextPhase);
+        }
+    }
+
+    static boolean isPhasedBoss(String combatantId) {
+        return ORIGIN_CORE_ID.equals(combatantId)
+            || VOLT_SPECTER_ID.equals(combatantId)
+            || NULL_WARDEN_ID.equals(combatantId)
+            || THE_UNMAKER_ID.equals(combatantId);
+    }
+
+    static int determineBossPhase(String combatantId, int currentPhase, float currentHealth, float maxHealth) {
+        float healthRatio = currentHealth / Math.max(1f, maxHealth);
+        if (ORIGIN_CORE_ID.equals(combatantId)) {
+            if (currentPhase == 1 && healthRatio <= 0.66f) {
+                return 2;
+            }
+            if (currentPhase == 2 && healthRatio <= 0.33f) {
+                return 3;
+            }
+        } else if (VOLT_SPECTER_ID.equals(combatantId) && currentPhase == 1 && healthRatio <= 0.5f) {
+            return 2;
+        } else if (NULL_WARDEN_ID.equals(combatantId) && currentPhase == 1 && healthRatio <= 0.5f) {
+            return 2;
+        } else if (THE_UNMAKER_ID.equals(combatantId) && currentPhase == 1 && healthRatio <= 0.45f) {
+            return 2;
+        }
+        return currentPhase;
     }
 
     private void transitionOriginCore(BattleCombatant target, int nextPhase) {
         bossPhases.put(target.getId(), nextPhase);
         target.heal(target.getMaxHealth() * 0.12f);
-        target.getWeaknesses().clear();
-        target.getResistances().clear();
+        clearBossElements(target);
         if (nextPhase == 2) {
             target.getWeaknesses().add(Element.WATER);
             target.getResistances().add(Element.EARTH);
@@ -764,6 +831,69 @@ public class BattleScreen implements Screen {
             battleLog.add("Origin Core fractures reality and enters Phase 3.");
             battleLog.add("Its weakness rotates to FIRE as Genesis Reset destabilizes the chamber.");
         }
+    }
+
+    private void transitionVoltSpecter(BattleCombatant target, int nextPhase) {
+        bossPhases.put(target.getId(), nextPhase);
+        target.heal(target.getMaxHealth() * 0.1f);
+        clearBossElements(target);
+        target.getWeaknesses().add(Element.WATER);
+        target.getResistances().add(Element.LIGHTNING);
+        target.getResistances().add(Element.WATER);
+        target.getStatusEffectManager().apply(StatusEffectType.HASTE, 3);
+        for (BattleCombatant ally : livingAllies()) {
+            ally.getStatusEffectManager().apply(StatusEffectType.SLOW, 2);
+        }
+        battleLog.add("Volt Specter detonates into a storm lattice and enters Phase 2.");
+        battleLog.add("Its weakness rotates to WATER as the arena floods with conductive vapor.");
+    }
+
+    private void transitionNullWarden(BattleCombatant target, int nextPhase) {
+        bossPhases.put(target.getId(), nextPhase);
+        target.heal(target.getMaxHealth() * 0.14f);
+        clearBossElements(target);
+        target.getWeaknesses().add(Element.LIGHTNING);
+        target.getResistances().add(Element.WATER);
+        target.getResistances().add(Element.EARTH);
+        target.getStatusEffectManager().apply(StatusEffectType.PROTECT, 3);
+        target.getStatusEffectManager().apply(StatusEffectType.SHELL, 3);
+        for (BattleCombatant ally : livingAllies()) {
+            ally.getStatusEffectManager().apply(StatusEffectType.WEAKEN, 2);
+        }
+        battleLog.add("Null Warden seals the chamber and enters Phase 2.");
+        battleLog.add("Its weakness rotates to LIGHTNING while the party is pressed under a null-lock field.");
+    }
+
+    private void transitionTheUnmaker(BattleCombatant target, int nextPhase) {
+        bossPhases.put(target.getId(), nextPhase);
+        target.heal(target.getMaxHealth() * 0.15f);
+        clearBossElements(target);
+        target.getWeaknesses().add(Element.ICE);
+        target.getResistances().add(Element.FIRE);
+        target.getResistances().add(Element.WATER);
+        target.getStatusEffectManager().apply(StatusEffectType.BERSERK, 4);
+        target.getStatusEffectManager().apply(StatusEffectType.REGEN, 4);
+        for (BattleCombatant ally : livingAllies()) {
+            ally.getStatusEffectManager().apply(StatusEffectType.SLOW, 2);
+        }
+        battleLog.add("The Unmaker tears through its own shell and enters Phase 2.");
+        battleLog.add("Its weakness rotates to ICE as ruin ash slows the entire party.");
+    }
+
+    private void clearBossElements(BattleCombatant target) {
+        target.getWeaknesses().clear();
+        target.getResistances().clear();
+        target.getAbsorbs().clear();
+    }
+
+    private void applyEnemyAbilityStatus(BattleCombatant target, AbilityDefinition enemyAbility) {
+        if (target == null || enemyAbility == null || enemyAbility.getAppliedStatus() == null) {
+            return;
+        }
+        target.getStatusEffectManager().apply(
+            enemyAbility.getAppliedStatus(),
+            Math.max(1, enemyAbility.getStatusTurns())
+        );
     }
 
     private BattleCombatant chooseEnemyTarget() {

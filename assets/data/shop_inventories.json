@@ -1,6 +1,9 @@
 [
   {
     "id": "workshop",
+    "zoneId": "verdant_fields",
+    "vendorName": "Rooke",
+    "locationLabel": "Workshop Counter",
     "entries": [
       { "type": "equipment", "itemId": "bronze_edge", "cost": 80 },
       { "type": "equipment", "itemId": "swift_boots", "cost": 65 },
@@ -13,6 +16,9 @@
   },
   {
     "id": "apothecary",
+    "zoneId": "verdant_fields",
+    "vendorName": "Iris",
+    "locationLabel": "Herbalist Shelves",
     "entries": [
       { "type": "healing", "label": "Repair Kit x1", "quantity": 1, "cost": 25 },
       { "type": "healing", "label": "Repair Kit x3", "quantity": 3, "cost": 70 },
@@ -20,6 +26,202 @@
       { "type": "equipment", "itemId": "heavy_plating", "cost": 140 },
       { "type": "healing", "label": "Repair Kit x5", "quantity": 5, "cost": 110, "requiredWorldFlag": "settlement.apothecary_stock" },
       { "type": "equipment", "itemId": "oracle_prism", "cost": 320, "requiredWorldFlag": "settlement.survey_drones" }
+    ]
+  },
+  {
+    "id": "forest_trader",
+    "zoneId": "whispering_forest",
+    "vendorName": "Moss Cart",
+    "locationLabel": "Forest Trader",
+    "entries": [
+      { "type": "healing", "label": "Repair Kit x1", "quantity": 1, "cost": 28 },
+      { "type": "healing", "label": "Repair Kit x3", "quantity": 3, "cost": 74 },
+      { "type": "equipment", "itemId": "iron_visor", "cost": 60 },
+      { "type": "equipment", "itemId": "servo_bracers", "cost": 78 },
+      { "type": "equipment", "itemId": "spark_ring", "cost": 118 }
+    ]
+  },
+  {
+    "id": "quarry_depot",
+    "zoneId": "rusty_quarry",
+    "vendorName": "Ore Depot",
+    "locationLabel": "Quarry Depot",
+    "entries": [
+      { "type": "healing", "label": "Repair Kit x2", "quantity": 2, "cost": 52 },
+      { "type": "equipment", "itemId": "heavy_plating", "cost": 145 },
+      { "type": "equipment", "itemId": "reactive_arms", "cost": 245 },
+      { "type": "equipment", "itemId": "hunter_blade", "cost": 205 },
+      { "type": "equipment", "itemId": "storm_carbine", "cost": 270 }
+    ]
+  },
+  {
+    "id": "tide_market",
+    "zoneId": "coastal_shallows",
+    "vendorName": "Tide Cart",
+    "locationLabel": "Tide Market",
+    "entries": [
+      { "type": "healing", "label": "Repair Kit x2", "quantity": 2, "cost": 50 },
+      { "type": "healing", "label": "Repair Kit x4", "quantity": 4, "cost": 92 },
+      { "type": "equipment", "itemId": "signal_circlet", "cost": 188 },
+      { "type": "equipment", "itemId": "thruster_legs", "cost": 238 },
+      { "type": "equipment", "itemId": "oracle_staff", "cost": 288 }
+    ]
+  },
+  {
+    "id": "cavern_outpost",
+    "zoneId": "shadow_caves",
+    "vendorName": "Lamp Rig",
+    "locationLabel": "Cavern Outpost",
+    "entries": [
+      { "type": "healing", "label": "Repair Kit x3", "quantity": 3, "cost": 78 },
+      { "type": "equipment", "itemId": "heavy_plating", "cost": 150 },
+      { "type": "equipment", "itemId": "reactive_arms", "cost": 250 },
+      { "type": "equipment", "itemId": "hunter_blade", "cost": 215 },
+      { "type": "equipment", "itemId": "mentor_sigil", "cost": 230 }
+    ]
+  },
+  {
+    "id": "plateau_forge",
+    "zoneId": "scorched_plateau",
+    "vendorName": "Ash Smith",
+    "locationLabel": "Plateau Forge",
+    "entries": [
+      { "type": "healing", "label": "Repair Kit x3", "quantity": 3, "cost": 80 },
+      { "type": "equipment", "itemId": "oracle_headpiece", "cost": 320 },
+      { "type": "equipment", "itemId": "aegis_actuators", "cost": 340 },
+      { "type": "equipment", "itemId": "sentinel_axe", "cost": 350 },
+      { "type": "equipment", "itemId": "drakescale_frame", "cost": 430 }
+    ]
+  },
+  {
+    "id": "frost_bazaar",
+    "zoneId": "frozen_vale",
+    "vendorName": "Pilgrim Cache",
+    "locationLabel": "Frost Bazaar",
+    "entries": [
+      { "type": "healing", "label": "Repair Kit x3", "quantity": 3, "cost": 82 },
+      { "type": "equipment", "itemId": "oracle_headpiece", "cost": 318 },
+      { "type": "equipment", "itemId": "bulwark_chassis", "cost": 330 },
+      { "type": "equipment", "itemId": "vector_runners", "cost": 308 },
+      { "type": "equipment", "itemId": "command_loop", "cost": 325 }
+    ]
+  },
+  {
+    "id": "resonance_exchange",
+    "zoneId": "crystal_depths",
+    "vendorName": "Resonance Exchange",
+    "locationLabel": "Resonance Exchange",
+    "entries": [
+      { "type": "healing", "label": "Repair Kit x4", "quantity": 4, "cost": 96 },
+      { "type": "equipment", "itemId": "oracle_headpiece", "cost": 322 },
+      { "type": "equipment", "itemId": "aegis_actuators", "cost": 344 },
+      { "type": "equipment", "itemId": "command_loop", "cost": 328 },
+      { "type": "equipment", "itemId": "drakescale_frame", "cost": 438 }
+    ]
+  },
+  {
+    "id": "peak_arsenal",
+    "zoneId": "dragon_peak",
+    "vendorName": "Sky Lift Quartermaster",
+    "locationLabel": "Peak Arsenal",
+    "entries": [
+      { "type": "healing", "label": "Repair Kit x4", "quantity": 4, "cost": 100 },
+      { "type": "equipment", "itemId": "phoenix_visor", "cost": 440 },
+      { "type": "equipment", "itemId": "titan_grips", "cost": 470 },
+      { "type": "equipment", "itemId": "tempest_longbow", "cost": 550 },
+      { "type": "equipment", "itemId": "starforged_relay", "cost": 480 }
+    ]
+  },
+  {
+    "id": "abyss_drydock",
+    "zoneId": "sunken_abyss",
+    "vendorName": "Pressure Dock",
+    "locationLabel": "Abyss Drydock",
+    "entries": [
+      { "type": "healing", "label": "Repair Kit x4", "quantity": 4, "cost": 104 },
+      { "type": "equipment", "itemId": "solaris_frame", "cost": 530 },
+      { "type": "equipment", "itemId": "comet_striders", "cost": 450 },
+      { "type": "equipment", "itemId": "tempest_longbow", "cost": 548 },
+      { "type": "equipment", "itemId": "starforged_relay", "cost": 482 }
+    ]
+  },
+  {
+    "id": "sky_exchange",
+    "zoneId": "sky_fortress",
+    "vendorName": "Aero Broker",
+    "locationLabel": "Sky Exchange",
+    "entries": [
+      { "type": "healing", "label": "Repair Kit x5", "quantity": 5, "cost": 122 },
+      { "type": "equipment", "itemId": "phoenix_visor", "cost": 445 },
+      { "type": "equipment", "itemId": "solaris_frame", "cost": 535 },
+      { "type": "equipment", "itemId": "comet_striders", "cost": 448 },
+      { "type": "equipment", "itemId": "tempest_longbow", "cost": 555 },
+      { "type": "equipment", "itemId": "starforged_relay", "cost": 485 }
+    ]
+  },
+  {
+    "id": "magma_foundry",
+    "zoneId": "volcanic_core",
+    "vendorName": "Caldera Forge",
+    "locationLabel": "Magma Foundry",
+    "entries": [
+      { "type": "healing", "label": "Repair Kit x5", "quantity": 5, "cost": 125 },
+      { "type": "equipment", "itemId": "seraph_crown", "cost": 630 },
+      { "type": "equipment", "itemId": "leviathan_shell", "cost": 690 },
+      { "type": "equipment", "itemId": "worldbreaker_gauntlets", "cost": 672 },
+      { "type": "equipment", "itemId": "sunflare_lance", "cost": 715 }
+    ]
+  },
+  {
+    "id": "sanctum_requisition",
+    "zoneId": "clockwork_sanctum",
+    "vendorName": "Clockwork Requisition",
+    "locationLabel": "Sanctum Requisition",
+    "entries": [
+      { "type": "healing", "label": "Repair Kit x5", "quantity": 5, "cost": 128 },
+      { "type": "equipment", "itemId": "seraph_crown", "cost": 628 },
+      { "type": "equipment", "itemId": "worldbreaker_gauntlets", "cost": 670 },
+      { "type": "equipment", "itemId": "tempest_treads", "cost": 650 },
+      { "type": "equipment", "itemId": "voidloop_band", "cost": 700 }
+    ]
+  },
+  {
+    "id": "rift_brokerage",
+    "zoneId": "abyssal_rift",
+    "vendorName": "Rift Broker",
+    "locationLabel": "Rift Brokerage",
+    "entries": [
+      { "type": "healing", "label": "Repair Kit x6", "quantity": 6, "cost": 150 },
+      { "type": "equipment", "itemId": "origin_halo", "cost": 995 },
+      { "type": "equipment", "itemId": "fateweaver_arms", "cost": 1035 },
+      { "type": "equipment", "itemId": "riftwalker_greaves", "cost": 1005 },
+      { "type": "equipment", "itemId": "mythic_edge", "cost": 1115 }
+    ]
+  },
+  {
+    "id": "void_reliquary",
+    "zoneId": "the_void",
+    "vendorName": "Reliquary Echo",
+    "locationLabel": "Void Reliquary",
+    "entries": [
+      { "type": "healing", "label": "Repair Kit x8", "quantity": 8, "cost": 190 },
+      { "type": "equipment", "itemId": "origin_halo", "cost": 1000 },
+      { "type": "equipment", "itemId": "apex_carapace", "cost": 1070 },
+      { "type": "equipment", "itemId": "mythic_edge", "cost": 1120 },
+      { "type": "equipment", "itemId": "eternity_drive", "cost": 1100 }
+    ]
+  },
+  {
+    "id": "trial_provisions",
+    "zoneId": "infinite_dungeon",
+    "vendorName": "Trial Provisioner",
+    "locationLabel": "Trial Provisioner",
+    "entries": [
+      { "type": "healing", "label": "Repair Kit x10", "quantity": 10, "cost": 230 },
+      { "type": "equipment", "itemId": "apex_carapace", "cost": 1080 },
+      { "type": "equipment", "itemId": "fateweaver_arms", "cost": 1040 },
+      { "type": "equipment", "itemId": "riftwalker_greaves", "cost": 1010 },
+      { "type": "equipment", "itemId": "eternity_drive", "cost": 1110 }
     ]
   }
 ]

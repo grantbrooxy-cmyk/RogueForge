@@ -46,6 +46,12 @@ class ZoneMapIntegrityTest {
             assertTrue(loaded.pixelWidth > 0, "Zone " + definition.getId() + " should have positive width.");
             assertTrue(loaded.pixelHeight > 0, "Zone " + definition.getId() + " should have positive height.");
             assertFalse(loaded.playerSpawns.isEmpty(), "Zone " + definition.getId() + " should define player spawns.");
+            if ("sunken_abyss".equals(definition.getId()) || "volcanic_core".equals(definition.getId())) {
+                assertTrue(
+                    loaded.playerSpawns.size >= 2,
+                    "Zone " + definition.getId() + " should define both entry and return fallback spawns."
+                );
+            }
 
             loadedZones.put(definition.getId(), loaded);
         }

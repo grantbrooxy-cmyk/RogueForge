@@ -52,6 +52,11 @@
     <property name="spawnId" value="from_coast"/>
    </properties>
   </object>
+  <object id="21" name="from_lock" type="player" x="1490" y="520">
+   <properties>
+    <property name="spawnId" value="from_lock"/>
+   </properties>
+  </object>
   <object id="12" name="enemy_1" type="enemy" x="520" y="864"/>
   <object id="13" name="enemy_2" type="enemy" x="1160" y="754"/>
   <object id="14" name="enemy_3" type="enemy" x="1380" y="540"/>

@@ -135,4 +135,27 @@ class GameStateTest {
         assertTrue(gameState.hasDefeatedBoss("volt_specter_b"));
         assertEquals(2, gameState.getDefeatedBossCount());
     }
+
+    @Test
+    void infiniteDungeonStatePersistsAndClampsToNonNegativeValues() {
+        GameState gameState = new GameState("Tester");
+
+        gameState.setInfiniteDungeonCurrentFloor(12);
+        gameState.setInfiniteDungeonBestFloor(18);
+        gameState.setInfiniteDungeonFloorsCleared(17);
+        gameState.setInfiniteDungeonRunActive(true);
+
+        assertEquals(12, gameState.getInfiniteDungeonCurrentFloor());
+        assertEquals(18, gameState.getInfiniteDungeonBestFloor());
+        assertEquals(17, gameState.getInfiniteDungeonFloorsCleared());
+        assertTrue(gameState.isInfiniteDungeonRunActive());
+
+        gameState.setInfiniteDungeonCurrentFloor(-5);
+        gameState.setInfiniteDungeonBestFloor(-7);
+        gameState.setInfiniteDungeonFloorsCleared(-9);
+
+        assertEquals(0, gameState.getInfiniteDungeonCurrentFloor());
+        assertEquals(0, gameState.getInfiniteDungeonBestFloor());
+        assertEquals(0, gameState.getInfiniteDungeonFloorsCleared());
+    }
 }

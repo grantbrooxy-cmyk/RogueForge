@@ -120,6 +120,7 @@ public class TmxWorldLoader {
         feature.requiredWorldFlag = readProperty(object, "requiredWorldFlag", null);
         feature.hiddenUntilFlag = readProperty(object, "hiddenUntilFlag", null);
         feature.interactionType = readProperty(object, "interactionType", null);
+        feature.shopId = readProperty(object, "shopId", null);
         feature.completionWorldFlag = readProperty(object, "completionWorldFlag", null);
         feature.interactionMessage = readProperty(object, "interactionMessage", null);
         feature.blockedMessage = readProperty(object, "blockedMessage", null);
@@ -240,6 +241,7 @@ public class TmxWorldLoader {
         public String requiredWorldFlag;
         public String hiddenUntilFlag;
         public String interactionType;
+        public String shopId;
         public String completionWorldFlag;
         public String interactionMessage;
         public String blockedMessage;

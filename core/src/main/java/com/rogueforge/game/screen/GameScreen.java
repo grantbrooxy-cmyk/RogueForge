@@ -53,6 +53,7 @@ import com.rogueforge.game.world.QuestManager;
 import com.rogueforge.game.world.RobotRecruitmentManager;
 import com.rogueforge.game.world.SettlementManager;
 import com.rogueforge.game.world.SettlementState;
+import com.rogueforge.game.world.InfiniteDungeonLayoutGenerator;
 import com.rogueforge.game.world.WorldStateManager;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -115,6 +116,9 @@ public class GameScreen implements Screen {
     // Enemy state
     private List<Enemy> enemies = new ArrayList<>();
     private static final int INITIAL_ENEMY_COUNT = 6;
+    private static final String INFINITE_DUNGEON_ZONE_ID = "infinite_dungeon";
+    private static final int INFINITE_DUNGEON_START_FLOOR = 1;
+    private static final int INFINITE_DUNGEON_BOSS_INTERVAL = 10;
     private static final float ENEMY_SIZE = 48f;
     private static final float ENEMY_SPAWN_MIN_DISTANCE = 400f;
     private static final float ENEMY_SPAWN_MAX_DISTANCE = 800f;
@@ -147,11 +151,13 @@ public class GameScreen implements Screen {
     private final Map<String, ZoneDefinition> zoneDefinitions = new HashMap<>();
     private final Map<String, MonsterDefinition> monsterDefinitions = new HashMap<>();
     private final Map<String, ShopDefinition> shopDefinitions = new HashMap<>();
+    private final Map<String, List<ShopDefinition>> shopsByZoneId = new HashMap<>();
     private final Map<String, RobotDefinition> robotDefinitions = new HashMap<>();
     private final Map<String, ForgeComponentDefinition> forgeComponentDefinitions = new HashMap<>();
     private final List<ForgeRecipeDefinition> forgeRecipes = new ArrayList<>();
     private final List<StoryEventDefinition> storyEvents = new ArrayList<>();
     private final TmxWorldLoader worldLoader = new TmxWorldLoader();
+    private final InfiniteDungeonLayoutGenerator infiniteDungeonLayoutGenerator = new InfiniteDungeonLayoutGenerator();
     private final SettingsManager settingsManager = new SettingsManager();
     private final SaveManager saveManager = new SaveManager();
     private final QuestManager questManager = new QuestManager();
@@ -432,7 +438,9 @@ public class GameScreen implements Screen {
             enemyRespawnTimer = 0f;
             return;
         }
-        int count = Math.min(INITIAL_ENEMY_COUNT, currentZone.enemySpawns.size);
+        int count = isInfiniteDungeonZone()
+            ? getInfiniteDungeonEnemyCount()
+            : Math.min(INITIAL_ENEMY_COUNT, currentZone.enemySpawns.size);
         for (int i = 0; i < count; i++) {
             Vector2 spawn = currentZone.enemySpawns.get(i % currentZone.enemySpawns.size);
             enemies.add(createZoneEnemy(spawn, i));
@@ -445,7 +453,9 @@ public class GameScreen implements Screen {
         float jitterY = ((float) Math.random() - 0.5f) * 40f;
         float x = spawnPoint.x + jitterX;
         float y = spawnPoint.y + jitterY;
-        MonsterDefinition monster = pickMonsterForCurrentZone(index);
+        MonsterDefinition monster = isInfiniteDungeonZone()
+            ? pickInfiniteDungeonMonster(index)
+            : pickMonsterForCurrentZone(index);
         Enemy enemy = new Enemy();
         enemy.pos = new Vector2(x, y);
         enemy.facing = new Vector2(0f, -1f);
@@ -461,6 +471,7 @@ public class GameScreen implements Screen {
             enemy.intelligence = Math.max(8f, monster.getAttack() * 0.7f);
             enemy.stamina = Math.max(8f, monster.getDefense() * 1.1f);
             enemy.rewardGold = 0;
+            enemy.rewardExperience = 20 + monster.getBaseLoot();
             enemy.name = monster.getName();
             enemy.speed = Math.max(50f, monster.getSpeed() * 1.2f);
         } else {
@@ -472,7 +483,11 @@ public class GameScreen implements Screen {
             enemy.intelligence = 8f + (float) Math.random() * 10f;
             enemy.stamina = 10f + (float) Math.random() * 10f;
             enemy.rewardGold = 0;
+            enemy.rewardExperience = 25;
             enemy.name = "Scrap Beast";
+        }
+        if (isInfiniteDungeonZone()) {
+            applyInfiniteDungeonScaling(enemy);
         }
         enemy.alive = true;
         enemy.attackCooldown = ENEMY_MELEE_COOLDOWN;
@@ -480,6 +495,66 @@ public class GameScreen implements Screen {
         enemy.spriteIndex = Math.floorMod(index, enemyAnimations.length);
         enemy.patrolTarget = randomPatrolTarget(spawnPoint);
         return enemy;
+    }
+
+    private int getInfiniteDungeonEnemyCount() {
+        if (currentZone == null) {
+            return 0;
+        }
+        int floor = getInfiniteDungeonCurrentFloor();
+        if (floor > 0 && floor % INFINITE_DUNGEON_BOSS_INTERVAL == 0) {
+            return 1;
+        }
+        int desired = 2 + Math.min(2, Math.max(0, (floor - 1) / 4));
+        return Math.min(Math.max(2, desired), currentZone.enemySpawns.size);
+    }
+
+    private MonsterDefinition pickInfiniteDungeonMonster(int index) {
+        if (currentZoneDefinition == null || currentZoneDefinition.getMonsterIds() == null || currentZoneDefinition.getMonsterIds().length == 0) {
+            return null;
+        }
+        int floor = getInfiniteDungeonCurrentFloor();
+        String monsterId;
+        if (floor > 0 && floor % INFINITE_DUNGEON_BOSS_INTERVAL == 0) {
+            monsterId = floor % 20 == 0 ? "apex_predator_s" : "dungeon_overlord_s";
+        } else if (floor >= 16) {
+            monsterId = index % 3 == 0 ? "rift_horror_a" : "clockwork_bishop_b";
+        } else if (floor >= 8) {
+            monsterId = index % 2 == 0 ? "rift_horror_a" : "clockwork_bishop_b";
+        } else {
+            monsterId = "clockwork_bishop_b";
+        }
+        MonsterDefinition definition = monsterDefinitions.get(monsterId);
+        if (definition != null) {
+            return definition;
+        }
+        return pickMonsterForCurrentZone(index);
+    }
+
+    private void applyInfiniteDungeonScaling(Enemy enemy) {
+        if (enemy == null) {
+            return;
+        }
+        int floor = getInfiniteDungeonCurrentFloor();
+        boolean bossFloor = floor > 0 && floor % INFINITE_DUNGEON_BOSS_INTERVAL == 0;
+        float healthScale = 1f + Math.max(0, floor - 1) * 0.14f;
+        float offenseScale = 1f + Math.max(0, floor - 1) * 0.08f;
+        float speedScale = 1f + Math.max(0, floor - 1) * 0.03f;
+        if (bossFloor) {
+            healthScale += 0.45f;
+            offenseScale += 0.18f;
+        }
+        enemy.maxHp = Math.max(enemy.maxHp, enemy.maxHp * healthScale);
+        enemy.hp = enemy.maxHp;
+        enemy.strength *= offenseScale;
+        enemy.defense *= 1f + Math.max(0, floor - 1) * 0.06f;
+        enemy.intelligence *= offenseScale;
+        enemy.stamina *= 1f + Math.max(0, floor - 1) * 0.05f;
+        enemy.agility *= speedScale;
+        enemy.speed *= speedScale;
+        enemy.rewardExperience = Math.max(enemy.rewardExperience, Math.round(enemy.rewardExperience * (1f + floor * 0.12f)));
+        enemy.name = enemy.name + " F" + floor;
+        enemy.dungeonFloor = floor;
     }
 
     private MonsterDefinition pickMonsterForCurrentZone(int index) {
@@ -947,7 +1022,9 @@ public class GameScreen implements Screen {
 
     private void drawFeature(TmxWorldLoader.Feature feature) {
         Color tint;
-        if ("scan_hidden_path".equals(feature.interactionType)) {
+        if ("shop".equals(feature.interactionType)) {
+            tint = new Color(0.22f, 0.68f, 0.46f, 0.95f);
+        } else if ("scan_hidden_path".equals(feature.interactionType)) {
             tint = new Color(0.28f, 0.6f, 0.88f, 0.92f);
         } else if ("burn_barrier".equals(feature.interactionType)) {
             tint = new Color(0.9f, 0.44f, 0.2f, 0.92f);
@@ -1307,6 +1384,10 @@ public class GameScreen implements Screen {
         sf.setForgeComponents(new HashMap<>(gameState.getForgeComponents()));
         sf.setShardInventory(new HashMap<>(gameState.getShardInventory()));
         sf.setForgeCoreLevel(gameState.getForgeCoreLevel());
+        sf.setInfiniteDungeonCurrentFloor(gameState.getInfiniteDungeonCurrentFloor());
+        sf.setInfiniteDungeonBestFloor(gameState.getInfiniteDungeonBestFloor());
+        sf.setInfiniteDungeonFloorsCleared(gameState.getInfiniteDungeonFloorsCleared());
+        sf.setInfiniteDungeonRunActive(gameState.isInfiniteDungeonRunActive());
         sf.setDefeatedBossIds(new ArrayList<>(gameState.getDefeatedBossIds()));
         sf.setCurrentZoneId(gameState.getCurrentZoneId());
         sf.setRobotEquipment(copyRobotEquipment(robotEquipment));
@@ -1331,6 +1412,10 @@ public class GameScreen implements Screen {
 
     private void loadFromSave(SaveFile saveFile) {
         currentZoneId = saveFile.getCurrentZoneId() != null ? saveFile.getCurrentZoneId() : currentZoneId;
+        gameState.setInfiniteDungeonCurrentFloor(saveFile.getInfiniteDungeonCurrentFloor());
+        gameState.setInfiniteDungeonBestFloor(saveFile.getInfiniteDungeonBestFloor());
+        gameState.setInfiniteDungeonFloorsCleared(saveFile.getInfiniteDungeonFloorsCleared());
+        gameState.setInfiniteDungeonRunActive(saveFile.isInfiniteDungeonRunActive());
         loadZone(currentZoneId, null, true);
         playerHealth = saveFile.getPlayerHp();
         playerMaxHealth = saveFile.getPlayerMaxHp() > 0 ? saveFile.getPlayerMaxHp() : playerMaxHealth;
@@ -1447,11 +1532,13 @@ public class GameScreen implements Screen {
             enemyState.setIntelligence(enemy.intelligence);
             enemyState.setStamina(enemy.stamina);
             enemyState.setRewardGold(enemy.rewardGold);
+            enemyState.setRewardExperience(enemy.rewardExperience);
             enemyState.setName(enemy.name);
             enemyState.setAlive(enemy.alive);
             enemyState.setAttackTimer(enemy.attackTimer);
             enemyState.setPatrolTargetX(enemy.patrolTarget.x);
             enemyState.setPatrolTargetY(enemy.patrolTarget.y);
+            enemyState.setDungeonFloor(enemy.dungeonFloor);
             enemyStates.add(enemyState);
         }
         return enemyStates;
@@ -1518,9 +1605,11 @@ public class GameScreen implements Screen {
             encounter.enemyWeaknesses[i] = definition != null ? definition.getWeaknesses() : new String[0];
             encounter.enemyResistances[i] = definition != null ? definition.getResistances() : new String[0];
             encounter.enemyAbsorbs[i] = definition != null ? definition.getAbsorbs() : new String[0];
-            int experienceReward = definition != null
-                ? 20 + definition.getBaseLoot()
-                : 25 + Math.round(groupEnemy.strength + groupEnemy.defense);
+            int experienceReward = groupEnemy.rewardExperience > 0
+                ? groupEnemy.rewardExperience
+                : (definition != null
+                    ? 20 + definition.getBaseLoot()
+                    : 25 + Math.round(groupEnemy.strength + groupEnemy.defense));
             encounter.enemyRewardGold[i] = 0;
             encounter.enemyExperienceReward[i] = experienceReward;
             encounter.enemyReferences[i] = groupEnemy;
@@ -1626,6 +1715,7 @@ public class GameScreen implements Screen {
             }
         }
         handleBattleStoryEvents(result);
+        handleInfiniteDungeonBattleResolution(result);
 
         if (!hasLivingPartyMember()) {
             screenManager.pop();
@@ -1643,6 +1733,39 @@ public class GameScreen implements Screen {
         }
 
         screenManager.pop();
+    }
+
+    private void handleInfiniteDungeonBattleResolution(BattleScreen.BattleResult result) {
+        if (!isInfiniteDungeonZone() || result == null || !result.enemyDefeated) {
+            return;
+        }
+        if (!allDungeonEnemiesDefeated()) {
+            return;
+        }
+
+        int completedFloor = getInfiniteDungeonCurrentFloor();
+        gameState.setInfiniteDungeonFloorsCleared(gameState.getInfiniteDungeonFloorsCleared() + 1);
+        gameState.setInfiniteDungeonBestFloor(Math.max(gameState.getInfiniteDungeonBestFloor(), completedFloor));
+        gameState.setInfiniteDungeonCurrentFloor(completedFloor + 1);
+        gameState.setInfiniteDungeonRunActive(true);
+        regenerateInfiniteDungeonFloor("from_boss_gate", true);
+        activeSpeaker = "Bolt Simulation";
+        activeDialog = completedFloor % INFINITE_DUNGEON_BOSS_INTERVAL == 0
+            ? "Boss floor cleared. Routing you deeper into the challenge loop."
+            : "Floor " + completedFloor + " cleared. Preparing the next trial.";
+        refreshHud();
+    }
+
+    private boolean allDungeonEnemiesDefeated() {
+        if (enemies.isEmpty()) {
+            return false;
+        }
+        for (Enemy enemy : enemies) {
+            if (enemy.alive) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private void handleBattleStoryEvents(BattleScreen.BattleResult result) {
@@ -1816,8 +1939,17 @@ public class GameScreen implements Screen {
         hudOverlay.setCurrency(totalGold);
         hudOverlay.setExperience(playerExperience, getExperienceForNextLevel());
         hudOverlay.setRobotHealth(getRobotHealthValues(), getRobotMaxHealthValues());
-        hudOverlay.setZoneName(currentZone != null ? currentZone.displayName : formatZoneName(currentZoneId));
+        hudOverlay.setZoneName(getCurrentZoneDisplayName());
         hudOverlay.setObjectiveText(getCurrentObjective());
+    }
+
+    private String getCurrentZoneDisplayName() {
+        String baseName = currentZone != null ? currentZone.displayName : formatZoneName(currentZoneId);
+        if (!isInfiniteDungeonZone()) {
+            return baseName;
+        }
+        return baseName + " - Floor " + getInfiniteDungeonCurrentFloor()
+            + " (Best " + gameState.getInfiniteDungeonBestFloor() + ")";
     }
 
     private boolean hasLivingPartyMember() {
@@ -2003,8 +2135,12 @@ public class GameScreen implements Screen {
         if (definitions == null) {
             return;
         }
+        shopsByZoneId.clear();
         for (ShopDefinition definition : definitions) {
             shopDefinitions.put(definition.getId(), definition);
+            if (definition != null && definition.getZoneId() != null && !definition.getZoneId().isEmpty()) {
+                shopsByZoneId.computeIfAbsent(definition.getZoneId(), ignored -> new ArrayList<>()).add(definition);
+            }
         }
     }
 
@@ -2014,10 +2150,15 @@ public class GameScreen implements Screen {
             return;
         }
 
+        String previousZoneId = currentZoneId;
         currentZoneId = zoneId;
         gameState.setCurrentZoneId(zoneId);
         currentZoneDefinition = definition;
         currentZone = worldLoader.load(definition);
+        handleInfiniteDungeonZoneLoad(previousZoneId, spawnId);
+        if (isInfiniteDungeonZone()) {
+            currentZone = infiniteDungeonLayoutGenerator.generate(currentZone, getInfiniteDungeonCurrentFloor());
+        }
         addStarterTownUpgradeChest();
         houses.clear();
         npcs.clear();
@@ -2031,6 +2172,7 @@ public class GameScreen implements Screen {
                 }
             }
         }
+        addZoneShopFeatureIfNeeded();
 
         for (TmxWorldLoader.NpcData npcData : currentZone.npcs) {
             if (npcData.hiddenUntilFlag != null && !npcData.hiddenUntilFlag.isEmpty()
@@ -2046,8 +2188,9 @@ public class GameScreen implements Screen {
 
         addSettlementTownContent();
 
-        if (spawnId != null && currentZone.playerSpawns.containsKey(spawnId)) {
-            playerPos.set(currentZone.playerSpawns.get(spawnId));
+        Vector2 resolvedSpawn = resolvePlayerSpawn(spawnId);
+        if (resolvedSpawn != null) {
+            playerPos.set(resolvedSpawn);
             positionRobotsBehindPlayer();
         }
 
@@ -2057,6 +2200,75 @@ public class GameScreen implements Screen {
         triggerStoryEvents("ZONE_ENTER", zoneId);
         refreshHud();
         autosave();
+    }
+
+    private void handleInfiniteDungeonZoneLoad(String previousZoneId, String spawnId) {
+        if (!isInfiniteDungeonZone()) {
+            return;
+        }
+        if (!gameState.isInfiniteDungeonRunActive()) {
+            gameState.setInfiniteDungeonCurrentFloor(INFINITE_DUNGEON_START_FLOOR);
+            gameState.setInfiniteDungeonRunActive(true);
+        } else if (gameState.getInfiniteDungeonCurrentFloor() <= 0) {
+            gameState.setInfiniteDungeonCurrentFloor(INFINITE_DUNGEON_START_FLOOR);
+        }
+        gameState.setInfiniteDungeonBestFloor(Math.max(
+            gameState.getInfiniteDungeonBestFloor(),
+            gameState.getInfiniteDungeonCurrentFloor()
+        ));
+        if (!INFINITE_DUNGEON_ZONE_ID.equals(previousZoneId)) {
+            activeSpeaker = "Bolt Simulation";
+            activeDialog = "Challenge loop synchronized. Resuming at floor "
+                + gameState.getInfiniteDungeonCurrentFloor() + ".";
+        } else if ("from_boss_gate".equals(spawnId)) {
+            activeSpeaker = "Bolt Simulation";
+            activeDialog = "Deep trial gate accepted. Floor "
+                + gameState.getInfiniteDungeonCurrentFloor() + " is now active.";
+        }
+    }
+
+    private void regenerateInfiniteDungeonFloor(String spawnId, boolean resetEnemies) {
+        if (!isInfiniteDungeonZone() || currentZoneDefinition == null) {
+            return;
+        }
+        currentZone = worldLoader.load(currentZoneDefinition);
+        currentZone = infiniteDungeonLayoutGenerator.generate(currentZone, getInfiniteDungeonCurrentFloor());
+        houses.clear();
+        npcs.clear();
+        for (TmxWorldLoader.NpcData npcData : currentZone.npcs) {
+            npcs.add(new Npc(npcData.id, npcData.name, new Vector2(npcData.position), ""));
+        }
+        Vector2 resolvedSpawn = resolvePlayerSpawn(spawnId);
+        if (resolvedSpawn != null) {
+            playerPos.set(resolvedSpawn);
+            positionRobotsBehindPlayer();
+        }
+        if (resetEnemies) {
+            spawnEnemies();
+        }
+        autosave();
+    }
+
+    private boolean isInfiniteDungeonZone() {
+        return INFINITE_DUNGEON_ZONE_ID.equals(currentZoneId);
+    }
+
+    private Vector2 resolvePlayerSpawn(String spawnId) {
+        if (currentZone == null || currentZone.playerSpawns == null || currentZone.playerSpawns.isEmpty()) {
+            return null;
+        }
+        if (spawnId != null && currentZone.playerSpawns.containsKey(spawnId)) {
+            return currentZone.playerSpawns.get(spawnId);
+        }
+        if (spawnId != null && !spawnId.isEmpty()) {
+            return currentZone.playerSpawns.values().next();
+        }
+        return null;
+    }
+
+    private int getInfiniteDungeonCurrentFloor() {
+        int floor = gameState.getInfiniteDungeonCurrentFloor();
+        return floor > 0 ? floor : INFINITE_DUNGEON_START_FLOOR;
     }
 
     private void addStarterTownUpgradeChest() {
@@ -2306,47 +2518,16 @@ public class GameScreen implements Screen {
     }
 
     private void initializeEquipmentCatalog() {
-        addEquipmentToCatalog(createEquipment("bronze_edge", "Bronze Edge", "WEAPON", 0, 6, 0, 0, 0, 80, 1, "G", "", WeaponType.SWORD));
-        addEquipmentToCatalog(createEquipment("swift_boots", "Swift Boots", "LEGS", 0, 0, 1, 6, 0, 65, 1, "G", "", WeaponType.NONE));
-        addEquipmentToCatalog(createEquipment("copper_core", "Copper Core", "BODY", 12, 0, 4, 0, 0, 95, 1, "F", "", WeaponType.NONE));
-        addEquipmentToCatalog(createEquipment("tactics_lens", "Tactics Lens", "HEAD", 4, 0, 0, 2, 5, 90, 1, "F", "", WeaponType.NONE));
-        addEquipmentToCatalog(createEquipment("heavy_plating", "Heavy Plating", "BODY", 20, 0, 8, -2, 0, 140, 2, "E", "", WeaponType.NONE));
-        addEquipmentToCatalog(createEquipment("spark_ring", "Spark Ring", "ACCESSORY", 6, 2, 2, 2, 2, 110, 1, "E", "", WeaponType.NONE));
-        addEquipmentToCatalog(createEquipment("mentor_sigil", "Mentor Sigil", "ACCESSORY", 0, 0, 0, 2, 6, 220, 2, "D", "XP_BOOST", WeaponType.NONE));
-        addEquipmentToCatalog(createEquipment("vanguard_frame", "Vanguard Frame", "BODY", 24, 8, 6, 0, 0, 260, 2, "C", "FIRST_STRIKE", WeaponType.NONE));
-        addEquipmentToCatalog(createEquipment("oracle_prism", "Oracle Prism", "HEAD", 8, 0, 0, 4, 12, 320, 3, "B", "ARCANE_SURGE", WeaponType.NONE));
-        addEquipmentToCatalog(createEquipment("hunter_blade", "Hunter Blade", "WEAPON", 0, 14, 0, 4, 0, 200, 2, "G", "LIFE_TAP", WeaponType.SWORD));
-        addEquipmentToCatalog(createEquipment("storm_carbine", "Storm Carbine", "WEAPON", 0, 16, 0, 5, 2, 260, 2, "F", "OVERDRIVE_LINK", WeaponType.GUN));
-        addEquipmentToCatalog(createEquipment("oracle_staff", "Oracle Staff", "WEAPON", 0, 8, 0, 0, 12, 280, 2, "F", "ARCANE_SURGE", WeaponType.STAFF));
-        addEquipmentToCatalog(createEquipment("reactive_arms", "Reactive Arms", "ARMS", 8, 10, 4, 2, 0, 240, 2, "F", "COUNTER_FIELD", WeaponType.NONE));
-        addEquipmentToCatalog(createEquipment("thruster_legs", "Thruster Legs", "LEGS", 6, 0, 2, 12, 0, 230, 2, "F", "", WeaponType.NONE));
-        addEquipmentToCatalog(createEquipment("bulwark_chassis", "Bulwark Chassis", "BODY", 30, 0, 14, -1, 0, 320, 3, "E", "BARRIER_MATRIX", WeaponType.NONE));
-        addEquipmentToCatalog(createEquipment("oracle_headpiece", "Oracle Headpiece", "HEAD", 10, 0, 2, 3, 14, 310, 3, "E", "AUTO_REPAIR", WeaponType.NONE));
-        addEquipmentToCatalog(createEquipment("drakescale_frame", "Drakescale Frame", "BODY", 36, 8, 12, 3, 4, 420, 3, "D", "COUNTER_FIELD", WeaponType.NONE));
-        seedStarterOwnedEquipment();
-    }
-
-    private EquipmentItem createEquipment(String id, String name, String slotType, int hpBonus,
-                                          int attackBonus, int defenseBonus, int speedBonus,
-                                          int intelligenceBonus, long cost, int tier,
-                                          String gradeRequirement, String uniqueBoost,
-                                          WeaponType weaponType) {
-        EquipmentItem item = new EquipmentItem(
-            id,
-            name,
-            slotType,
-            hpBonus,
-            attackBonus,
-            defenseBonus,
-            speedBonus,
-            intelligenceBonus,
-            cost,
-            tier,
-            gradeRequirement,
-            uniqueBoost
+        EquipmentItem[] definitions = new Json().fromJson(
+            EquipmentItem[].class,
+            Gdx.files.internal("data/equipment.json").readString()
         );
-        item.setWeaponType(weaponType);
-        return item;
+        if (definitions != null) {
+            for (EquipmentItem item : definitions) {
+                addEquipmentToCatalog(item);
+            }
+        }
+        seedStarterOwnedEquipment();
     }
 
     private void addEquipmentToCatalog(EquipmentItem item) {
@@ -2897,6 +3078,23 @@ public class GameScreen implements Screen {
                 return true;
             }
             if (door.targetZoneId != null) {
+                if (isInfiniteDungeonZone() && currentZoneId.equals(door.targetZoneId)) {
+                    if (!allDungeonEnemiesDefeated()) {
+                        activeSpeaker = "Bolt Simulation";
+                        activeDialog = door.lockMessage != null && !door.lockMessage.isEmpty()
+                            ? door.lockMessage
+                            : "Clear the current floor before the next gate will answer.";
+                        return true;
+                    }
+                    gameState.setInfiniteDungeonCurrentFloor(getInfiniteDungeonCurrentFloor() + 1);
+                    gameState.setInfiniteDungeonBestFloor(Math.max(
+                        gameState.getInfiniteDungeonBestFloor(),
+                        gameState.getInfiniteDungeonCurrentFloor()
+                    ));
+                    loadZone(door.targetZoneId, door.targetSpawnId, true);
+                    refreshHud();
+                    return true;
+                }
                 loadZone(door.targetZoneId, door.targetSpawnId, true);
                 refreshHud();
                 return true;
@@ -3000,6 +3198,13 @@ public class GameScreen implements Screen {
             if (!isFeatureInteractable(feature) || !isFacingInteractionRect(feature.bounds)) {
                 continue;
             }
+            if ("shop".equals(feature.interactionType) && feature.shopId != null && !feature.shopId.isEmpty()) {
+                String shopName = feature.label != null && !feature.label.isEmpty()
+                    ? feature.label
+                    : formatZoneName(currentZoneId) + " Vendor";
+                screenManager.push(new ShopScreen(game, screenManager, this, shopName, createShopInventory(feature.shopId)));
+                return true;
+            }
             if (hasWorldInteractionCapability(feature.interactionType)) {
                 if (feature.completionWorldFlag != null && !feature.completionWorldFlag.isEmpty()) {
                     worldStateManager.setFlag(gameState, feature.completionWorldFlag, true);
@@ -3055,6 +3260,8 @@ public class GameScreen implements Screen {
             return "Interact";
         }
         switch (feature.interactionType) {
+            case "shop":
+                return "Shop";
             case "scan_hidden_path":
                 return "Scan";
             case "burn_barrier":
@@ -3077,6 +3284,56 @@ public class GameScreen implements Screen {
             default:
                 return false;
         }
+    }
+
+    private void addZoneShopFeatureIfNeeded() {
+        if (currentZone == null || currentZoneId == null || currentZoneId.isEmpty() || zoneHasInteriorShop()) {
+            return;
+        }
+        List<ShopDefinition> zoneShops = shopsByZoneId.get(currentZoneId);
+        if (zoneShops == null || zoneShops.isEmpty()) {
+            return;
+        }
+        ShopDefinition definition = zoneShops.get(0);
+        TmxWorldLoader.Feature feature = new TmxWorldLoader.Feature();
+        feature.id = "zone_shop_" + definition.getId();
+        feature.kind = "stall";
+        feature.label = definition.getLocationLabel() != null && !definition.getLocationLabel().isEmpty()
+            ? definition.getLocationLabel()
+            : formatZoneName(currentZoneId) + " Vendor";
+        feature.interactionType = "shop";
+        feature.shopId = definition.getId();
+        feature.bounds = createZoneShopBounds();
+        currentZone.features.add(feature);
+    }
+
+    private boolean zoneHasInteriorShop() {
+        for (House house : houses) {
+            if (house == null || house.interiorNpcs == null) {
+                continue;
+            }
+            for (InteriorNpc npc : house.interiorNpcs) {
+                if (npc != null && npc.shopId != null && !npc.shopId.isEmpty()) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private Rectangle createZoneShopBounds() {
+        float width = 72f;
+        float height = 60f;
+        float x = currentZone.pixelWidth * 0.5f - (width * 0.5f);
+        float y = currentZone.pixelHeight * 0.5f - (height * 0.5f);
+        if (currentZone.playerSpawns != null && currentZone.playerSpawns.size > 0) {
+            Vector2 spawn = currentZone.playerSpawns.values().next();
+            x = spawn.x + 96f;
+            y = spawn.y + 24f;
+        }
+        x = Math.max(48f, Math.min(x, currentZone.pixelWidth - width - 48f));
+        y = Math.max(48f, Math.min(y, currentZone.pixelHeight - height - 48f));
+        return new Rectangle(x, y, width, height);
     }
 
     private boolean hasAnyActiveAbility(String... abilityIds) {
@@ -4315,12 +4572,14 @@ public class GameScreen implements Screen {
             enemy.intelligence = enemyState.getIntelligence();
             enemy.stamina = enemyState.getStamina();
             enemy.rewardGold = enemyState.getRewardGold();
+            enemy.rewardExperience = enemyState.getRewardExperience();
             enemy.name = enemyState.getName();
             enemy.monsterId = enemyState.getMonsterId();
             enemy.alive = enemyState.isAlive();
             enemy.attackCooldown = ENEMY_MELEE_COOLDOWN;
             enemy.attackTimer = enemyState.getAttackTimer();
             enemy.patrolTarget = new Vector2(enemyState.getPatrolTargetX(), enemyState.getPatrolTargetY());
+            enemy.dungeonFloor = enemyState.getDungeonFloor();
             enemies.add(enemy);
         }
 
@@ -4357,6 +4616,7 @@ public class GameScreen implements Screen {
         float intelligence;
         float stamina;
         int rewardGold;
+        int rewardExperience;
         String name;
         String monsterId;
         boolean alive;
@@ -4364,6 +4624,7 @@ public class GameScreen implements Screen {
         float animationTime;
         float attackCooldown, attackTimer;
         Vector2 patrolTarget;
+        int dungeonFloor;
     }
 
     /**

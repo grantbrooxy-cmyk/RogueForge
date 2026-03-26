@@ -150,5 +150,101 @@
       { "id": "speak_watcher", "objective": "Speak with The Watcher at Abyssal Rift." },
       { "id": "enter_void", "objective": "Enter The Void and push toward the Throne of Origin." }
     ]
+  },
+  {
+    "id": "cave_echoes",
+    "title": "Cave Echoes",
+    "mainQuest": false,
+    "autoStart": false,
+    "startStepId": "speak_scout",
+    "steps": [
+      { "id": "speak_scout", "objective": "Speak with Rhea about the unstable shimmer wall in Shadow Caves." },
+      { "id": "trace_echo_wall", "objective": "Use a scan-capable frame to reveal the hidden seam in Shadow Caves.", "completionWorldFlag": "frontier.cave_hidden_path_open" },
+      { "id": "return_scout", "objective": "Return to Rhea once the hidden seam is open." }
+    ]
+  },
+  {
+    "id": "thorn_cache",
+    "title": "Thorn Cache",
+    "mainQuest": false,
+    "autoStart": false,
+    "startStepId": "speak_nia",
+    "steps": [
+      { "id": "speak_nia", "objective": "Speak with Nia about the thorn-choked path near the herbalist." },
+      { "id": "burn_thorns", "objective": "Burn away the resinous brambles in Verdant Fields.", "completionWorldFlag": "frontier.herbalist_brambles_cleared" },
+      { "id": "return_nia", "objective": "Report back to Nia once the hidden cache path is open." }
+    ]
+  },
+  {
+    "id": "collapsed_trail",
+    "title": "Collapsed Trail",
+    "mainQuest": false,
+    "autoStart": false,
+    "startStepId": "speak_tor",
+    "steps": [
+      { "id": "speak_tor", "objective": "Speak with Tor about the blocked frontier trail." },
+      { "id": "clear_boulder", "objective": "Move the collapsed boulder in Verdant Fields with a heavy frame.", "completionWorldFlag": "frontier.boulder_path_cleared" },
+      { "id": "return_tor", "objective": "Return to Tor after the old trail is open again." }
+    ]
+  },
+  {
+    "id": "tidepool_signal",
+    "title": "Tidepool Signal",
+    "mainQuest": false,
+    "autoStart": false,
+    "startStepId": "speak_reno",
+    "steps": [
+      { "id": "speak_reno", "objective": "Speak with Reno about the deceptive current line in Coastal Shallows." },
+      { "id": "map_tidepool", "objective": "Use a scan-capable frame to chart the hidden tidepool route.", "completionWorldFlag": "frontier.coast_hidden_tidepool_found" },
+      { "id": "return_reno", "objective": "Return to Reno once the hidden tidepool has been found." }
+    ]
+  },
+  {
+    "id": "resonance_notes",
+    "title": "Resonance Notes",
+    "mainQuest": false,
+    "autoStart": false,
+    "startStepId": "speak_lio",
+    "steps": [
+      { "id": "speak_lio", "objective": "Speak with Professor Lio in Crystal Depths." },
+      { "id": "consult_edda", "objective": "Bring Lio's resonance notes to Edda at Dragon Peak." },
+      { "id": "return_lio", "objective": "Return to Professor Lio with Edda's calibration advice." }
+    ]
+  },
+  {
+    "id": "pilgrims_circuit",
+    "title": "Pilgrim's Circuit",
+    "mainQuest": false,
+    "autoStart": false,
+    "startStepId": "speak_vale",
+    "steps": [
+      { "id": "speak_vale", "objective": "Speak with Sister Vale in Frozen Vale." },
+      { "id": "consult_clockmaker", "objective": "Ask the Clockmaker Echo about the frozen cloister circuit." },
+      { "id": "return_vale", "objective": "Return to Sister Vale with the Clockmaker's guidance." }
+    ]
+  },
+  {
+    "id": "forgefire_accord",
+    "title": "Forgefire Accord",
+    "mainQuest": false,
+    "autoStart": false,
+    "startStepId": "speak_toma_plateau",
+    "steps": [
+      { "id": "speak_toma_plateau", "objective": "Speak with Forgehand Toma on Scorched Plateau." },
+      { "id": "consult_kira", "objective": "Carry Toma's heat-tolerance specs to Forgehand Kira in Volcanic Core." },
+      { "id": "return_toma", "objective": "Return to Toma once Kira's furnace accord is ready." }
+    ]
+  },
+  {
+    "id": "command_echoes",
+    "title": "Command Echoes",
+    "mainQuest": false,
+    "autoStart": false,
+    "startStepId": "speak_rex_after",
+    "steps": [
+      { "id": "speak_rex_after", "objective": "Speak with Commander Rex after restoring the command rails." },
+      { "id": "consult_clockmaker", "objective": "Ask the Clockmaker Echo how to stabilize the newly awakened rail lattice." },
+      { "id": "return_rex", "objective": "Return to Commander Rex with the Clockmaker's lattice sequence." }
+    ]
   }
 ]

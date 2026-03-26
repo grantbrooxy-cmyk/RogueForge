@@ -588,6 +588,315 @@
     ]
   },
   {
+    "id": "nia_thorn_start",
+    "npcId": "nia",
+    "priority": 94,
+    "requiredQuestId": "thorn_cache",
+    "requiredQuestState": "NOT_STARTED",
+    "requiredWorldFlag": "access.workshop_pass",
+    "lines": [
+      { "speaker": "Nia", "text": "The herbalist swears there's a sealed cache behind those resin-thorns east of town. Burn through them cleanly and we'll see what the old frontier hid there." }
+    ],
+    "setQuestId": "thorn_cache",
+    "setQuestStep": "burn_thorns"
+  },
+  {
+    "id": "nia_thorn_mid",
+    "npcId": "nia",
+    "priority": 84,
+    "requiredQuestId": "thorn_cache",
+    "requiredQuestState": "burn_thorns",
+    "lines": [
+      { "speaker": "Nia", "text": "Don't hack at the brambles. Heat the resin, let it peel back, and the cache should sit just beyond the wall." }
+    ]
+  },
+  {
+    "id": "nia_thorn_finish",
+    "npcId": "nia",
+    "priority": 92,
+    "requiredQuestId": "thorn_cache",
+    "requiredQuestState": "return_nia",
+    "lines": [
+      { "speaker": "Nia", "text": "Perfect. The old cache was real, and now we've got one more secret route back under our control." }
+    ],
+    "completeQuestId": "thorn_cache",
+    "rewardGold": 65,
+    "rewardExperience": 55,
+    "rewardPotions": 1
+  },
+  {
+    "id": "tor_trail_start",
+    "npcId": "tor",
+    "priority": 92,
+    "requiredQuestId": "collapsed_trail",
+    "requiredQuestState": "NOT_STARTED",
+    "requiredWorldFlag": "access.workshop_pass",
+    "lines": [
+      { "speaker": "Tor", "text": "There's an old trailhead past the southern hedge, but a collapsed boulder sealed it months ago. If one of your heavy frames can shift it, we get another safe line out of Ironhaven." }
+    ],
+    "setQuestId": "collapsed_trail",
+    "setQuestStep": "clear_boulder"
+  },
+  {
+    "id": "tor_trail_mid",
+    "npcId": "tor",
+    "priority": 82,
+    "requiredQuestId": "collapsed_trail",
+    "requiredQuestState": "clear_boulder",
+    "lines": [
+      { "speaker": "Tor", "text": "The boulder is packed into the trail deeper than it looks. Hit it with pure leverage, not finesse." }
+    ]
+  },
+  {
+    "id": "tor_trail_finish",
+    "npcId": "tor",
+    "priority": 91,
+    "requiredQuestId": "collapsed_trail",
+    "requiredQuestState": "return_tor",
+    "lines": [
+      { "speaker": "Tor", "text": "That does it. One more route open, one less blind corner around town. That's how a frontier starts feeling like a home again." }
+    ],
+    "completeQuestId": "collapsed_trail",
+    "rewardGold": 70,
+    "rewardExperience": 60
+  },
+  {
+    "id": "cave_scout_echo_start",
+    "npcId": "cave_scout",
+    "priority": 92,
+    "requiredQuestId": "cave_echoes",
+    "requiredQuestState": "NOT_STARTED",
+    "requiredWorldFlag": "access.workshop_pass",
+    "lines": [
+      { "speaker": "Rhea", "text": "There's a shimmer wall deeper in the cave that answers every scanner pulse differently. Trace the seam for me and we may finally map the hollow behind it." }
+    ],
+    "setQuestId": "cave_echoes",
+    "setQuestStep": "trace_echo_wall"
+  },
+  {
+    "id": "cave_scout_echo_mid",
+    "npcId": "cave_scout",
+    "priority": 82,
+    "requiredQuestId": "cave_echoes",
+    "requiredQuestState": "trace_echo_wall",
+    "lines": [
+      { "speaker": "Rhea", "text": "Watch for the wall to flicker back in rhythm with your scan lattice. That's where the seam opens." }
+    ]
+  },
+  {
+    "id": "cave_scout_echo_finish",
+    "npcId": "cave_scout",
+    "priority": 91,
+    "requiredQuestId": "cave_echoes",
+    "requiredQuestState": "return_scout",
+    "lines": [
+      { "speaker": "Rhea", "text": "A hidden passage and a clean scan trace. That's the kind of map work that keeps crews alive down here." }
+    ],
+    "completeQuestId": "cave_echoes",
+    "rewardGold": 75,
+    "rewardExperience": 65,
+    "rewardPotions": 1
+  },
+  {
+    "id": "reno_tidepool_start",
+    "npcId": "salvager_reno",
+    "priority": 100,
+    "requiredQuestId": "tidepool_signal",
+    "requiredQuestState": "NOT_STARTED",
+    "requiredWorldFlag": "access.workshop_pass",
+    "lines": [
+      { "speaker": "Reno", "text": "The shallows are lying to me. There's a hidden current threading between the rocks, but I need a scan frame to chart it without losing a whole salvage skiff." }
+    ],
+    "setQuestId": "tidepool_signal",
+    "setQuestStep": "map_tidepool"
+  },
+  {
+    "id": "reno_tidepool_mid",
+    "npcId": "salvager_reno",
+    "priority": 90,
+    "requiredQuestId": "tidepool_signal",
+    "requiredQuestState": "map_tidepool",
+    "lines": [
+      { "speaker": "Reno", "text": "Follow the drift where the foam cuts sideways. If the scanner holds, the tidepool should open on the far shelf." }
+    ]
+  },
+  {
+    "id": "reno_tidepool_finish",
+    "npcId": "salvager_reno",
+    "priority": 95,
+    "requiredQuestId": "tidepool_signal",
+    "requiredQuestState": "return_reno",
+    "lines": [
+      { "speaker": "Reno", "text": "That's the line. With that tidepool route mapped, we can pull salvage without feeding another barge to the surf." }
+    ],
+    "completeQuestId": "tidepool_signal",
+    "rewardGold": 95,
+    "rewardExperience": 80
+  },
+  {
+    "id": "lio_resonance_start",
+    "npcId": "crystal_researcher",
+    "priority": 100,
+    "requiredQuestId": "resonance_notes",
+    "requiredQuestState": "NOT_STARTED",
+    "requiredWorldFlag": "frontier.peak_lift_unlocked",
+    "lines": [
+      { "speaker": "Professor Lio", "text": "These crystal harmonics are close to Dragon Peak's warding frequencies, but not close enough. Take my notes to Edda and ask how the pylons stayed stable at altitude." }
+    ],
+    "setQuestId": "resonance_notes",
+    "setQuestStep": "consult_edda"
+  },
+  {
+    "id": "lio_resonance_mid",
+    "npcId": "crystal_researcher",
+    "priority": 88,
+    "requiredQuestId": "resonance_notes",
+    "requiredQuestState": "consult_edda",
+    "lines": [
+      { "speaker": "Professor Lio", "text": "Edda will know which harmonics to trim. The mountain learned stability the hard way." }
+    ]
+  },
+  {
+    "id": "edda_resonance_mid",
+    "npcId": "edda_peak",
+    "priority": 89,
+    "requiredQuestId": "resonance_notes",
+    "requiredQuestState": "consult_edda",
+    "lines": [
+      { "speaker": "Edda", "text": "Lio's close. Tell him to damp the third harmonic, then bias the core toward the colder crystal lines. That should keep the vault from singing itself apart." }
+    ],
+    "setQuestId": "resonance_notes",
+    "setQuestStep": "return_lio"
+  },
+  {
+    "id": "lio_resonance_finish",
+    "npcId": "crystal_researcher",
+    "priority": 94,
+    "requiredQuestId": "resonance_notes",
+    "requiredQuestState": "return_lio",
+    "lines": [
+      { "speaker": "Professor Lio", "text": "Of course. Edda trimmed the instability exactly where I feared it. With this, the depths become a laboratory again instead of a warning." }
+    ],
+    "completeQuestId": "resonance_notes",
+    "rewardGold": 105,
+    "rewardExperience": 85
+  },
+  {
+    "id": "vale_circuit_start",
+    "npcId": "frozen_pilgrim",
+    "priority": 100,
+    "requiredQuestId": "pilgrims_circuit",
+    "requiredQuestState": "NOT_STARTED",
+    "requiredWorldFlag": "frontier.warding_pylons_online",
+    "lines": [
+      { "speaker": "Sister Vale", "text": "The cloister's prayer circuit was really a machine lattice. If the Clockmaker Echo still remembers its pattern, we may be able to wake the vale without breaking it." }
+    ],
+    "setQuestId": "pilgrims_circuit",
+    "setQuestStep": "consult_clockmaker"
+  },
+  {
+    "id": "clockmaker_vale_mid",
+    "npcId": "clockmaker_echo",
+    "priority": 88,
+    "requiredQuestId": "pilgrims_circuit",
+    "requiredQuestState": "consult_clockmaker",
+    "lines": [
+      { "speaker": "Clockmaker Echo", "text": "The cloister ran on a closed winter loop. Tell the pilgrim to restart it slowly, one ring at a time, and let the frost keep the timing honest." }
+    ],
+    "setQuestId": "pilgrims_circuit",
+    "setQuestStep": "return_vale"
+  },
+  {
+    "id": "vale_circuit_finish",
+    "npcId": "frozen_pilgrim",
+    "priority": 94,
+    "requiredQuestId": "pilgrims_circuit",
+    "requiredQuestState": "return_vale",
+    "lines": [
+      { "speaker": "Sister Vale", "text": "Then the old circuit still has purpose. Good. Even frozen places deserve a pulse strong enough to answer winter." }
+    ],
+    "completeQuestId": "pilgrims_circuit",
+    "rewardGold": 115,
+    "rewardExperience": 90,
+    "rewardPotions": 1
+  },
+  {
+    "id": "toma_plateau_start",
+    "npcId": "forgehand_toma",
+    "priority": 100,
+    "requiredQuestId": "forgefire_accord",
+    "requiredQuestState": "NOT_STARTED",
+    "requiredWorldFlag": "frontier.warding_pylons_online",
+    "lines": [
+      { "speaker": "Toma", "text": "Scorched Plateau can teach us a lot, but Volcanic Core can melt a machine that learns the lesson wrong. Take my heat-tolerance specs to Kira and bring back something we can actually build around." }
+    ],
+    "setQuestId": "forgefire_accord",
+    "setQuestStep": "consult_kira"
+  },
+  {
+    "id": "kira_accord_mid",
+    "npcId": "caldera_smith",
+    "priority": 90,
+    "requiredQuestId": "forgefire_accord",
+    "requiredQuestState": "consult_kira",
+    "lines": [
+      { "speaker": "Forgehand Kira", "text": "Tell Toma the plateau alloys are overhard. Temper them twice, quench them in slagwater, and they'll survive the core without shattering." }
+    ],
+    "setQuestId": "forgefire_accord",
+    "setQuestStep": "return_toma"
+  },
+  {
+    "id": "toma_plateau_finish",
+    "npcId": "forgehand_toma",
+    "priority": 95,
+    "requiredQuestId": "forgefire_accord",
+    "requiredQuestState": "return_toma",
+    "lines": [
+      { "speaker": "Toma", "text": "That's the accord, then. Plateau grit, core heat, and a process that won't kill the crew trying it. That's real progress." }
+    ],
+    "completeQuestId": "forgefire_accord",
+    "rewardGold": 135,
+    "rewardExperience": 105
+  },
+  {
+    "id": "rex_echoes_start",
+    "npcId": "commander_rex_field",
+    "priority": 90,
+    "requiredQuestId": "command_echoes",
+    "requiredQuestState": "NOT_STARTED",
+    "requiredWorldFlag": "frontier.command_rails_online",
+    "lines": [
+      { "speaker": "Commander Rex", "text": "The command rails are awake, but they still carry ghost traffic from the old war lattice. Ask the Clockmaker Echo how to quiet the echoes before they fry another control hub." }
+    ],
+    "setQuestId": "command_echoes",
+    "setQuestStep": "consult_clockmaker"
+  },
+  {
+    "id": "clockmaker_echoes_mid",
+    "npcId": "clockmaker_echo",
+    "priority": 89,
+    "requiredQuestId": "command_echoes",
+    "requiredQuestState": "consult_clockmaker",
+    "lines": [
+      { "speaker": "Clockmaker Echo", "text": "Tell Rex to pulse the rails in threes, then cut the fourth beat short. The old command ghosts will chase the missing rhythm and collapse." }
+    ],
+    "setQuestId": "command_echoes",
+    "setQuestStep": "return_rex"
+  },
+  {
+    "id": "rex_echoes_finish",
+    "npcId": "commander_rex_field",
+    "priority": 94,
+    "requiredQuestId": "command_echoes",
+    "requiredQuestState": "return_rex",
+    "lines": [
+      { "speaker": "Commander Rex", "text": "Good. That's the rail lattice settled without tearing half the fortress apart. We can finally use these lines like builders instead of grave robbers." }
+    ],
+    "completeQuestId": "command_echoes",
+    "rewardGold": 150,
+    "rewardExperience": 110
+  },
+  {
     "id": "bolt_dungeon",
     "npcId": "bolt_simulation",
     "priority": 100,

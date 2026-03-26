@@ -58,6 +58,10 @@ public class SaveFile {
 
     // Forge Core progression
     private int forgeCoreLevel = 1;
+    private int infiniteDungeonCurrentFloor = 0;
+    private int infiniteDungeonBestFloor = 0;
+    private int infiniteDungeonFloorsCleared = 0;
+    private boolean infiniteDungeonRunActive = false;
 
     // Progress tracking
     private long playTimeSeconds;
@@ -457,6 +461,38 @@ public class SaveFile {
         this.forgeCoreLevel = Math.max(1, Math.min(4, forgeCoreLevel));
     }
 
+    public int getInfiniteDungeonCurrentFloor() {
+        return Math.max(0, infiniteDungeonCurrentFloor);
+    }
+
+    public void setInfiniteDungeonCurrentFloor(int infiniteDungeonCurrentFloor) {
+        this.infiniteDungeonCurrentFloor = Math.max(0, infiniteDungeonCurrentFloor);
+    }
+
+    public int getInfiniteDungeonBestFloor() {
+        return Math.max(0, infiniteDungeonBestFloor);
+    }
+
+    public void setInfiniteDungeonBestFloor(int infiniteDungeonBestFloor) {
+        this.infiniteDungeonBestFloor = Math.max(0, infiniteDungeonBestFloor);
+    }
+
+    public int getInfiniteDungeonFloorsCleared() {
+        return Math.max(0, infiniteDungeonFloorsCleared);
+    }
+
+    public void setInfiniteDungeonFloorsCleared(int infiniteDungeonFloorsCleared) {
+        this.infiniteDungeonFloorsCleared = Math.max(0, infiniteDungeonFloorsCleared);
+    }
+
+    public boolean isInfiniteDungeonRunActive() {
+        return infiniteDungeonRunActive;
+    }
+
+    public void setInfiniteDungeonRunActive(boolean infiniteDungeonRunActive) {
+        this.infiniteDungeonRunActive = infiniteDungeonRunActive;
+    }
+
     /**
      * Serializable live enemy state for restoring an in-progress run.
      */
@@ -474,11 +510,13 @@ public class SaveFile {
         private float intelligence;
         private float stamina;
         private int rewardGold;
+        private int rewardExperience;
         private String name;
         private boolean alive;
         private float attackTimer;
         private float patrolTargetX;
         private float patrolTargetY;
+        private int dungeonFloor;
 
         public EnemyState() {
         }
@@ -587,6 +625,14 @@ public class SaveFile {
             this.rewardGold = rewardGold;
         }
 
+        public int getRewardExperience() {
+            return rewardExperience;
+        }
+
+        public void setRewardExperience(int rewardExperience) {
+            this.rewardExperience = rewardExperience;
+        }
+
         public String getName() {
             return name;
         }
@@ -625,6 +671,14 @@ public class SaveFile {
 
         public void setPatrolTargetY(float patrolTargetY) {
             this.patrolTargetY = patrolTargetY;
+        }
+
+        public int getDungeonFloor() {
+            return dungeonFloor;
+        }
+
+        public void setDungeonFloor(int dungeonFloor) {
+            this.dungeonFloor = Math.max(0, dungeonFloor);
         }
     }
 

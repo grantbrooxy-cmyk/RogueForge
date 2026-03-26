@@ -42,6 +42,10 @@ public class GameState {
     private float survivalTime = 0f;
     private String currentZoneId = "verdant_fields";
     private int currentSaveSlot = 0;
+    private int infiniteDungeonCurrentFloor = 0;
+    private int infiniteDungeonBestFloor = 0;
+    private int infiniteDungeonFloorsCleared = 0;
+    private boolean infiniteDungeonRunActive = false;
 
     // Equipment
     private final Map<String, String> playerEquipment = new HashMap<>();
@@ -105,6 +109,14 @@ public class GameState {
     public void setCurrentZoneId(String zoneId) { this.currentZoneId = zoneId; }
     public int getCurrentSaveSlot() { return currentSaveSlot; }
     public void setCurrentSaveSlot(int slot) { this.currentSaveSlot = slot; }
+    public int getInfiniteDungeonCurrentFloor() { return infiniteDungeonCurrentFloor; }
+    public void setInfiniteDungeonCurrentFloor(int floor) { this.infiniteDungeonCurrentFloor = Math.max(0, floor); }
+    public int getInfiniteDungeonBestFloor() { return infiniteDungeonBestFloor; }
+    public void setInfiniteDungeonBestFloor(int floor) { this.infiniteDungeonBestFloor = Math.max(0, floor); }
+    public int getInfiniteDungeonFloorsCleared() { return infiniteDungeonFloorsCleared; }
+    public void setInfiniteDungeonFloorsCleared(int floorsCleared) { this.infiniteDungeonFloorsCleared = Math.max(0, floorsCleared); }
+    public boolean isInfiniteDungeonRunActive() { return infiniteDungeonRunActive; }
+    public void setInfiniteDungeonRunActive(boolean active) { this.infiniteDungeonRunActive = active; }
 
     // --- Experience and leveling ---
     public int getExperienceForNextLevel() {
