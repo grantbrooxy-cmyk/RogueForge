@@ -69,7 +69,8 @@
    <properties>
     <property name="gold" value="90"/>
     <property name="potions" value="2"/>
-    <property name="message" value="The forge shelf holds heat-treated plates and an ember-sealed weapon pattern."/>
+    <property name="recruitEventId" value="striker_mk2_join"/>
+    <property name="message" value="The forge shelf cracks open to reveal a striker frame resting in ember-hardened clamps."/>
    </properties>
   </object>
  </objectgroup>

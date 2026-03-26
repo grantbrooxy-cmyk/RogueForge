@@ -92,7 +92,8 @@
    <properties>
     <property name="gold" value="30"/>
     <property name="potions" value="1"/>
-    <property name="message" value="The Mushroom Grotto hides an intact field kit and a carefully wrapped robot chassis plate."/>
+    <property name="recruitEventId" value="scout_mk2_join"/>
+    <property name="message" value="The Mushroom Grotto hides a buried scout frame under the roots and spores."/>
    </properties>
   </object>
   <object id="20" name="hidden_glade_cache" x="1220" y="754">

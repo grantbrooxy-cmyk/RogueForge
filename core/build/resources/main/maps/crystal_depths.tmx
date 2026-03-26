@@ -73,7 +73,8 @@
    <properties>
     <property name="gold" value="90"/>
     <property name="potions" value="2"/>
-    <property name="message" value="A resonance vault cache holds crystal matrices and precision forge stock."/>
+    <property name="recruitEventId" value="medic_mk2_join"/>
+    <property name="message" value="A resonance vault opens around a medic chassis suspended in a crystal cradle."/>
    </properties>
   </object>
  </objectgroup>

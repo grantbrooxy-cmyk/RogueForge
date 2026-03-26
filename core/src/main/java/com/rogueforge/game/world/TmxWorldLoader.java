@@ -139,6 +139,7 @@ public class TmxWorldLoader {
         chest.hidden = Boolean.parseBoolean(readProperty(object, "hidden", "false"));
         chest.keyItemReward = readProperty(object, "keyItemReward", null);
         chest.questFlag = readProperty(object, "questFlag", null);
+        chest.recruitEventId = readProperty(object, "recruitEventId", null);
         chest.requiredWorldFlag = readProperty(object, "requiredWorldFlag", null);
         chest.hiddenUntilFlag = readProperty(object, "hiddenUntilFlag", null);
         chest.message = readProperty(object, "message", "You found supplies.");
@@ -257,6 +258,7 @@ public class TmxWorldLoader {
         public boolean hidden;
         public String keyItemReward;
         public String questFlag;
+        public String recruitEventId;
         public String requiredWorldFlag;
         public String hiddenUntilFlag;
         public String message;

@@ -95,7 +95,8 @@ class WorldSystemsIntegrationTest {
 
         assertNotNull(artificer);
         assertTrue(collected.contains("artificer_mk1"));
-        assertTrue(active.contains("artificer_mk1"));
+        assertFalse(active.contains("artificer_mk1"));
+        assertEquals(3, active.size());
 
         assertNotNull(settlements.get("workshop_tools"));
         assertTrue(settlements.getAll().size() >= 4);

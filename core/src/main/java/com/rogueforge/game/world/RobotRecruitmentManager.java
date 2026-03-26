@@ -43,9 +43,6 @@ public class RobotRecruitmentManager {
         if (slot >= 0 && slot < activeRobotIds.size()) {
             result.replacedRobotId = activeRobotIds.set(slot, definition.getRobotId());
             result.deployed = true;
-        } else if (!activeRobotIds.contains(definition.getRobotId())) {
-            activeRobotIds.add(definition.getRobotId());
-            result.deployed = true;
         }
         return result;
     }

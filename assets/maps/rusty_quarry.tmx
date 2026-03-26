@@ -100,7 +100,8 @@
     <property name="gold" value="55"/>
     <property name="potions" value="1"/>
     <property name="hiddenUntilFlag" value="frontier.quarry_sluice_forced"/>
-    <property name="message" value="Behind the sluice sits a maintenance locker full of untouched quarry components."/>
+    <property name="recruitEventId" value="guardian_mk2_join"/>
+    <property name="message" value="Behind the sluice sits a maintenance locker with a dormant guardian frame sealed inside."/>
    </properties>
   </object>
  </objectgroup>

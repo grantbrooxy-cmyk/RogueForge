@@ -78,7 +78,8 @@
    <properties>
     <property name="gold" value="85"/>
     <property name="potions" value="2"/>
-    <property name="message" value="A reliquary preserved in ice holds ritual circuits and a frost-still power cell."/>
+    <property name="recruitEventId" value="scout_mk3_join"/>
+    <property name="message" value="Inside the reliquary, a scout frame sleeps beneath clear ice and old pilgrimage seals."/>
    </properties>
   </object>
  </objectgroup>

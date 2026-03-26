@@ -100,7 +100,8 @@
     <property name="gold" value="55"/>
     <property name="potions" value="1"/>
     <property name="hiddenUntilFlag" value="frontier.cave_hidden_path_open"/>
-    <property name="message" value="The hidden seam holds an abandoned survey kit and a bundle of untouched repair stock."/>
+    <property name="recruitEventId" value="artificer_mk2_join"/>
+    <property name="message" value="The hidden seam shelters an advanced artificer frame wired into the survey kit."/>
    </properties>
   </object>
  </objectgroup>

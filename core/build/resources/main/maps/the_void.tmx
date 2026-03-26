@@ -97,7 +97,8 @@
    <properties>
     <property name="gold" value="180"/>
     <property name="potions" value="2"/>
-    <property name="message" value="At the edge of the Throne of Origin, a sealed cache hums with impossible machine memory."/>
+    <property name="recruitEventId" value="striker_mk3_join"/>
+    <property name="message" value="At the edge of the Throne of Origin, a sealed cache hums around a fully armed striker frame."/>
    </properties>
   </object>
  </objectgroup>

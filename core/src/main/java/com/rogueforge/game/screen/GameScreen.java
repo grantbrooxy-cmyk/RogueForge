@@ -2470,7 +2470,9 @@ public class GameScreen implements Screen {
             worldStateManager.setFlag(gameState, recruitment.joinedWorldFlag, true);
         }
         if (recruitment.message != null && !recruitment.message.isEmpty()) {
-            activeDialog = recruitment.message;
+            activeDialog = activeDialog != null && !activeDialog.isEmpty()
+                ? activeDialog + " " + recruitment.message
+                : recruitment.message;
         }
     }
 
@@ -3173,6 +3175,9 @@ public class GameScreen implements Screen {
             if (chest.questFlag != null && !chest.questFlag.isEmpty()) {
                 setQuestFlag(chest.questFlag, true);
                 worldStateManager.setFlag(gameState, chest.questFlag, true);
+            }
+            if (chest.recruitEventId != null && !chest.recruitEventId.isEmpty()) {
+                applyRecruitment(chest.recruitEventId);
             }
             if ("starter_workshop_tools".equals(chest.id)) {
                 applySettlementUpgrade("workshop_tools");

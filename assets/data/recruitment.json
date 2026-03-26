@@ -12,5 +12,61 @@
     "autoDeploySlot": -1,
     "message": "Artificer MK-I is restored and added to your reserve roster.",
     "joinedWorldFlag": "recruit.artificer_joined"
+  },
+  {
+    "eventId": "scout_mk2_join",
+    "robotId": "scout_mk2",
+    "autoDeploySlot": -1,
+    "message": "Scout MK-II rises from the Mushroom Grotto and joins your reserve roster.",
+    "joinedWorldFlag": "recruit.scout_mk2_joined"
+  },
+  {
+    "eventId": "guardian_mk2_join",
+    "robotId": "guardian_mk2",
+    "autoDeploySlot": -1,
+    "message": "Guardian MK-II is excavated from the quarry maintenance locker and added to your reserve roster.",
+    "joinedWorldFlag": "recruit.guardian_mk2_joined"
+  },
+  {
+    "eventId": "artificer_mk2_join",
+    "robotId": "artificer_mk2",
+    "autoDeploySlot": -1,
+    "message": "Artificer MK-II reboots inside the hidden seam and joins your reserve roster.",
+    "joinedWorldFlag": "recruit.artificer_mk2_joined"
+  },
+  {
+    "eventId": "medic_mk2_join",
+    "robotId": "medic_mk2",
+    "autoDeploySlot": -1,
+    "message": "Medic MK-II syncs with your field systems and joins your reserve roster.",
+    "joinedWorldFlag": "recruit.medic_mk2_joined"
+  },
+  {
+    "eventId": "striker_mk2_join",
+    "robotId": "striker_mk2",
+    "autoDeploySlot": -1,
+    "message": "Striker MK-II powers up beside the ember forge and joins your reserve roster.",
+    "joinedWorldFlag": "recruit.striker_mk2_joined"
+  },
+  {
+    "eventId": "scout_mk3_join",
+    "robotId": "scout_mk3",
+    "autoDeploySlot": -1,
+    "message": "Scout MK-III thaws from the reliquary and joins your reserve roster.",
+    "joinedWorldFlag": "recruit.scout_mk3_joined"
+  },
+  {
+    "eventId": "guardian_mk3_join",
+    "robotId": "guardian_mk3",
+    "autoDeploySlot": -1,
+    "message": "Guardian MK-III answers the abyssal reliquary and joins your reserve roster.",
+    "joinedWorldFlag": "recruit.guardian_mk3_joined"
+  },
+  {
+    "eventId": "striker_mk3_join",
+    "robotId": "striker_mk3",
+    "autoDeploySlot": -1,
+    "message": "Striker MK-III awakens at the edge of origin and joins your reserve roster.",
+    "joinedWorldFlag": "recruit.striker_mk3_joined"
   }
 ]

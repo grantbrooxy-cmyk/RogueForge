@@ -91,7 +91,8 @@
     <property name="gold" value="85"/>
     <property name="potions" value="2"/>
     <property name="keyItemReward" value="void_key"/>
-    <property name="message" value="A reliquary preserved in ice holds ritual circuits and a frost-still power cell."/>
+    <property name="recruitEventId" value="guardian_mk3_join"/>
+    <property name="message" value="The reliquary core unfolds into a guardian frame built to endure abyssal pressure."/>
    </properties>
   </object>
  </objectgroup>
