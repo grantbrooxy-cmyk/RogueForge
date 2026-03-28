@@ -2,25 +2,141 @@
   {
     "id": "workshop_tools",
     "name": "Workshop Tools",
+    "facility": "workshop",
+    "tier": 1,
+    "type": "crafting",
+    "description": "Reopen the workshop rail line for advanced component fabrication.",
     "rewardEquipmentId": "copper_core",
-    "rewardPotions": 0
+    "rewardPotions": 0,
+    "rewardGold": 0
+  },
+  {
+    "id": "advanced_alloys",
+    "name": "Advanced Alloys",
+    "facility": "workshop",
+    "tier": 2,
+    "type": "crafting",
+    "requiredUpgradeId": "workshop_tools",
+    "description": "Retool the alloy chambers for superior component materials.",
+    "rewardEquipmentId": "alloy_plating",
+    "rewardPotions": 0,
+    "rewardGold": 80
+  },
+  {
+    "id": "fusion_forge",
+    "name": "Fusion Forge",
+    "facility": "workshop",
+    "tier": 3,
+    "type": "crafting",
+    "requiredUpgradeId": "advanced_alloys",
+    "description": "Restore the ancient fusion cradle for equipment synthesis.",
+    "rewardEquipmentId": "forge_sigil",
+    "rewardPotions": 0,
+    "rewardGold": 150
   },
   {
     "id": "apothecary_stock",
     "name": "Apothecary Stock",
+    "facility": "apothecary",
+    "tier": 1,
+    "type": "healing",
+    "description": "Restock Elena's apothecary shelves with basic field supplies.",
     "rewardEquipmentId": "",
-    "rewardPotions": 2
+    "rewardPotions": 2,
+    "rewardGold": 0
+  },
+  {
+    "id": "field_kit_supply",
+    "name": "Field Kit Supply",
+    "facility": "apothecary",
+    "tier": 2,
+    "type": "healing",
+    "requiredUpgradeId": "apothecary_stock",
+    "description": "Expand into proper field kits with higher potion yield per run.",
+    "rewardEquipmentId": "",
+    "rewardPotions": 3,
+    "rewardGold": 60
+  },
+  {
+    "id": "experimental_compounds",
+    "name": "Experimental Compounds",
+    "facility": "apothecary",
+    "tier": 3,
+    "type": "healing",
+    "requiredUpgradeId": "field_kit_supply",
+    "description": "Develop frontier-derived compounds with unique combat applications.",
+    "rewardEquipmentId": "catalyst_vial",
+    "rewardPotions": 2,
+    "rewardGold": 120
   },
   {
     "id": "watchtower_network",
     "name": "Watchtower Network",
+    "facility": "command",
+    "tier": 1,
+    "type": "military",
+    "description": "Restore Ironhaven's watchtower lamps and basic sentinel range.",
     "rewardEquipmentId": "tactics_lens",
-    "rewardPotions": 1
+    "rewardPotions": 1,
+    "rewardGold": 0
+  },
+  {
+    "id": "relay_expansion",
+    "name": "Relay Expansion",
+    "facility": "command",
+    "tier": 2,
+    "type": "military",
+    "requiredUpgradeId": "watchtower_network",
+    "description": "Extend relay coverage to the ridgeline for broader approach visibility.",
+    "rewardEquipmentId": "signal_amplifier",
+    "rewardPotions": 0,
+    "rewardGold": 100
+  },
+  {
+    "id": "command_hub",
+    "name": "Command Hub",
+    "facility": "command",
+    "tier": 3,
+    "type": "military",
+    "requiredUpgradeId": "relay_expansion",
+    "description": "Establish a full command hub enabling tactical coordination across zones.",
+    "rewardEquipmentId": "commander_badge",
+    "rewardPotions": 1,
+    "rewardGold": 180
   },
   {
     "id": "survey_drones",
     "name": "Survey Drones",
+    "facility": "research",
+    "tier": 1,
+    "type": "research",
+    "description": "Restore Nia's survey drone cradle for safer frontier charting.",
     "rewardEquipmentId": "mentor_sigil",
-    "rewardPotions": 1
+    "rewardPotions": 1,
+    "rewardGold": 0
+  },
+  {
+    "id": "data_vaults",
+    "name": "Data Vaults",
+    "facility": "research",
+    "tier": 2,
+    "type": "research",
+    "requiredUpgradeId": "survey_drones",
+    "description": "Build indexed data vaults to convert drone survey noise into usable intelligence.",
+    "rewardEquipmentId": "index_core",
+    "rewardPotions": 0,
+    "rewardGold": 110
+  },
+  {
+    "id": "prototype_lab",
+    "name": "Prototype Lab",
+    "facility": "research",
+    "tier": 3,
+    "type": "research",
+    "requiredUpgradeId": "data_vaults",
+    "description": "Open a prototype lab to reach the design space hidden in pre-collapse foundry data.",
+    "rewardEquipmentId": "prototype_frame",
+    "rewardPotions": 0,
+    "rewardGold": 200
   }
 ]

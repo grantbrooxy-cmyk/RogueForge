@@ -1075,7 +1075,7 @@ The endgame culminates in:
 ### 31.2 Post-Game
 Post-game systems include:
 
-- Infinite Dungeon
+- Infinite Dungeon (accessible as standard exploration or as a Shard Run — see 31.4)
 - The Beyond
 - superbosses
 - Mythic gear chase
@@ -1084,11 +1084,25 @@ Post-game systems include:
 ### 31.3 Replayability Goals
 Replayability should come from:
 
-- mastery builds
+- mastery builds and weapon proficiency specialization
 - robot composition differences
-- item and boost hunting
-- endless-dungeon runs
+- item and Unique Boost hunting
+- Shard Run module drafting — each run builds a different loadout from random offerings
+- Forge Legacy meta-progression — accumulated unlocks change run feel over time
 - post-game boss challenges
+- Run Modifier escalation — voluntary handicaps for higher Shard multipliers
+
+### 31.4 Roguelike Loop: Shard Runs and Forge Legacy
+
+RogueForge delivers on its name through two interlocking roguelike systems that coexist with the persistent open world.
+
+**Shard Runs** use the Infinite Dungeon as their arena. The player enters stripped of their regular loadout and builds a run from scratch — drafting a robot, collecting Shard Modules (run-only passive upgrades), and descending as far as possible. Death ends the run but is never punishing: the overworld, quests, and regular equipment are untouched. Floor depth and boss kills earn Forge Shards on every attempt, successful or not.
+
+**Forge Legacy** is the permanent meta-progression tree funded by those Forge Shards. It lives in Ironhaven at a new facility called the Legacy Vault. The tree has four branches — starting kit improvements, proficiency carry-ins, global stat bonuses, and rare module pool unlocks. Every run deposits something into the Legacy tree, so every death makes the next attempt meaningfully different.
+
+The two loops feed each other: stronger Legacy unlocks let players push deeper in Shard Runs, deeper runs earn more Shards, and more Shards open more of the tree. Players who prefer the open world benefit from the passive stat branches of Forge Legacy without needing to run the dungeon obsessively.
+
+For full mechanical spec see Systems_Spec.md Section 26.
 
 ## 32. UI and Presentation
 
@@ -1141,47 +1155,54 @@ Target tone can blend:
 
 ## 34. Current Build Snapshot
 
-The current codebase already contains important foundations, but it does not yet represent the full final-vision game.
+The current codebase is a fully content-complete implementation of the five-phase development plan. All major systems, world zones, story content, and endgame features are in production.
 
 Broadly, the current build includes:
 
-- basic overworld exploration
-- screen stack management
-- early combat framework
-- robot roster and equipment foundations
-- save/load groundwork
-- a small set of zones, quests, and data files
+- Full tactical combat engine: 28 combat classes covering CTB timeline, elemental resolution, status effects, ability execution, loot, and bestiary
+- 16 production zones, each with a TMX map, enemies, named NPCs, chests, doors, story events, and environmental interaction features
+- 10 main quests across 4 story acts, 24 side quests across 5 categories — all with verified flag coverage and zero broken completion chains
+- 112 NPC dialogue entries across 28 characters with priority gating, world-flag conditions, quest-state conditions, and settlement upgrade triggers
+- 4 facilities × 3 tiers = 12 settlement upgrades; all 7 named Ironhaven NPCs with full upgrade dialogue chains
+- Environmental interaction layer: burn_barrier, strength_boulder, and scan_hidden_path implemented in GameScreen and present across 6 zone maps
+- Dragon Riding traversal network: unlocked by the dragon boss defeat story event, connecting 7 maps via requiredWorldFlag-gated dragon roost doors
+- Endgame content: The Void (Memory Lane, Gauntlet of Trials, Throne of Origin), Infinite Dungeon with procedural floor scaling, 4 S-rank superbosses
+- 10 discoverable robot companions wired to in-world chests, NPCs, and story events
+- Save/load, economy, shop system with world-state gating, and full quest/dialogue flag consistency verified by cross-reference validation
 
-Key final-vision areas still broader than the current build include:
+Key final-vision areas that remain broader than the current build:
 
-- full CTB combat depth
-- complete elemental and status system breadth
-- full proficiency and unique-skill loop
-- 16+ production zones / 25+ final-world spaces
-- 4-act story completion
-- full crafting and fusion economy
-- complete Ironhaven expansion path
-- endgame and post-game systems
+- Full CTB timeline depth (Elemental Break mechanic, CTB edge-case hardening, weapon-specific Combat Arts)
+- Quest and zone content scale (34 quests vs 60+ target, 16 zones vs 25+ target)
+- Equipment tier ladder (Tier 5 and Mythic not yet defined)
+- Archive screen integration with bestiary data
+- Forge Core boss-count expansion milestones (Lv2/3/4 tied to boss count, not yet wired)
 
 ## 35. Production Scope Summary
 
-The Version 3 architecture document frames the target shipped product as including:
+The Version 3 architecture document frames the target shipped product. The table below shows current delivery status against each target item.
 
-- multi-enemy tactical battle system
-- visible turn timeline
-- 6-element weakness/resistance model
-- 15 major status effects
-- progression-through-use ability system
-- 8 weapon mastery tracks with Combat Arts
-- grade-gated progression
-- MK-I to MK-III robot evolution
-- 16+ production zones and 25+ total world spaces
-- 4 acts of main story content
-- 60+ side quests
-- 10 discoverable robots
-- Ironhaven hub expansion
-- tiered crafting and equipment fusion
-- endgame final zone and post-game content
+| Target | Status |
+|---|---|
+| Multi-enemy tactical battle system | ✅ Delivered |
+| Visible CTB turn timeline | ✅ Delivered (depth below final vision) |
+| 6-element weakness/resistance model | ✅ Delivered (Elemental Break still pending) |
+| 15 major status effects | ✅ Delivered (balance polish needed) |
+| Progression-through-use ability system | ✅ Delivered (content breadth below target) |
+| 8 weapon mastery tracks with Combat Arts | ✅ Tracks delivered; Combat Arts still generic |
+| Grade-gated progression | ✅ Partial — logic present, not fully enforced |
+| MK-I to MK-III robot evolution | ✅ Framework delivered; material gating incomplete |
+| 16+ production zones | ✅ Delivered — 16 zones in production |
+| 25+ total world spaces | ⚠️ Not yet — 16 of 25+ target |
+| 4 acts of main story content | ✅ Delivered — 10 main quests across 4 acts |
+| 60+ side quests | ⚠️ Not yet — 24 of 60+ target |
+| 10 discoverable robots | ✅ Delivered — 10 recruitment events wired |
+| Ironhaven hub expansion | ✅ Delivered — 4 facilities × 3 tiers |
+| Tiered crafting and equipment fusion | ✅ Crafting delivered; fusion economy partial |
+| Endgame final zone and post-game content | ✅ Delivered — The Void, Infinite Dungeon, 4 superbosses |
+| Shard Run roguelike dungeon mode | ⚠️ Planned — spec complete, implementation pending |
+| Forge Legacy meta-progression tree | ⚠️ Planned — spec complete, implementation pending |
+| Legacy Vault (Ironhaven 5th facility) | ⚠️ Planned — Coda NPC + Shard tree UI |
 
 ## 36. One-Sentence Product Vision
 

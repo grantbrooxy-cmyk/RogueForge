@@ -630,16 +630,72 @@ public class GameScreen implements Screen {
             return;
         }
         switch (currentZone.groundStyle) {
+            // ── Early zones ──────────────────────────────────────────────────
+            case "meadow":
+                // Verdant Fields: lush, slightly warm green
+                batch.setColor(primaryTile ? new Color(0.54f, 0.74f, 0.36f, 1f) : new Color(0.36f, 0.58f, 0.28f, 1f));
+                break;
+            case "forest":
+                // Whispering Forest: deep moss-green, misty
+                batch.setColor(primaryTile ? new Color(0.28f, 0.52f, 0.30f, 1f) : new Color(0.16f, 0.36f, 0.20f, 1f));
+                break;
+            case "coastal":
+                // Coastal Shallows: sandy tan with seafoam undertones
+                batch.setColor(primaryTile ? new Color(0.64f, 0.70f, 0.52f, 1f) : new Color(0.44f, 0.54f, 0.40f, 1f));
+                break;
+            case "rust":
+                // Rusty Quarry: oxidised iron, warm brown-orange
+                batch.setColor(primaryTile ? new Color(0.52f, 0.34f, 0.20f, 1f) : new Color(0.34f, 0.20f, 0.10f, 1f));
+                break;
+            // ── Mid zones ────────────────────────────────────────────────────
             case "cave":
-                batch.setColor(primaryTile ? new Color(0.42f, 0.44f, 0.5f, 1f) : new Color(0.22f, 0.24f, 0.3f, 1f));
+                // Shadow Caves / generic dungeon: deep slate, oppressive dark
+                batch.setColor(primaryTile ? new Color(0.30f, 0.28f, 0.34f, 1f) : new Color(0.16f, 0.14f, 0.20f, 1f));
+                break;
+            case "crystal":
+                // Crystal Depths: cold cyan-teal shimmer
+                batch.setColor(primaryTile ? new Color(0.24f, 0.54f, 0.62f, 1f) : new Color(0.12f, 0.34f, 0.44f, 1f));
+                break;
+            case "frozen":
+                // Frozen Vale: pale icy blue-white, frosted
+                batch.setColor(primaryTile ? new Color(0.72f, 0.84f, 0.94f, 1f) : new Color(0.50f, 0.66f, 0.82f, 1f));
+                break;
+            case "sanctum":
+                // Clockwork Sanctum: dark iron-brown, mechanised interior
+                batch.setColor(primaryTile ? new Color(0.26f, 0.22f, 0.18f, 1f) : new Color(0.14f, 0.12f, 0.10f, 1f));
+                break;
+            // ── High-tier zones ──────────────────────────────────────────────
+            case "sky":
+                // Dragon Peak / Sky Fortress: bright open-sky blue
+                batch.setColor(primaryTile ? new Color(0.56f, 0.72f, 0.90f, 1f) : new Color(0.38f, 0.54f, 0.76f, 1f));
+                break;
+            case "volcanic":
+                // Volcanic Core / Scorched Plateau: dark char-red with ember glow
+                batch.setColor(primaryTile ? new Color(0.38f, 0.12f, 0.06f, 1f) : new Color(0.22f, 0.06f, 0.02f, 1f));
                 break;
             case "peak":
-                batch.setColor(primaryTile ? new Color(0.78f, 0.8f, 0.88f, 1f) : new Color(0.58f, 0.62f, 0.72f, 1f));
+                // Dragon Peak rock face fallback: stone grey
+                batch.setColor(primaryTile ? new Color(0.56f, 0.54f, 0.52f, 1f) : new Color(0.36f, 0.34f, 0.32f, 1f));
+                break;
+            // ── End-game zones ───────────────────────────────────────────────
+            case "abyss":
+                // Sunken Abyss / Abyssal Rift: lightless deep-ocean black-teal
+                batch.setColor(primaryTile ? new Color(0.06f, 0.18f, 0.22f, 1f) : new Color(0.02f, 0.08f, 0.12f, 1f));
+                break;
+            case "void":
+                // The Void: absolute dark — near-black with faint violet
+                batch.setColor(primaryTile ? new Color(0.08f, 0.04f, 0.14f, 1f) : new Color(0.04f, 0.02f, 0.08f, 1f));
                 break;
             default:
-                batch.setColor(primaryTile ? new Color(0.58f, 0.76f, 0.42f, 1f) : new Color(0.38f, 0.6f, 0.32f, 1f));
+                // Safety fallback — plain green
+                batch.setColor(primaryTile ? new Color(0.58f, 0.76f, 0.42f, 1f) : new Color(0.38f, 0.60f, 0.32f, 1f));
                 break;
         }
+    }
+
+    /** Returns the groundStyle of the currently loaded zone, or "meadow" if none is loaded. */
+    public String getCurrentGroundStyle() {
+        return currentZone != null ? currentZone.groundStyle : "meadow";
     }
 
     private void drawPlayerSprite() {
@@ -3569,6 +3625,12 @@ public class GameScreen implements Screen {
         if (partyIndex < 0 || partyIndex >= activeRobotIds.size()) {
             return "Choose a robot slot first.";
         }
+        // Guard: party slot not yet unlocked by Forge Core / grade progression.
+        if (partyIndex >= getPartySlotLimit()) {
+            String req = getPartySlotNextGrade();
+            return "Slot " + (partyIndex + 1) + " is locked."
+                + (req != null ? " Requires " + req + " to unlock." : "");
+        }
         List<String> reserveIds = getReserveRobotIds();
         if (reserveIndex < 0 || reserveIndex >= reserveIds.size()) {
             return "That reserve frame is unavailable.";
@@ -3971,6 +4033,99 @@ public class GameScreen implements Screen {
         ownedEquipmentIds.clear();
         ownedEquipmentIds.addAll(gameState.getOwnedEquipmentIds());
         return unlocked;
+    }
+
+    /**
+     * Returns true if the item is currently slotted into any party member's
+     * equipment (player or any robot). Used by the fusion system to prevent
+     * fusing actively equipped gear.
+     */
+    public boolean isEquippedByAnyone(String itemId) {
+        if (itemId == null) return false;
+        if (playerEquipment.containsValue(itemId)) return true;
+        for (Map<String, String> slots : robotEquipment.values()) {
+            if (slots != null && slots.containsValue(itemId)) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Removes an item from the owned-equipment list. Does NOT unequip it —
+     * callers must confirm the item is not equipped before calling this.
+     */
+    private void removeOwnedEquipment(String itemId) {
+        if (itemId == null) return;
+        ownedEquipmentIds.remove(itemId);
+        List<String> updated = new ArrayList<>(gameState.getOwnedEquipmentIds());
+        updated.remove(itemId);
+        gameState.setOwnedEquipmentIds(updated);
+    }
+
+    /**
+     * Fuses two owned equipment items of the same tier and slot type into a
+     * randomly chosen item one tier higher.
+     *
+     * <p>Rules:
+     * <ul>
+     *   <li>Both items must be owned and not currently equipped.</li>
+     *   <li>They must share the same tier (1-5) and slot type.</li>
+     *   <li>Gold cost = {@code inputTier * 100} gold.</li>
+     *   <li>Both input items are consumed on success.</li>
+     *   <li>A random Tier+1 item of the same slot is awarded.</li>
+     * </ul>
+     *
+     * @return a player-readable result message
+     */
+    public String fuseEquipment(String itemId1, String itemId2) {
+        if (itemId1 == null || itemId2 == null || itemId1.equals(itemId2)) {
+            return "Select two different items to fuse.";
+        }
+        List<String> owned = gameState.getOwnedEquipmentIds();
+        if (!owned.contains(itemId1) || !owned.contains(itemId2)) {
+            return "Both items must be in your collection.";
+        }
+        EquipmentItem item1 = findEquipmentItem(itemId1);
+        EquipmentItem item2 = findEquipmentItem(itemId2);
+        if (item1 == null || item2 == null) {
+            return "Unknown equipment.";
+        }
+        if (item1.getTier() != item2.getTier()) {
+            return "Items must be the same tier ("
+                + item1.getName() + " is T" + item1.getTier()
+                + ", " + item2.getName() + " is T" + item2.getTier() + ").";
+        }
+        if (!item1.getSlotType().equals(item2.getSlotType())) {
+            return "Items must fit the same slot ("
+                + item1.getSlotType() + " vs " + item2.getSlotType() + ").";
+        }
+        int inputTier = item1.getTier();
+        if (inputTier >= 6) {
+            return "Mythic-tier items cannot be fused further.";
+        }
+        if (isEquippedByAnyone(itemId1) || isEquippedByAnyone(itemId2)) {
+            return "Unequip both items before fusing.";
+        }
+        // Build result pool: all catalog items of tier+1 in the same slot.
+        List<EquipmentItem> pool = new ArrayList<>();
+        for (EquipmentItem candidate : equipmentCatalog) {
+            if (candidate.getTier() == inputTier + 1
+                    && candidate.getSlotType().equals(item1.getSlotType())) {
+                pool.add(candidate);
+            }
+        }
+        if (pool.isEmpty()) {
+            return "No fusion result available for this combination.";
+        }
+        int goldCost = inputTier * 100;
+        if (!spendGold(goldCost)) {
+            return "Fusion requires " + goldCost + " gold.";
+        }
+        removeOwnedEquipment(itemId1);
+        removeOwnedEquipment(itemId2);
+        EquipmentItem result = pool.get((int) (Math.random() * pool.size()));
+        unlockEquipment(result.getId());
+        return "Fusion complete: " + result.getName()
+            + " (T" + result.getTier() + " " + result.getSlotType() + ") obtained!";
     }
 
     public List<ForgeRecipeDefinition> getForgeRecipes() {
@@ -4378,6 +4533,59 @@ public class GameScreen implements Screen {
 
     public Map<String, Integer> getBestiaryScanLevels() {
         return gameState.getBestiaryScanLevels();
+    }
+
+    /**
+     * Returns display lines for the Archive tab, one entry per scanned monster.
+     * Each entry expands based on accumulated scan level:
+     *   Scan 1 — HP, ATK, DEF visible
+     *   Scan 2 — SPD and elemental weaknesses also visible
+     *   Scan 3 — Gold reward also visible
+     */
+    public java.util.List<String> getBestiaryArchiveLines() {
+        java.util.List<String> lines = new java.util.ArrayList<>();
+        Map<String, Integer> scanLevels = gameState.getBestiaryScanLevels();
+        if (scanLevels == null || scanLevels.isEmpty()) {
+            return lines;
+        }
+        for (String monsterId : new java.util.TreeSet<>(scanLevels.keySet())) {
+            int level = scanLevels.get(monsterId);
+            MonsterDefinition def = monsterDefinitions.get(monsterId);
+            String name = def != null ? def.getName() : monsterId;
+            String rank = def != null ? def.getRank() : "?";
+            lines.add(name + "  [" + rank + "]  Scan " + level + "/3");
+            if (def != null) {
+                if (level >= 1) {
+                    lines.add("  HP " + def.getHp()
+                        + "  ATK " + def.getAttack()
+                        + "  DEF " + def.getDefense());
+                }
+                if (level >= 2) {
+                    String weak = joinElements(def.getWeaknesses());
+                    String res  = joinElements(def.getResistances());
+                    lines.add("  SPD " + def.getSpeed()
+                        + "  Weak: " + (weak.isEmpty() ? "none" : weak)
+                        + "  Res: " + (res.isEmpty() ? "none" : res));
+                }
+                if (level >= 3) {
+                    lines.add("  Gold reward: " + def.getBaseLoot());
+                }
+            }
+            lines.add(""); // blank spacer between entries
+        }
+        return lines;
+    }
+
+    private String joinElements(String[] elements) {
+        if (elements == null || elements.length == 0) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        for (String e : elements) {
+            if (sb.length() > 0) sb.append(", ");
+            sb.append(e);
+        }
+        return sb.toString();
     }
 
     public Map<String, Integer> rollForgeDropsForEnemy(String monsterId, String rank) {

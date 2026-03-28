@@ -41,6 +41,8 @@ public class BattleScreen implements Screen {
     static final String THE_UNMAKER_ID = "the_unmaker_s";
 
     private static final String[] ROOT_ACTIONS = {"Attack", "Ability", "Item", "Defend", "Analyze", "Flee"};
+    /** Shown in place of ROOT_ACTIONS when the active actor has the BERSERK status. */
+    private static final String[] BERSERK_ROOT_ACTIONS = {"Attack"};
     private static final AttackMove[] ATTACK_MOVES = {
         new AttackMove("Quick Slash", 80, 1.0f, Element.NONE),
         new AttackMove("Power Crush", 120, 1.45f, Element.EARTH),
@@ -213,17 +215,77 @@ public class BattleScreen implements Screen {
             tickBattleFlow();
         }
 
-        Gdx.gl.glClearColor(0.07f, 0.08f, 0.11f, 1f);
+        // Zone-aware sky — replaces the previous flat dark navy.
+        float[] sky = getBattleSkyColor();
+        Gdx.gl.glClearColor(sky[0], sky[1], sky[2], 1f);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
         float w = Gdx.graphics.getWidth();
         float h = Gdx.graphics.getHeight();
+        drawBattleAtmosphere(w, h);
         drawPanels(w, h);
         drawCombatants(w, h);
         drawTimeline(w, h);
         drawActionPanel(w, h);
         drawBattleLog(w, h);
         handleInput();
+    }
+
+    /**
+     * Returns a zone-themed RGB triple for the battle screen clear colour.
+     * Each entry matches the visual identity of its ground style: desaturated
+     * enough to stay readable but distinct enough to signal the zone at a glance.
+     */
+    private float[] getBattleSkyColor() {
+        switch (gameScreen.getCurrentGroundStyle()) {
+            case "void":     return new float[]{0.03f, 0.01f, 0.07f};
+            case "abyss":    return new float[]{0.02f, 0.05f, 0.09f};
+            case "volcanic": return new float[]{0.11f, 0.03f, 0.01f};
+            case "frozen":   return new float[]{0.06f, 0.08f, 0.13f};
+            case "sky":      return new float[]{0.05f, 0.07f, 0.13f};
+            case "crystal":  return new float[]{0.03f, 0.07f, 0.12f};
+            case "forest":   return new float[]{0.03f, 0.07f, 0.04f};
+            case "coastal":  return new float[]{0.03f, 0.07f, 0.07f};
+            case "rust":     return new float[]{0.09f, 0.05f, 0.02f};
+            case "sanctum":  return new float[]{0.05f, 0.05f, 0.05f};
+            case "cave":     return new float[]{0.05f, 0.05f, 0.07f};
+            case "meadow":   return new float[]{0.04f, 0.07f, 0.03f};
+            default:         return new float[]{0.07f, 0.08f, 0.11f};
+        }
+    }
+
+    /**
+     * Draws a vertical gradient across the full screen using the zone's accent
+     * colour.  Dark panels are drawn on top; this colour shows through the
+     * margins and the gap between the two combatant columns, giving each zone
+     * a distinctive atmosphere without needing additional texture assets.
+     */
+    private void drawBattleAtmosphere(float w, float h) {
+        float r, g, b;
+        switch (gameScreen.getCurrentGroundStyle()) {
+            case "void":     r=0.08f; g=0.03f; b=0.16f; break;
+            case "abyss":    r=0.04f; g=0.12f; b=0.20f; break;
+            case "volcanic": r=0.24f; g=0.06f; b=0.02f; break;
+            case "frozen":   r=0.10f; g=0.14f; b=0.24f; break;
+            case "sky":      r=0.08f; g=0.13f; b=0.22f; break;
+            case "crystal":  r=0.06f; g=0.16f; b=0.22f; break;
+            case "forest":   r=0.06f; g=0.16f; b=0.08f; break;
+            case "coastal":  r=0.06f; g=0.14f; b=0.14f; break;
+            case "rust":     r=0.20f; g=0.10f; b=0.04f; break;
+            case "sanctum":  r=0.10f; g=0.08f; b=0.08f; break;
+            case "cave":     r=0.08f; g=0.08f; b=0.12f; break;
+            case "meadow":   r=0.07f; g=0.12f; b=0.05f; break;
+            default:         r=0.08f; g=0.09f; b=0.12f; break;
+        }
+        // Ground glow (bottom) fades to a darker tone at the top — all opaque
+        // so no GL blending flag is required.
+        Color groundGlow = new Color(r, g, b, 1f);
+        Color skyDark = new Color(r * 0.35f, g * 0.35f, b * 0.35f, 1f);
+        shapeRenderer.setProjectionMatrix(camera.combined);
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        // rect(x, y, w, h, c_bottomLeft, c_bottomRight, c_topRight, c_topLeft)
+        shapeRenderer.rect(0f, 0f, w, h, groundGlow, groundGlow, skyDark, skyDark);
+        shapeRenderer.end();
     }
 
     private void tickBattleFlow() {
@@ -266,8 +328,22 @@ public class BattleScreen implements Screen {
             return;
         }
         if (actor.getStatusEffectManager().shouldSkipTurn()) {
-            battleLog.add(actor.getName() + " is stunned and loses the turn.");
+            // Contextual message — name the actual status that caused the skip.
+            String reason;
+            if (actor.getStatusEffectManager().has(StatusEffectType.FREEZE)) {
+                reason = "is frozen solid";
+            } else if (actor.getStatusEffectManager().has(StatusEffectType.PARALYZE)) {
+                reason = "is paralyzed";
+            } else {
+                reason = "is stunned";
+            }
+            battleLog.add(actor.getName() + " " + reason + " and loses the turn.");
             endTurn(actor, 100);
+            // IMPORTANT: return here so the caller does not fall through to enemy-turn
+            // dispatch on the same frame. The actionDelay set by endTurn() currently
+            // prevents that, but an explicit return makes the intent self-documenting
+            // and eliminates the dependency on that side-effect.
+            return;
         }
     }
 
@@ -330,7 +406,7 @@ public class BattleScreen implements Screen {
                 }
                 selectedAbilityIndex = selectedIndex;
                 AbilityInstance ability = readyAbilityAt(activeActor, selectedAbilityIndex);
-                if (ability == null) {
+                if (ability == null || !ability.isReady()) {
                     battleLog.add("That ability is not ready.");
                     return;
                 }
@@ -551,11 +627,38 @@ public class BattleScreen implements Screen {
                     battleLog.add(target.getName() + " absorbs " + definition.getName() + " and restores " + Math.abs(damage) + " HP.");
                 } else {
                     battleLog.add(actor.getName() + " casts " + definition.getName() + " on " + target.getName() + " for " + damage + " damage.");
+                    // Primary status: when no secondaryStatus but secondaryTargetType is set,
+                    // the primary status is redirected to that target (e.g. Berserker Rush
+                    // applies Berserk to the CASTER, not to the enemy it just hit).
                     if (definition.getAppliedStatus() != null) {
-                        target.getStatusEffectManager().apply(
-                            definition.getAppliedStatus(),
-                            adjustedStatusTurns(actor, definition.getAppliedStatus(), Math.max(1, definition.getStatusTurns()))
-                        );
+                        boolean primaryRedirected = definition.getSecondaryStatus() == null
+                            && definition.getSecondaryTargetType() != null;
+                        BattleCombatant primaryStatusTarget = primaryRedirected
+                            ? resolveSecondaryTarget(actor, definition.getSecondaryTargetType())
+                            : target;
+                        if (primaryStatusTarget != null) {
+                            primaryStatusTarget.getStatusEffectManager().apply(
+                                definition.getAppliedStatus(),
+                                adjustedStatusTurns(actor, definition.getAppliedStatus(), Math.max(1, definition.getStatusTurns()))
+                            );
+                            battleLog.add(primaryStatusTarget.getName() + " is afflicted with "
+                                + prettifyStatus(definition.getAppliedStatus()) + ".");
+                        }
+                    }
+                    // Secondary status (e.g. Gravity Well slows ALL_ENEMIES and protects SELF).
+                    if (definition.getSecondaryStatus() != null) {
+                        BattleCombatant secondaryStatusTarget = definition.getSecondaryTargetType() != null
+                            ? resolveSecondaryTarget(actor, definition.getSecondaryTargetType())
+                            : target;
+                        if (secondaryStatusTarget != null) {
+                            secondaryStatusTarget.getStatusEffectManager().apply(
+                                definition.getSecondaryStatus(),
+                                adjustedStatusTurns(actor, definition.getSecondaryStatus(),
+                                    Math.max(1, definition.getSecondaryStatusTurns()))
+                            );
+                            battleLog.add(secondaryStatusTarget.getName() + " is affected by "
+                                + prettifyStatus(definition.getSecondaryStatus()) + ".");
+                        }
                     }
                 }
                 applyPostHitUniqueEffects(actor, target, damage, true, definition.getName());
@@ -582,6 +685,19 @@ public class BattleScreen implements Screen {
                         adjustedStatusTurns(actor, definition.getAppliedStatus(), Math.max(1, definition.getStatusTurns()))
                     );
                 }
+                // Secondary status for buffs (e.g. Genesis Field gives REGEN + SHELL to all allies).
+                if (definition.getSecondaryStatus() != null) {
+                    BattleCombatant secondaryStatusTarget = definition.getSecondaryTargetType() != null
+                        ? resolveSecondaryTarget(actor, definition.getSecondaryTargetType())
+                        : target;
+                    if (secondaryStatusTarget != null) {
+                        secondaryStatusTarget.getStatusEffectManager().apply(
+                            definition.getSecondaryStatus(),
+                            adjustedStatusTurns(actor, definition.getSecondaryStatus(),
+                                Math.max(1, definition.getSecondaryStatusTurns()))
+                        );
+                    }
+                }
                 battleLog.add(actor.getName() + " uses " + definition.getName() + " on " + target.getName() + ".");
                 break;
             case DEBUFF:
@@ -591,11 +707,61 @@ public class BattleScreen implements Screen {
                         adjustedStatusTurns(actor, definition.getAppliedStatus(), Math.max(1, definition.getStatusTurns()))
                     );
                 }
+                // Secondary status for debuffs (e.g. Omniscience Eye applies WEAKEN + SLOW).
+                if (definition.getSecondaryStatus() != null) {
+                    BattleCombatant secondaryStatusTarget = definition.getSecondaryTargetType() != null
+                        ? resolveSecondaryTarget(actor, definition.getSecondaryTargetType())
+                        : target;
+                    if (secondaryStatusTarget != null) {
+                        secondaryStatusTarget.getStatusEffectManager().apply(
+                            definition.getSecondaryStatus(),
+                            adjustedStatusTurns(actor, definition.getSecondaryStatus(),
+                                Math.max(1, definition.getSecondaryStatusTurns()))
+                        );
+                    }
+                }
                 battleLog.add(actor.getName() + " afflicts " + target.getName() + " with " + definition.getName() + ".");
                 break;
             default:
                 break;
         }
+    }
+
+    /**
+     * Resolves a single combatant that should receive a secondary or redirected
+     * status effect, based on the override target type declared in the ability.
+     *
+     * <p>SELF always maps back to the acting combatant. Enemy/Ally types return
+     * the first available member of that group (used only when a single secondary
+     * target must be resolved — AoE abilities that loop over targets handle their
+     * own iteration in {@link #useAbility}).
+     */
+    private BattleCombatant resolveSecondaryTarget(BattleCombatant actor,
+                                                    AbilityDefinition.TargetType targetType) {
+        if (targetType == null || actor == null) {
+            return null;
+        }
+        switch (targetType) {
+            case SELF:
+                return actor;
+            case SINGLE_ALLY:
+            case ALL_ALLIES:
+                // Treat as "the casting unit" when resolving a single secondary recipient.
+                return actor;
+            case SINGLE_ENEMY:
+            case ALL_ENEMIES:
+                List<BattleCombatant> enemies = livingEnemies();
+                return enemies.isEmpty() ? null : enemies.get(0);
+            default:
+                return actor;
+        }
+    }
+
+    /** Capitalises a StatusEffectType name for readable battle-log output. */
+    private String prettifyStatus(StatusEffectType type) {
+        if (type == null) return "";
+        String lower = type.name().toLowerCase().replace('_', ' ');
+        return Character.toUpperCase(lower.charAt(0)) + lower.substring(1);
     }
 
     private void analyzeEnemy(BattleCombatant actor, BattleCombatant enemy) {
@@ -1298,6 +1464,10 @@ public class BattleScreen implements Screen {
                 return combatantOptions(livingAllies());
             case ROOT:
             default:
+                // BERSERK command lock: when the actor is berserked, only Attack is available.
+                if (activeActor != null && activeActor.getStatusEffectManager().canAttackOnly()) {
+                    return BERSERK_ROOT_ACTIONS;
+                }
                 return ROOT_ACTIONS;
         }
     }

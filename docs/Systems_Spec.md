@@ -707,27 +707,242 @@ Final vision post-game includes:
 
 ## 25. Current Build vs Final Systems Vision
 
-The current codebase already includes foundations for:
+All five planned development phases are complete. The codebase now implements the full production scope of every major system layer.
 
-- combat flow
-- screens
-- save/load
-- robot rosters
-- equipment data
-- world zones
+### 25.1 Implemented Systems (Production-Complete)
 
-The final systems vision is substantially larger and includes:
+| System | Implemented State |
+|---|---|
+| Combat engine | 28 combat classes, CTB-lite timeline, Attack/Defend/Ability/Item/Analyze/Flee commands, 1–5 enemy encounters, full results screen with XP/gold/proficiency/drops |
+| Elemental system | Six elements (Fire, Ice, Thunder, Wind, Earth, Water), weakness/resistance/absorb resolution in CombatResolver.java |
+| Status system | 15 status effects with stacking and counter rules in StatusEffectManager.java |
+| Ability proficiency | Level 1–10 through use; evolution to Unique Skill via AbilityEvolutionManager.java |
+| Weapon proficiency | 8 weapon families tracked via WeaponProficiencyTracker.java; 8-track mastery support present |
+| Robot system | 5 families × 3 tiers = 15 robot variants; active party + reserve roster; deployment fully operational |
+| Discoverable robots | 10 recruitment events wired to in-world chests, NPCs, and story events |
+| Robot evolution | MK-I → MK-II → MK-III framework via RobotEvolutionManager.java |
+| Crafting | Full multi-station pipeline: ForgeScreen.java, ForgeRecipeDefinition.java, ForgeComponentDefinition.java, ForgeIngredientDefinition.java |
+| Equipment fusion | Fusion framework present in WorkshopScreen.java |
+| Overworld exploration | 16 production zones with TMX maps, NPCs, chests, doors, story events, and enemy spawns |
+| Environmental interaction | burn_barrier, strength_boulder, scan_hidden_path — all three types wired in GameScreen and present in 6 TMX maps |
+| Dragon Riding | Traversal network across 7 TMX files; unlocked by dragon boss defeat; gated by `frontier.dragon_roosts_active` |
+| Hub settlement | 4 facilities × 3 tiers = 12 upgrades; SettlementManager wired; all 7 Ironhaven NPCs implemented |
+| Quest system | 34 quests: 10 main (4 acts) + 24 side (5 categories); all steps verified by Python cross-validation |
+| Dialogue system | 112 entries across 28 NPCs; full priority-gating, quest-state conditions, and world-flag effects |
+| Story event system | 30+ events: 9 zone intros, 11 boss defeats, 3 frontier-state triggers |
+| Bestiary / Analyze | 3 scan levels, persistence via BestiaryManager.java |
+| Save / load | Broad persistent state across all systems via SaveManager.java |
+| Endgame content | The Void with Memory Lane, Gauntlet of Trials, Throne of Origin; Infinite Dungeon with procedural floor generation; 4 S-rank superbosses |
 
-- full CTB behavior
-- complete elemental wheel
-- full status framework
-- complete proficiency-through-use model
-- weapon Combat Arts
-- 8-weapon mastery support
-- tiered crafting stations
-- full fusion economy
-- endgame and endless modes
+### 25.2 Remaining Gaps vs Final Vision
 
-## 26. Systems Summary
+These items are aspirational scope beyond the five-phase plan — the difference between current production and the full final vision:
+
+| Gap | Current State | Final Vision Target |
+|---|---|---|
+| Elemental Break mechanic | Not yet implemented | Breaks opponent elemental resistance for one round |
+| CTB timeline depth | CTB-lite functional for current content | Full FFX-depth CTB with per-ability speed costs |
+| Combat Arts | Generic placeholder actions | Weapon-specific real actions per weapon family |
+| Quest count | 34 quests (5 categories) | 60+ quests (8 categories including Monster Bounty, Arena Challenge, NPC Rescue) |
+| Zone count | 16 zones | 25+ world spaces |
+| Equipment tiers | Tiers 1–4 in production | Tier 5 and Mythic tier |
+| Fusion economy | Framework present | Full tier-to-tier fusion gating |
+| Archive integration | BestiaryManager persists data | Archive screen hub integration |
+| Forge Core milestones | Upgrade via quest chain | Boss-count gating (5/10/15 bosses → Lv2/3/4) |
+| Enemy variety | Broad rank ladder, 4 S-rank superbosses | Larger per-zone enemy roster |
+
+## 26. Roguelike Loop: Shard Runs + Forge Legacy
+
+The name RogueForge promises a roguelike identity. The two-system design below delivers that identity while preserving the persistent open-world and quest content already built.
+
+### 26.1 Design Philosophy
+
+Two systems operate in tandem:
+
+- **Shard Runs** provide the roguelike pressure — a stripped, high-stakes dungeon mode where every run is different and death is cheap.
+- **Forge Legacy** provides the roguelike reward — a meta-progression layer where death permanently unlocks something, so every wipe moves the player forward.
+
+Neither system requires touching the main overworld or quest content. Shard Runs use the existing Infinite Dungeon as their arena. Forge Legacy uses the existing Ironhaven settlement as its reward hub.
+
+---
+
+### 26.2 Shard Runs
+
+#### What It Is
+
+The player enters the Infinite Dungeon in Shard Run mode via a dedicated terminal in Ironhaven. On entry, their full equipment and robot loadout is stripped. They begin a run with a baseline kit and build from scratch by clearing floors.
+
+#### Entry State
+
+- Player starts with: starter weapon, one MK-I robot (chosen from 3 random options), 100 gold, no abilities evolved
+- All Forge Legacy unlocks (see 26.3) are applied at entry as passive permanent bonuses
+- Active quest progress, overworld items, and regular save state are untouched — Shard Runs exist in a parallel state layer
+
+#### Floor Structure
+
+Each floor has a fixed structure:
+
+1. **Combat rooms** (3–5 per floor) — standard encounters scaled to floor depth
+2. **Loot room** — chest with gear, crafting material, or a Shard Module (see below)
+3. **Merchant room** — wandering trader offers 3 items for gold dropped in the run
+4. **Boss room** — named floor boss; clearing it advances to the next floor
+
+Floor count is unlimited. Difficulty scales continuously. Floors 1–5 are Starter, 6–15 are Frontier, 16–30 are Deep Forge, 31+ are Abyss.
+
+#### Shard Modules
+
+Shard Modules are run-only passive upgrades found in loot rooms or purchased from floor merchants. They stack within a run and are lost on death or exit.
+
+Examples:
+
+| Module | Effect |
+|---|---|
+| Tempered Core | +15% physical damage this run |
+| Overclock Cell | Robot acts twice on turns where HP > 75% |
+| Recycler Unit | Gain 10 gold whenever an enemy is defeated by a status effect |
+| Breaker Circuit | First elemental hit each battle applies a free Elemental Break |
+| Ghost Protocol | Once per run, revive with 25% HP instead of dying |
+| Volatile Alloy | All crits deal +40% damage but player takes +10% damage |
+
+Modules form the run-to-run variation that makes each attempt feel distinct. Players draft a build from random offerings rather than arriving with a fixed loadout.
+
+#### Robot Drafting
+
+During a run, the player can find or buy additional robots (MK-I only at start). Robot grade, species, and role rotate randomly per floor set. Evolving a robot within a run (MK-I → MK-II → MK-III) is possible using materials found in the dungeon — evolution does not require Ironhaven facilities mid-run.
+
+#### Death
+
+On death, the run ends immediately. The player returns to Ironhaven. They receive:
+
+- **Forge Shards** — the meta currency of Forge Legacy, earned based on floors cleared (see 26.3)
+- **Run Echo** — a summary card showing floors cleared, peak damage, modules collected, and cause of death
+- No penalty to overworld progress, gold, or equipment
+
+#### Successful Exit
+
+The player can exit a Shard Run at any staircase by choosing "Seal Run" instead of descending. On exit:
+
+- Forge Shards are awarded at 1.5× the death rate
+- One **Sealed Cache** drops — a chest delivered to the player’s Ironhaven storage containing run-quality loot (scales with floor reached)
+- The run is marked complete; a new run can be started immediately
+
+---
+
+### 26.3 Forge Legacy (Meta-Progression)
+
+#### What It Is
+
+Forge Legacy is a permanent unlock tree funded by Forge Shards. Every run — successful or not — contributes Shards. The tree represents the cumulative knowledge and hardware the player has salvaged across all their attempts.
+
+Forge Legacy unlocks persist across all runs and across the full save file. They apply to both Shard Runs (as starting bonuses) and the overworld (as passive stat improvements).
+
+#### Forge Shard Economy
+
+| Outcome | Forge Shards Awarded |
+|---|---|
+| Each floor cleared | 10 Shards |
+| Each boss defeated | 25 Shards |
+| Successful exit (Seal Run) | 50 bonus Shards |
+| Death on floors 1–5 | 0 bonus Shards |
+| Death on floors 6–15 | 15 bonus Shards |
+| Death on floors 16–30 | 35 bonus Shards |
+| Death on floors 31+ | 60 bonus Shards |
+
+#### Legacy Tree Structure
+
+The tree has four branches. Each node costs an escalating Shard amount and unlocks permanently.
+
+**Branch A — Forge Foundation (starting kit improvements)**
+
+| Node | Cost | Effect |
+|---|---|---|
+| Better Alloy | 50 | Start with a Tier 2 weapon instead of Tier 1 |
+| Reserve Cell | 100 | Start with one extra consumable |
+| Crew of Two | 150 | Start with 2 robot choices instead of 3 random options (pick 1 of 2) |
+| Veteran’s Edge | 250 | Start with one random Shard Module already equipped |
+| Full Crew Draft | 400 | Start with 3 robot choices |
+| Loaded Manifest | 600 | Start with 200 gold instead of 100 |
+
+**Branch B — Echo Proficiency (carry-over of skills)**
+
+| Node | Cost | Effect |
+|---|---|---|
+| Muscle Memory | 75 | Carry 1 Ability at Proficiency Lv1 into each run |
+| Deep Conditioning | 200 | Proficiency carry-in increases to Lv3 |
+| Weapon Echo | 300 | Carry 2 Weapon Proficiency levels (of most-used weapon type) into each run |
+| Full Recall | 500 | Carry proficiency for 2 Abilities and 1 Weapon type |
+
+**Branch C — Ironhaven Legacy (overworld permanent bonuses)**
+
+| Node | Cost | Effect |
+|---|---|---|
+| Toughened Frame | 100 | +5% max HP in overworld and Shard Runs |
+| Resonance Tuning | 150 | +5% elemental ability damage globally |
+| Salvage Protocol | 200 | +15% gold from all enemy drops (overworld and runs) |
+| Hardened Core | 350 | +10% physical damage globally |
+| Adaptive Systems | 500 | All robots gain +1 base speed |
+| Legacy Alloy | 800 | +1 to all equipment tiers found in the overworld (min. Tier 2) |
+
+**Branch D — Module Inheritance (unlock rare module pool)**
+
+| Node | Cost | Effect |
+|---|---|---|
+| Module Archive I | 100 | Adds 3 rare Shard Modules to the run loot pool |
+| Module Archive II | 250 | Adds 4 more rare modules to the pool |
+| Module Archive III | 500 | Adds the full Legendary module set to the pool |
+| Cursed Catalogue | 400 | Unlocks Cursed Modules — powerful effects with a downside; required for the highest floor depths |
+
+#### Ironhaven Integration
+
+Forge Shards are spent at a new Ironhaven facility: the **Legacy Vault**, located adjacent to the Forge Core. The Legacy Vault NPC (working name: **Coda**) manages the tree and provides run history. The Vault becomes available after the player first attempts a Shard Run, regardless of floor reached.
+
+---
+
+### 26.4 Shard Run Modifiers (Advanced)
+
+Once the player has cleared floor 15 at least once, the Shard Run terminal offers optional **Run Modifiers** — voluntary handicaps that multiply Shard rewards.
+
+| Modifier | Shard Multiplier | Effect |
+|---|---|---|
+| Iron Pact | ×1.5 | No consumable items in the run |
+| Stripped | ×1.5 | Module slots reduced from 6 to 3 |
+| Solo | ×2.0 | No robots — player character only |
+| Cursed Clock | ×2.0 | Each floor has a turn limit; exceeding it wipes the run |
+| All Hazards | ×2.5 | All four hazard modifiers active simultaneously |
+
+Modifiers stack multiplicatively. A full-hazard Solo Cursed Clock run is ×6.0 — designed for players who have exhausted the standard depth ceiling.
+
+---
+
+### 26.5 Integration Points with Existing Systems
+
+| Existing System | Integration |
+|---|---|
+| Infinite Dungeon | Shard Runs use the same procedural floor generator; Shard Run mode is a flag passed at entry |
+| SettlementManager | Legacy Vault is a fifth facility added to Ironhaven; follows the same tier-upgrade pattern |
+| ForgeRecipeDefinition | Sealed Cache loot uses the existing chest/loot framework |
+| AbilityEvolutionManager | Branch B carry-in applies proficiency at run start via a pre-combat hook |
+| SaveManager | Forge Shard balance, Legacy tree state, and run history are new persistent save fields |
+| Dialogue system | Coda (Legacy Vault NPC) uses the same NPC dialogue JSON format with run-history-aware flags |
+| BestiaryManager | Shard Run kills count toward Bestiary completion |
+
+---
+
+### 26.6 New Flags and State
+
+New world flags introduced by this system:
+
+| Flag | Set By | Effect |
+|---|---|---|
+| `meta.shard_run_unlocked` | First entry into Shard Run terminal | Enables Legacy Vault in Ironhaven |
+| `meta.floor15_cleared` | Floor 15 boss defeated in any run | Unlocks Run Modifier menu |
+| `meta.floor30_cleared` | Floor 30 boss defeated in any run | Unlocks Cursed Module pool |
+| `meta.legacy_branch_X_maxed` | All nodes in branch X purchased | Cosmetic reward + Coda dialogue chain |
+
+---
+
+## 27. Systems Summary
 
 RogueForge’s final systems design is built around the idea that combat, progression, exploration, and hub growth must continuously feed one another. Battles produce mastery and materials, mastery unlocks deeper tactical expression, exploration yields better opportunities and hidden systems, and every major success returns to Ironhaven as visible progress.
+
+The Shard Run / Forge Legacy layer adds a second axis: every death produces permanent progress. The roguelike loop and the open-world RPG loop reinforce each other — players who run the dungeon become stronger in the overworld, and players who push the overworld unlock better starting conditions for dungeon runs.

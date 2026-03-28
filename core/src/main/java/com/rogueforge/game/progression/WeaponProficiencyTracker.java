@@ -75,10 +75,18 @@ public final class WeaponProficiencyTracker {
 
     // ── Scaling formulas ───────────────────────────────────────────────────
 
-    /** Returns the physical damage multiplier for the given proficiency level (1–10). */
+    /**
+     * Returns the physical damage multiplier for the given proficiency level (1–10).
+     *
+     * <p>Formula: {@code 1.0 + (level × 0.05)}, matching the GDD spec of
+     * {@code weaponMultiplier = 1.0 + (weaponProficiency × 0.05)}.
+     * At level 1 this yields 1.05× (5 % bonus); at max level 10 it yields 1.50×
+     * (50 % bonus), giving mastery a meaningful, tangible payoff over a fresh
+     * weapon user.
+     */
     public static float damageMultiplier(int level) {
         int clamped = Math.max(1, Math.min(10, level));
-        return 1f + ((clamped - 1) * 0.03f);
+        return 1f + (clamped * 0.05f);
     }
 
     // ── UI helpers ─────────────────────────────────────────────────────────

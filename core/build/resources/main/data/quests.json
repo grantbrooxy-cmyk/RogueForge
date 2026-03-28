@@ -1,7 +1,34 @@
 [
   {
+    "id": "ironhaven_arrival",
+    "title": "Ironhaven",
+    "act": 1,
+    "mainQuest": true,
+    "autoStart": true,
+    "startStepId": "meet_bram",
+    "steps": [
+      { "id": "meet_bram", "objective": "Speak with Bram, the settlement leader of Ironhaven." },
+      { "id": "survey_town", "objective": "Explore Ironhaven and speak with the people here.", "completionWorldFlag": "arrival.town_surveyed" },
+      { "id": "return_bram", "objective": "Report back to Bram once you know what Ironhaven needs." }
+    ]
+  },
+  {
+    "id": "first_steps",
+    "title": "First Steps",
+    "act": 1,
+    "mainQuest": true,
+    "autoStart": false,
+    "startStepId": "speak_mira_intro",
+    "steps": [
+      { "id": "speak_mira_intro", "objective": "Speak with Mira about proving your crew's capabilities." },
+      { "id": "verdant_patrol", "objective": "Take your crew into Verdant Fields and survive the frontier.", "completionWorldFlag": "arrival.first_battle_won" },
+      { "id": "return_mira_intro", "objective": "Return to Mira and show her what your team is capable of." }
+    ]
+  },
+  {
     "id": "shard_hunt",
     "title": "Luminous Shard",
+    "act": 1,
     "mainQuest": true,
     "autoStart": false,
     "startStepId": "talk_mira",
@@ -14,6 +41,7 @@
   {
     "id": "core_ascent",
     "title": "Sun Core",
+    "act": 1,
     "mainQuest": true,
     "autoStart": false,
     "startStepId": "talk_edda",
@@ -24,89 +52,35 @@
     ]
   },
   {
-    "id": "field_medic",
-    "title": "Field Medic",
-    "mainQuest": false,
+    "id": "frontier_push",
+    "title": "Frontier Push",
+    "act": 2,
+    "mainQuest": true,
     "autoStart": false,
-    "startStepId": "speak_iris",
+    "startStepId": "speak_bram_expand",
     "steps": [
-      { "id": "speak_iris", "objective": "Speak with Iris about salvage-worthy support frames." },
-      { "id": "recruit_medic", "objective": "Recruit the Medic frame into your active crew.", "completionWorldFlag": "recruit.medic_joined" }
+      { "id": "speak_bram_expand", "objective": "Speak with Bram about expanding beyond the mountain now that the warding pylons are online." },
+      { "id": "chart_midlands", "objective": "Reach and survive one of the mid-frontier zones beyond Dragon Peak.", "completionWorldFlag": "frontier.midlands_charted" },
+      { "id": "return_bram_expand", "objective": "Return to Bram with news of the frontier beyond the mountain." }
     ]
   },
   {
-    "id": "vault_rumor",
-    "title": "Vault Rumor",
-    "mainQuest": false,
+    "id": "deep_signal",
+    "title": "Deep Signal",
+    "act": 2,
+    "mainQuest": true,
     "autoStart": false,
-    "startStepId": "hear_rumor",
+    "startStepId": "speak_nia_signal",
     "steps": [
-      { "id": "hear_rumor", "objective": "Follow Nia's rumor about a hidden stash." },
-      { "id": "find_stash", "objective": "Search for the hidden chest in the herbalist's house.", "completionWorldFlag": "chest.herbalist_hidden.opened" }
-    ]
-  },
-  {
-    "id": "workshop_tools",
-    "title": "Workshop Tools",
-    "mainQuest": false,
-    "autoStart": false,
-    "startStepId": "speak_toma",
-    "steps": [
-      { "id": "speak_toma", "objective": "Help Toma restore the workshop line after the shard is returned." },
-      { "id": "upgrade_workshop", "objective": "Secure the workshop tool upgrade.", "completionWorldFlag": "settlement.workshop_tools" }
-    ]
-  },
-  {
-    "id": "watchtower_links",
-    "title": "Watchtower Links",
-    "mainQuest": false,
-    "autoStart": false,
-    "startStepId": "speak_bram",
-    "steps": [
-      { "id": "speak_bram", "objective": "Speak with Bram about relighting the town watchtower." },
-      { "id": "report_tor", "objective": "Carry Bram's repair notes to Tor." },
-      { "id": "return_bram", "objective": "Return to Bram so the watchtower can come online.", "completionWorldFlag": "settlement.watchtower_network" }
-    ]
-  },
-  {
-    "id": "survey_drones",
-    "title": "Survey Drones",
-    "mainQuest": false,
-    "autoStart": false,
-    "startStepId": "speak_nia",
-    "steps": [
-      { "id": "speak_nia", "objective": "Speak with Nia about the frontier survey drones." },
-      { "id": "speak_toma", "objective": "Ask Toma to restore the old survey relay." },
-      { "id": "return_nia", "objective": "Return to Nia once the relay is rebuilt.", "completionWorldFlag": "settlement.survey_drones" }
-    ]
-  },
-  {
-    "id": "forest_glade",
-    "title": "Moonlit Glade",
-    "mainQuest": false,
-    "autoStart": false,
-    "startStepId": "speak_pell",
-    "steps": [
-      { "id": "speak_pell", "objective": "Speak with Ranger Pell in Whispering Forest." },
-      { "id": "open_glade", "objective": "Use a scan-capable frame to reveal the hidden glade in Whispering Forest.", "completionWorldFlag": "frontier.forest_hidden_glade_open" },
-      { "id": "return_pell", "objective": "Return to Ranger Pell with news of the hidden glade." }
-    ]
-  },
-  {
-    "id": "quarry_sluice",
-    "title": "Sluice Break",
-    "mainQuest": false,
-    "autoStart": false,
-    "startStepId": "speak_jora",
-    "steps": [
-      { "id": "speak_jora", "objective": "Speak with Jora in Rusty Quarry." },
-      { "id": "force_sluice", "objective": "Force open the jammed sluice in Rusty Quarry with a heavy frame.", "completionWorldFlag": "frontier.quarry_sluice_forced" },
-      { "id": "return_jora", "objective": "Report back to Jora once the sluice is open." }
+      { "id": "speak_nia_signal", "objective": "Speak with Nia about the anomalous signal she detected from the deep water zones." },
+      { "id": "investigate_shallows", "objective": "Investigate the Coastal Shallows for the source of the signal.", "completionWorldFlag": "frontier.abyss_signal_found" },
+      { "id": "speak_maren_intro", "objective": "Report the signal evidence to Captain Maren." }
     ]
   },
   {
     "id": "abyss_archive",
     "title": "Into The Deep",
+    "act": 3,
     "mainQuest": true,
     "autoStart": false,
     "startStepId": "speak_maren",
@@ -119,6 +93,7 @@
   {
     "id": "fortress_command",
     "title": "Sky High Secrets",
+    "act": 3,
     "mainQuest": true,
     "autoStart": false,
     "startStepId": "speak_rex",
@@ -131,6 +106,7 @@
   {
     "id": "void_key",
     "title": "The Final Gate",
+    "act": 3,
     "mainQuest": true,
     "autoStart": false,
     "startStepId": "speak_clockmaker",
@@ -143,6 +119,7 @@
   {
     "id": "origin_descent",
     "title": "Origin",
+    "act": 4,
     "mainQuest": true,
     "autoStart": false,
     "startStepId": "speak_watcher",
@@ -152,8 +129,193 @@
     ]
   },
   {
+    "id": "field_medic",
+    "title": "Field Medic",
+    "category": "recruitment",
+    "mainQuest": false,
+    "autoStart": false,
+    "startStepId": "speak_iris",
+    "steps": [
+      { "id": "speak_iris", "objective": "Speak with Iris about salvage-worthy support frames." },
+      { "id": "recruit_medic", "objective": "Recruit the Medic frame into your active crew.", "completionWorldFlag": "recruit.medic_joined" }
+    ]
+  },
+  {
+    "id": "vault_rumor",
+    "title": "Vault Rumor",
+    "category": "exploration",
+    "mainQuest": false,
+    "autoStart": false,
+    "startStepId": "hear_rumor",
+    "steps": [
+      { "id": "hear_rumor", "objective": "Follow Nia's rumor about a hidden stash." },
+      { "id": "find_stash", "objective": "Search for the hidden chest in the herbalist's house.", "completionWorldFlag": "chest.herbalist_hidden.opened" }
+    ]
+  },
+  {
+    "id": "workshop_tools",
+    "title": "Workshop Tools",
+    "category": "settlement",
+    "mainQuest": false,
+    "autoStart": false,
+    "startStepId": "speak_toma",
+    "steps": [
+      { "id": "speak_toma", "objective": "Help Toma restore the workshop line after the shard is returned." },
+      { "id": "upgrade_workshop", "objective": "Secure the workshop tool upgrade.", "completionWorldFlag": "settlement.workshop_tools" }
+    ]
+  },
+  {
+    "id": "watchtower_links",
+    "title": "Watchtower Links",
+    "category": "settlement",
+    "mainQuest": false,
+    "autoStart": false,
+    "startStepId": "speak_bram",
+    "steps": [
+      { "id": "speak_bram", "objective": "Speak with Bram about relighting the town watchtower." },
+      { "id": "report_tor", "objective": "Carry Bram's repair notes to Tor." },
+      { "id": "return_bram", "objective": "Return to Bram so the watchtower can come online.", "completionWorldFlag": "settlement.watchtower_network" }
+    ]
+  },
+  {
+    "id": "survey_drones",
+    "title": "Survey Drones",
+    "category": "settlement",
+    "mainQuest": false,
+    "autoStart": false,
+    "startStepId": "speak_nia",
+    "steps": [
+      { "id": "speak_nia", "objective": "Speak with Nia about the frontier survey drones." },
+      { "id": "speak_toma", "objective": "Ask Toma to restore the old survey relay." },
+      { "id": "return_nia", "objective": "Return to Nia once the relay is rebuilt.", "completionWorldFlag": "settlement.survey_drones" }
+    ]
+  },
+  {
+    "id": "advanced_alloys",
+    "title": "Advanced Alloys",
+    "category": "settlement",
+    "mainQuest": false,
+    "autoStart": false,
+    "startStepId": "speak_silas",
+    "steps": [
+      { "id": "speak_silas", "objective": "Ask Master Silas about upgrading the workshop's alloy chambers." },
+      { "id": "upgrade_alloys", "objective": "Fund the advanced alloy retool.", "completionWorldFlag": "settlement.advanced_alloys" }
+    ]
+  },
+  {
+    "id": "fusion_forge",
+    "title": "Fusion Forge",
+    "category": "settlement",
+    "mainQuest": false,
+    "autoStart": false,
+    "startStepId": "speak_silas_fusion",
+    "steps": [
+      { "id": "speak_silas_fusion", "objective": "Ask Master Silas about restoring the old fusion cradle." },
+      { "id": "restore_cradle", "objective": "Fund the fusion forge restoration.", "completionWorldFlag": "settlement.fusion_forge" }
+    ]
+  },
+  {
+    "id": "relay_expansion",
+    "title": "Relay Expansion",
+    "category": "settlement",
+    "mainQuest": false,
+    "autoStart": false,
+    "startStepId": "speak_rex_relay",
+    "steps": [
+      { "id": "speak_rex_relay", "objective": "Ask Commander Rex about extending the watchtower relay range." },
+      { "id": "fund_relay", "objective": "Fund the relay expansion.", "completionWorldFlag": "settlement.relay_expansion" }
+    ]
+  },
+  {
+    "id": "command_hub",
+    "title": "Command Hub",
+    "category": "settlement",
+    "mainQuest": false,
+    "autoStart": false,
+    "startStepId": "speak_rex_hub",
+    "steps": [
+      { "id": "speak_rex_hub", "objective": "Ask Commander Rex about establishing a proper command hub." },
+      { "id": "build_hub", "objective": "Fund the command hub construction.", "completionWorldFlag": "settlement.command_hub" }
+    ]
+  },
+  {
+    "id": "data_vaults",
+    "title": "Data Vaults",
+    "category": "settlement",
+    "mainQuest": false,
+    "autoStart": false,
+    "startStepId": "speak_cogs_vaults",
+    "steps": [
+      { "id": "speak_cogs_vaults", "objective": "Ask Professor Cogs about indexing the drone survey data." },
+      { "id": "build_vaults", "objective": "Fund the data vault construction.", "completionWorldFlag": "settlement.data_vaults" }
+    ]
+  },
+  {
+    "id": "prototype_lab",
+    "title": "Prototype Lab",
+    "category": "settlement",
+    "mainQuest": false,
+    "autoStart": false,
+    "startStepId": "speak_cogs_lab",
+    "steps": [
+      { "id": "speak_cogs_lab", "objective": "Ask Professor Cogs about opening a frontier prototype lab." },
+      { "id": "build_lab", "objective": "Fund the prototype lab.", "completionWorldFlag": "settlement.prototype_lab" }
+    ]
+  },
+  {
+    "id": "field_kit_supply",
+    "title": "Field Kit Supply",
+    "category": "settlement",
+    "mainQuest": false,
+    "autoStart": false,
+    "startStepId": "speak_elena_kits",
+    "steps": [
+      { "id": "speak_elena_kits", "objective": "Ask Elena about building proper field kits for the crew." },
+      { "id": "stock_kits", "objective": "Fund the field kit supply expansion.", "completionWorldFlag": "settlement.field_kit_supply" }
+    ]
+  },
+  {
+    "id": "experimental_compounds",
+    "title": "Experimental Compounds",
+    "category": "settlement",
+    "mainQuest": false,
+    "autoStart": false,
+    "startStepId": "speak_elena_compounds",
+    "steps": [
+      { "id": "speak_elena_compounds", "objective": "Ask Elena about experimenting with frontier-sourced materials." },
+      { "id": "fund_compounds", "objective": "Fund the experimental compound research.", "completionWorldFlag": "settlement.experimental_compounds" }
+    ]
+  },
+  {
+    "id": "forest_glade",
+    "title": "Moonlit Glade",
+    "category": "exploration",
+    "mainQuest": false,
+    "autoStart": false,
+    "startStepId": "speak_pell",
+    "steps": [
+      { "id": "speak_pell", "objective": "Speak with Ranger Pell in Whispering Forest." },
+      { "id": "open_glade", "objective": "Use a scan-capable frame to reveal the hidden glade in Whispering Forest.", "completionWorldFlag": "frontier.forest_hidden_glade_open" },
+      { "id": "return_pell", "objective": "Return to Ranger Pell with news of the hidden glade." }
+    ]
+  },
+  {
+    "id": "quarry_sluice",
+    "title": "Sluice Break",
+    "category": "exploration",
+    "mainQuest": false,
+    "autoStart": false,
+    "startStepId": "speak_jora",
+    "steps": [
+      { "id": "speak_jora", "objective": "Speak with Jora in Rusty Quarry." },
+      { "id": "force_sluice", "objective": "Force open the jammed sluice in Rusty Quarry with a heavy frame.", "completionWorldFlag": "frontier.quarry_sluice_forced" },
+      { "id": "return_jora", "objective": "Report back to Jora once the sluice is open." }
+    ]
+  },
+  {
     "id": "cave_echoes",
     "title": "Cave Echoes",
+    "category": "exploration",
     "mainQuest": false,
     "autoStart": false,
     "startStepId": "speak_scout",
@@ -166,6 +328,7 @@
   {
     "id": "thorn_cache",
     "title": "Thorn Cache",
+    "category": "exploration",
     "mainQuest": false,
     "autoStart": false,
     "startStepId": "speak_nia",
@@ -178,6 +341,7 @@
   {
     "id": "collapsed_trail",
     "title": "Collapsed Trail",
+    "category": "exploration",
     "mainQuest": false,
     "autoStart": false,
     "startStepId": "speak_tor",
@@ -190,6 +354,7 @@
   {
     "id": "tidepool_signal",
     "title": "Tidepool Signal",
+    "category": "exploration",
     "mainQuest": false,
     "autoStart": false,
     "startStepId": "speak_reno",
@@ -200,8 +365,22 @@
     ]
   },
   {
+    "id": "scavenge_run",
+    "title": "Scavenge Run",
+    "category": "exploration",
+    "mainQuest": false,
+    "autoStart": false,
+    "startStepId": "speak_jax",
+    "steps": [
+      { "id": "speak_jax", "objective": "Speak with Jax about the sealed cache in the quarry's lower lane." },
+      { "id": "find_cache", "objective": "Locate and open the sealed supply cache in Rusty Quarry.", "completionWorldFlag": "frontier.quarry_cache_opened" },
+      { "id": "return_jax", "objective": "Return to Jax with the pre-collapse salvage." }
+    ]
+  },
+  {
     "id": "resonance_notes",
     "title": "Resonance Notes",
+    "category": "character",
     "mainQuest": false,
     "autoStart": false,
     "startStepId": "speak_lio",
@@ -214,6 +393,7 @@
   {
     "id": "pilgrims_circuit",
     "title": "Pilgrim's Circuit",
+    "category": "character",
     "mainQuest": false,
     "autoStart": false,
     "startStepId": "speak_vale",
@@ -224,20 +404,9 @@
     ]
   },
   {
-    "id": "forgefire_accord",
-    "title": "Forgefire Accord",
-    "mainQuest": false,
-    "autoStart": false,
-    "startStepId": "speak_toma_plateau",
-    "steps": [
-      { "id": "speak_toma_plateau", "objective": "Speak with Forgehand Toma on Scorched Plateau." },
-      { "id": "consult_kira", "objective": "Carry Toma's heat-tolerance specs to Forgehand Kira in Volcanic Core." },
-      { "id": "return_toma", "objective": "Return to Toma once Kira's furnace accord is ready." }
-    ]
-  },
-  {
     "id": "command_echoes",
     "title": "Command Echoes",
+    "category": "character",
     "mainQuest": false,
     "autoStart": false,
     "startStepId": "speak_rex_after",
@@ -245,6 +414,19 @@
       { "id": "speak_rex_after", "objective": "Speak with Commander Rex after restoring the command rails." },
       { "id": "consult_clockmaker", "objective": "Ask the Clockmaker Echo how to stabilize the newly awakened rail lattice." },
       { "id": "return_rex", "objective": "Return to Commander Rex with the Clockmaker's lattice sequence." }
+    ]
+  },
+  {
+    "id": "forgefire_accord",
+    "title": "Forgefire Accord",
+    "category": "crafting",
+    "mainQuest": false,
+    "autoStart": false,
+    "startStepId": "speak_toma_plateau",
+    "steps": [
+      { "id": "speak_toma_plateau", "objective": "Speak with Forgehand Toma on Scorched Plateau." },
+      { "id": "consult_kira", "objective": "Carry Toma's heat-tolerance specs to Forgehand Kira in Volcanic Core." },
+      { "id": "return_toma", "objective": "Return to Toma once Kira's furnace accord is ready." }
     ]
   }
 ]

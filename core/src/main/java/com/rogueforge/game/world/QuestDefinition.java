@@ -6,6 +6,8 @@ package com.rogueforge.game.world;
 public class QuestDefinition {
     private String id;
     private String title;
+    private int act;
+    private String category;
     private boolean mainQuest;
     private boolean autoStart;
     private String startStepId;
@@ -17,6 +19,14 @@ public class QuestDefinition {
 
     public String getTitle() {
         return title;
+    }
+
+    public int getAct() {
+        return act;
+    }
+
+    public String getCategory() {
+        return category != null ? category : "";
     }
 
     public boolean isMainQuest() {

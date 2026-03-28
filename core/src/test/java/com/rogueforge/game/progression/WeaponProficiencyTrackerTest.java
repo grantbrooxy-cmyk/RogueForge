@@ -54,7 +54,8 @@ class WeaponProficiencyTrackerTest {
         assertEquals(10, WeaponProficiencyTracker.xpForAttack());
         assertEquals("sword_cleave", WeaponProficiencyTracker.unlockArtId(WeaponType.SWORD, 3));
         assertEquals("Combat Art II", WeaponProficiencyTracker.unlockLabel(6));
-        assertEquals(1.0f, WeaponProficiencyTracker.damageMultiplier(1));
-        assertEquals(1.27f, WeaponProficiencyTracker.damageMultiplier(10));
+        // Formula: 1.0 + (level × 0.05) per GDD spec — Lv1 = 1.05×, Lv10 = 1.50×
+        assertEquals(1.05f, WeaponProficiencyTracker.damageMultiplier(1), 0.001f);
+        assertEquals(1.50f, WeaponProficiencyTracker.damageMultiplier(10), 0.001f);
     }
 }

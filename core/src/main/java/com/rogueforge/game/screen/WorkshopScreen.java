@@ -23,7 +23,7 @@ import java.util.Map;
  * In-game roster and equipment menu opened with I.
  */
 public class WorkshopScreen implements Screen {
-    private static final String[] TAB_LABELS = {"Roster", "Equipment", "Hub"};
+    private static final String[] TAB_LABELS = {"Roster", "Equipment", "Hub", "Archive"};
     private static final float TAB_W = 150f;
     private static final float TAB_H = 42f;
     private static final float TAB_GAP = 10f;
@@ -142,8 +142,10 @@ public class WorkshopScreen implements Screen {
             drawStatsPanel(w, h);
         } else if (currentTab == 1) {
             drawEquipmentPanel(w, h, mx, my);
-        } else {
+        } else if (currentTab == 2) {
             drawHubPanel(w, h);
+        } else {
+            drawArchivePanel(w, h);
         }
     }
 
@@ -185,6 +187,15 @@ public class WorkshopScreen implements Screen {
             for (int i = 0; i < gameScreen.getRobotCount() + 1; i++) {
                 float ry = h - 214f - (i * 62f);
                 if (mx >= 52f && mx <= 280f && my >= ry && my <= ry + 52f) {
+                    // Slot 0 is the player (always unlocked). Robot slots are
+                    // gated by Forge Core level / grade — index i maps to robot
+                    // party slot (i - 1), so lock when (i - 1) >= slotLimit.
+                    if (i > 0 && (i - 1) >= gameScreen.getPartySlotLimit()) {
+                        String req = gameScreen.getPartySlotNextGrade();
+                        statusMessage = "Slot " + i + " is locked."
+                            + (req != null ? " Requires " + req + "." : "");
+                        return;
+                    }
                     selectedPartyMember = i;
                     return;
                 }
@@ -277,28 +288,44 @@ public class WorkshopScreen implements Screen {
 
     private void drawRosterPanel(float h, float mx, float my) {
         hoveredRobot = -1;
+        int slotLimit = gameScreen.getPartySlotLimit();
         batch.begin();
         batch.setColor(0.12f, 0.14f, 0.2f, 0.96f);
         batch.draw(uiTexture, 40f, 80f, 250f, h - 250f);
 
         for (int i = 0; i < gameScreen.getRobotCount() + 1; i++) {
             float ry = h - 214f - (i * 62f);
-            if (mx >= 52f && mx <= 280f && my >= ry && my <= ry + 52f) {
+            boolean locked = i > 0 && (i - 1) >= slotLimit;
+            if (!locked && mx >= 52f && mx <= 280f && my >= ry && my <= ry + 52f) {
                 hoveredRobot = i;
             }
-            batch.setColor(i == selectedPartyMember ? new Color(0.7f, 0.46f, 0.2f, 1f)
-                : (i == hoveredRobot ? new Color(0.3f, 0.34f, 0.46f, 1f) : new Color(0.18f, 0.2f, 0.28f, 1f)));
+            if (locked) {
+                // Locked slots: very dim, no highlight
+                batch.setColor(0.10f, 0.11f, 0.16f, 1f);
+            } else {
+                batch.setColor(i == selectedPartyMember ? new Color(0.7f, 0.46f, 0.2f, 1f)
+                    : (i == hoveredRobot ? new Color(0.3f, 0.34f, 0.46f, 1f) : new Color(0.18f, 0.2f, 0.28f, 1f)));
+            }
             batch.draw(uiTexture, 52f, ry, 228f, 52f);
         }
         batch.setColor(Color.WHITE);
         for (int i = 0; i < gameScreen.getRobotCount() + 1; i++) {
-            GameScreen.RobotStatBlock stats = i == 0 ? gameScreen.getPlayerStats() : gameScreen.getRobotStats(i - 1);
-            bodyFont.setColor(Color.WHITE);
-            String name = i == 0 ? gameScreen.getPlayerName() : gameScreen.getRobotName(i - 1);
-            bodyFont.draw(batch, name, 66f, h - 182f - (i * 62f));
-            bodyFont.draw(batch, "HP " + (int) stats.currentHealth + "/" + (int) stats.maxHealth,
-                66f, h - 206f - (i * 62f));
+            boolean locked = i > 0 && (i - 1) >= slotLimit;
+            if (locked) {
+                bodyFont.setColor(new Color(0.35f, 0.36f, 0.42f, 1f));
+                bodyFont.draw(batch, "Slot " + i + " - Locked", 66f, h - 182f - (i * 62f));
+                String req = gameScreen.getPartySlotNextGrade();
+                bodyFont.draw(batch, req != null ? "Requires " + req : "", 66f, h - 206f - (i * 62f));
+            } else {
+                GameScreen.RobotStatBlock stats = i == 0 ? gameScreen.getPlayerStats() : gameScreen.getRobotStats(i - 1);
+                bodyFont.setColor(Color.WHITE);
+                String name = i == 0 ? gameScreen.getPlayerName() : gameScreen.getRobotName(i - 1);
+                bodyFont.draw(batch, name, 66f, h - 182f - (i * 62f));
+                bodyFont.draw(batch, "HP " + (int) stats.currentHealth + "/" + (int) stats.maxHealth,
+                    66f, h - 206f - (i * 62f));
+            }
         }
+        bodyFont.setColor(Color.WHITE);
         batch.end();
     }
 
@@ -631,6 +658,75 @@ public class WorkshopScreen implements Screen {
                 bodyFont.draw(batch, reserveLines.get(i), rightX, reserveY - 30f - (i * 26f));
             }
         }
+        batch.end();
+    }
+
+    private void drawArchivePanel(float w, float h) {
+        List<String> lines = gameScreen.getBestiaryArchiveLines();
+
+        batch.begin();
+        batch.setColor(0.12f, 0.14f, 0.2f, 0.96f);
+        batch.draw(uiTexture, 320f, 80f, w - 360f, h - 250f);
+        batch.setColor(Color.WHITE);
+
+        float leftX = 350f;
+        float topY = h - 170f;
+        bodyFont.setColor(Color.WHITE);
+        bodyFont.draw(batch, "Bestiary Archive", leftX, topY);
+        bodyFont.setColor(Color.LIGHT_GRAY);
+        bodyFont.draw(batch, "Monsters revealed through the Analyze command in battle.", leftX, topY - 28f);
+
+        if (lines.isEmpty()) {
+            bodyFont.setColor(new Color(0.55f, 0.56f, 0.62f, 1f));
+            bodyFont.draw(batch, "No data yet. Use Analyze in battle to scan enemies.", leftX, topY - 80f);
+            bodyFont.draw(batch, "Scan level 1 reveals HP and stats.", leftX, topY - 110f);
+            bodyFont.draw(batch, "Scan level 2 reveals speed and elemental data.", leftX, topY - 140f);
+            bodyFont.draw(batch, "Scan level 3 reveals the enemy's gold reward.", leftX, topY - 170f);
+        } else {
+            // Two-column layout: left column and right column
+            float col1X = leftX;
+            float col2X = leftX + (w - 400f) / 2f;
+            float lineH = 20f;
+            float startY = topY - 74f;
+            float maxY = 110f; // don't draw below this
+            float col1Y = startY;
+            float col2Y = startY;
+            boolean useCol2 = false;
+
+            for (String line : lines) {
+                // Blank line = separator between entries; switch columns if col1 is getting long
+                if (line.isEmpty()) {
+                    if (!useCol2 && col1Y < startY - (h * 0.4f)) {
+                        useCol2 = true;
+                    }
+                    if (useCol2) {
+                        col2Y -= lineH * 0.5f;
+                    } else {
+                        col1Y -= lineH * 0.5f;
+                    }
+                    continue;
+                }
+
+                float drawX = useCol2 ? col2X : col1X;
+                float drawY = useCol2 ? col2Y : col1Y;
+
+                if (drawY < maxY) {
+                    break; // ran out of vertical space
+                }
+
+                // Header lines (no leading spaces) drawn white; detail lines drawn light grey
+                boolean isDetail = line.startsWith("  ");
+                bodyFont.setColor(isDetail ? Color.LIGHT_GRAY : Color.WHITE);
+                bodyFont.draw(batch, line.trim(), drawX, drawY);
+
+                if (useCol2) {
+                    col2Y -= lineH;
+                } else {
+                    col1Y -= lineH;
+                }
+            }
+        }
+        bodyFont.setColor(Color.WHITE);
         batch.end();
     }
 

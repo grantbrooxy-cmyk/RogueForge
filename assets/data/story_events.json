@@ -106,5 +106,128 @@
     "speaker": "Bolt Simulation",
     "text": "Apex Predator defeated. The trial resets, but your mastery remains recorded in the ruin.",
     "rewardExperience": 180
+  },
+  {
+    "id": "dragon_ride_unlock",
+    "triggerType": "BOSS_DEFEAT",
+    "triggerId": "dragon_boss_b",
+    "onceFlag": "event.dragon_ride_announced",
+    "speaker": "Edda",
+    "text": "The Elder Drake chose to yield rather than fall completely. It will bear your crew from peak to frontier now. Find the dragon roosts and it will answer.",
+    "setWorldFlag": "frontier.dragon_roosts_active"
+  },
+  {
+    "id": "midlands_charted",
+    "triggerType": "ZONE_ENTER",
+    "triggerId": "rusty_quarry",
+    "onceFlag": "event.midlands_charted",
+    "speaker": "Nia",
+    "text": "This is what's out here past the mountain. Rough terrain, old iron, and more frontier than anyone in Ironhaven realized.",
+    "setWorldFlag": "frontier.midlands_charted"
+  },
+  {
+    "id": "abyss_signal_found",
+    "triggerType": "ZONE_ENTER",
+    "triggerId": "coastal_shallows",
+    "onceFlag": "event.abyss_signal_found",
+    "speaker": "Nia",
+    "text": "There it is — a pulse from the deep shelf. That rhythm isn't natural. Something down there is still running on old power.",
+    "setWorldFlag": "frontier.abyss_signal_found"
+  },
+  {
+    "id": "verdant_fields_intro",
+    "triggerType": "ZONE_ENTER",
+    "triggerId": "verdant_fields",
+    "onceFlag": "event.zone.verdant_fields_intro",
+    "speaker": "Bram",
+    "text": "Welcome to Ironhaven's frontier. Verdant Fields is as safe as the frontier gets — but stay alert. The further you push, the less the land remembers peace."
+  },
+  {
+    "id": "whispering_forest_intro",
+    "triggerType": "ZONE_ENTER",
+    "triggerId": "whispering_forest",
+    "onceFlag": "event.zone.whispering_forest_intro",
+    "speaker": "Ranger Pell",
+    "text": "Even the trees here have memory. Walk quietly and the forest will tell you where the danger sits before it finds you."
+  },
+  {
+    "id": "rusty_quarry_intro",
+    "triggerType": "ZONE_ENTER",
+    "triggerId": "rusty_quarry",
+    "onceFlag": "event.zone.rusty_quarry_intro",
+    "speaker": "Jora",
+    "text": "Old iron, old machinery, old grudges. The quarry has been running on borrowed time for years. Watch the crusher lines."
+  },
+  {
+    "id": "coastal_shallows_intro",
+    "triggerType": "ZONE_ENTER",
+    "triggerId": "coastal_shallows",
+    "onceFlag": "event.zone.coastal_shallows_intro",
+    "speaker": "Reno",
+    "text": "The shallows look calm until they don't. Every salvage run out here is a negotiation with the tide."
+  },
+  {
+    "id": "crystal_depths_intro",
+    "triggerType": "ZONE_ENTER",
+    "triggerId": "crystal_depths",
+    "onceFlag": "event.zone.crystal_depths_intro",
+    "speaker": "Professor Lio",
+    "text": "Crystal resonance at this depth predates the collapse by centuries. Tread carefully — the formations here are still learning what they are."
+  },
+  {
+    "id": "scorched_plateau_intro",
+    "triggerType": "ZONE_ENTER",
+    "triggerId": "scorched_plateau",
+    "onceFlag": "event.zone.scorched_plateau_intro",
+    "speaker": "Forge Core",
+    "text": "Heat signatures off the charts. The plateau has been burning since before any of us arrived. Don't let your frames overheat out here."
+  },
+  {
+    "id": "frozen_vale_intro",
+    "triggerType": "ZONE_ENTER",
+    "triggerId": "frozen_vale",
+    "onceFlag": "event.zone.frozen_vale_intro",
+    "speaker": "Sister Vale",
+    "text": "The cold here is older than the cloister. Whatever the vale is preserving, it doesn't intend to thaw until it's ready."
+  },
+  {
+    "id": "dragon_peak_intro",
+    "triggerType": "ZONE_ENTER",
+    "triggerId": "dragon_peak",
+    "onceFlag": "event.zone.dragon_peak_intro",
+    "speaker": "Edda",
+    "text": "The air up here changes you if you stay long enough. The Elder Drake watches the peak from somewhere above. It knows you're here."
+  },
+  {
+    "id": "volcanic_core_intro",
+    "triggerType": "ZONE_ENTER",
+    "triggerId": "volcanic_core",
+    "onceFlag": "event.zone.volcanic_core_intro",
+    "speaker": "Forgehand Kira",
+    "text": "The core doesn't forgive error. Every degree matters down here. Keep your frames cool and your nerve steady."
+  },
+  {
+    "id": "frozen_vale_boss",
+    "triggerType": "BOSS_DEFEAT",
+    "triggerId": "frost_wisp_e",
+    "onceFlag": "frontier.frozen_vale_quieted",
+    "speaker": "Sister Vale",
+    "text": "The vale's cold finally stops fighting back. Whatever held the cloister's old circuit in ice just let go."
+  },
+  {
+    "id": "crystal_depths_boss",
+    "triggerType": "BOSS_DEFEAT",
+    "triggerId": "crystal_wyrm_c",
+    "onceFlag": "frontier.crystal_depths_cleared",
+    "speaker": "Professor Lio",
+    "text": "The Crystal Wyrm falls silent and the resonance chambers finally hold a stable harmonic. These depths are a laboratory again."
+  },
+  {
+    "id": "scorched_plateau_boss",
+    "triggerType": "BOSS_DEFEAT",
+    "triggerId": "ember_hound_d",
+    "onceFlag": "frontier.scorched_plateau_cooled",
+    "speaker": "Forge Core",
+    "text": "With the Ember Hound pack broken, the plateau heat begins to cycle down to something workable. Kira's forge accord just became viable."
   }
 ]

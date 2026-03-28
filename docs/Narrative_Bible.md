@@ -948,23 +948,46 @@ Use:
 
 ## 14. Current Build vs Final Narrative Vision
 
-The current build already contains:
+The current build contains a fully playable narrative across all four acts with the following implemented:
 
-- Ironhaven-like hub logic
-- early NPCs
-- a starter quest chain
-- zone-based progression
-- restoration-oriented side content
+- 10 main quests spanning Act 1 (Ironhaven, First Steps, Luminous Shard, Sun Core), Act 2 (Frontier Push, Deep Signal), Act 3 (Into The Deep, Sky High Secrets, The Final Gate), and Act 4 (Origin)
+- 24 side quests across exploration, settlement, recruitment, crafting, and character categories
+- 16 production zones, each with named NPCs, zone intro story events, boss defeat events, and environmental storytelling
+- All 7 named Ironhaven NPCs with tiered upgrade dialogue chains: Master Silas (Workshop), Elena (Apothecary), Commander Rex (Command), Professor Cogs (Research), Bolt (Infinite Dungeon simulation NPC), Jax (Rusty Quarry field trader), Kira (Volcanic Core forgehand)
+- Dragon Riding traversal network fully implemented as a narrative and world-movement unlock after the dragon boss at Dragon Peak
+- The Void endgame zone with Memory Lane, Gauntlet of Trials, and Throne of Origin; the Origin Core boss story event delivering the final narrative payoff
+- 30+ story events covering zone entries, boss defeats, flag-setting narrative moments, and world-state transitions
 
-The full final narrative vision expands this into:
+The full final narrative vision continues to exceed the current build in:
 
-- a 4-act world-scale story
-- 18 main quests
-- 60+ side quests
-- 25+ world spaces
-- wider NPC cast
-- stronger ancient-civilization lore
-- a complete endgame and post-game story frame
+- Quest scale: 10 main quests vs 18-quest target; 24 side quests vs 60+ target
+- Zone scale: 16 world spaces vs 25+ target
+- Quest category breadth: Monster Bounty and Arena Challenge categories not yet represented
+- Main quest titles and beats diverge from Narrative Bible names (see Section 15)
+
+## 15. Implemented vs Bible Name Divergences
+
+The following implemented content differs from the original Narrative Bible descriptions. Both versions are valid — the implemented versions are more grounded in the frontier tone and should be treated as canonical going forward.
+
+**NPC Role Divergence:**
+In the implemented game, Bram is the settlement leader and main quest anchor (not the Apothecary as the Bible describes). Elena operates the Apothecary (not the Tavern). Commander Rex is the Command facility NPC in Ironhaven (not a Tavern upper-level mission handler). These role assignments feel correct in context and should be used as the canonical version.
+
+**Main Quest Name Divergence:**
+
+| Bible Name | Implemented Name |
+|---|---|
+| A Forge Master Awakens | Ironhaven |
+| Fields of Danger | First Steps |
+| The First Seal | Luminous Shard |
+| Beneath the Surface | (merged into First Steps / shard_hunt) |
+| Shadows Below | Frontier Push |
+| Into the Deep | Into The Deep (aligned) |
+| Sky High Secrets | Sky High Secrets (aligned) |
+| The Architect's Legacy | (split across fortress_command and void_key) |
+| The Final Gate | The Final Gate (aligned) |
+| Origin | Origin (aligned) |
+
+The implemented names are canonical. The Bible names above are the original aspirational labels.
 
 ## 15. Narrative Summary
 

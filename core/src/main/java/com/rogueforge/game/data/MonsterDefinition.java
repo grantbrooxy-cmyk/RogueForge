@@ -19,6 +19,7 @@ public class MonsterDefinition {
     private int speed;
     private int baseLoot;
     private String aiProfile;
+    private String description;
     private String[] lootTableIds;
     private String[] weaknesses;
     private String[] resistances;
@@ -78,6 +79,10 @@ public class MonsterDefinition {
 
     public String getAiProfile() {
         return aiProfile;
+    }
+
+    public String getDescription() {
+        return description != null ? description : "";
     }
 
     public String[] getLootTableIds() {

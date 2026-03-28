@@ -1,10 +1,74 @@
 [
   {
+    "id": "bram_arrival_start",
+    "npcId": "bram",
+    "priority": 200,
+    "requiredQuestId": "ironhaven_arrival",
+    "requiredQuestState": "NOT_STARTED",
+    "lines": [
+      { "speaker": "Bram", "text": "A Forge Master. We've been waiting for one. Ironhaven is still standing, but only just. Talk to the people here — see what we're working with." }
+    ],
+    "setQuestId": "ironhaven_arrival",
+    "setQuestStep": "survey_town"
+  },
+  {
+    "id": "bram_arrival_survey",
+    "npcId": "bram",
+    "priority": 198,
+    "requiredQuestId": "ironhaven_arrival",
+    "requiredQuestState": "survey_town",
+    "lines": [
+      { "speaker": "Bram", "text": "How does it look to you? We've held on through bad odds. What this place needs now is a crew willing to push the frontier back." }
+    ],
+    "setQuestId": "ironhaven_arrival",
+    "setQuestStep": "return_bram",
+    "setWorldFlag": "arrival.town_surveyed"
+  },
+  {
+    "id": "bram_arrival_return",
+    "npcId": "bram",
+    "priority": 196,
+    "requiredQuestId": "ironhaven_arrival",
+    "requiredQuestState": "return_bram",
+    "lines": [
+      { "speaker": "Bram", "text": "Good. You know the shape of things now. Speak with Mira — she has an eye for crews that can actually hold their ground out there." }
+    ],
+    "completeQuestId": "ironhaven_arrival",
+    "setQuestId": "first_steps",
+    "setQuestStep": "speak_mira_intro"
+  },
+  {
+    "id": "mira_first_steps_start",
+    "npcId": "mira",
+    "priority": 190,
+    "requiredQuestId": "first_steps",
+    "requiredQuestState": "speak_mira_intro",
+    "lines": [
+      { "speaker": "Mira", "text": "Bram sent you. Verdant Fields isn't far, but it has teeth. Take your crew out there and show me they can hold a line. Come back standing and we'll talk about what comes next." }
+    ],
+    "setQuestId": "first_steps",
+    "setQuestStep": "verdant_patrol"
+  },
+  {
+    "id": "mira_first_steps_return",
+    "npcId": "mira",
+    "priority": 185,
+    "requiredQuestId": "first_steps",
+    "requiredQuestState": "verdant_patrol",
+    "lines": [
+      { "speaker": "Mira", "text": "Back in one piece. Good. There's something we need from Shadow Caves — a cave system further out. Take this Workshop Pass. It will get you in." }
+    ],
+    "setQuestStep": "return_mira_intro",
+    "setWorldFlag": "arrival.first_battle_won",
+    "completeQuestId": "first_steps"
+  },
+  {
     "id": "mira_start",
     "npcId": "mira",
     "priority": 100,
     "requiredQuestId": "shard_hunt",
     "requiredQuestState": "NOT_STARTED",
+    "requiredWorldFlag": "arrival.first_battle_won",
     "lines": [
       { "speaker": "Mira", "text": "Take this Workshop Pass and search Shadow Caves for the Luminous Shard. Bring it back and I'll stabilize the lift to Dragon Peak." }
     ],
@@ -897,12 +961,326 @@
     "rewardExperience": 110
   },
   {
+    "id": "bram_frontier_push_start",
+    "npcId": "bram",
+    "priority": 97,
+    "requiredQuestId": "frontier_push",
+    "requiredQuestState": "NOT_STARTED",
+    "requiredWorldFlag": "frontier.warding_pylons_online",
+    "lines": [
+      { "speaker": "Bram", "text": "The pylons are back online. That means the routes beyond Dragon Peak are no longer completely blind. Push out into the midlands and tell me what's actually out there." }
+    ],
+    "setQuestId": "frontier_push",
+    "setQuestStep": "chart_midlands"
+  },
+  {
+    "id": "bram_frontier_push_return",
+    "npcId": "bram",
+    "priority": 96,
+    "requiredQuestId": "frontier_push",
+    "requiredQuestState": "return_bram_expand",
+    "lines": [
+      { "speaker": "Bram", "text": "So the midlands are alive — and hostile in ways we didn't expect. Good to know before we send supply runs through. Nia's been picking up something strange from the deep water zones. You should hear it from her directly." }
+    ],
+    "completeQuestId": "frontier_push",
+    "setWorldFlag": "frontier.midlands_charted",
+    "setQuestId": "deep_signal",
+    "setQuestStep": "speak_nia_signal"
+  },
+  {
+    "id": "nia_deep_signal_start",
+    "npcId": "nia",
+    "priority": 97,
+    "requiredQuestId": "deep_signal",
+    "requiredQuestState": "speak_nia_signal",
+    "lines": [
+      { "speaker": "Nia", "text": "The survey drones caught a pulse from the deep water zones — rhythmic, not natural. Something down there is still running. Head to the Coastal Shallows and trace it closer to the source." }
+    ],
+    "setQuestId": "deep_signal",
+    "setQuestStep": "investigate_shallows"
+  },
+  {
+    "id": "nia_deep_signal_mid",
+    "npcId": "nia",
+    "priority": 87,
+    "requiredQuestId": "deep_signal",
+    "requiredQuestState": "investigate_shallows",
+    "lines": [
+      { "speaker": "Nia", "text": "The pulse originates somewhere below the shallows. Your scanner should pick up the signal variance once you're in range of the deep shelf." }
+    ]
+  },
+  {
+    "id": "maren_deep_signal_finish",
+    "npcId": "captain_maren",
+    "priority": 97,
+    "requiredQuestId": "deep_signal",
+    "requiredQuestState": "speak_maren_intro",
+    "lines": [
+      { "speaker": "Captain Maren", "text": "A pulse from the deep shelf? I know what that is. There's a drowned archive below — I mapped the approach once, years ago. The signal means it's still intact. We need what's inside." }
+    ],
+    "completeQuestId": "deep_signal",
+    "setWorldFlag": "frontier.abyss_signal_found",
+    "setQuestId": "abyss_archive",
+    "setQuestStep": "speak_maren"
+  },
+  {
     "id": "bolt_dungeon",
     "npcId": "bolt_simulation",
     "priority": 100,
     "zoneId": "infinite_dungeon",
     "lines": [
       { "speaker": "Bolt Simulation", "text": "Welcome back, challenger. Every ten floors, the dungeon will answer with a stronger test. Every return trip is a new proof of mastery." }
+    ]
+  },
+
+  {
+    "id": "silas_idle",
+    "npcId": "master_silas",
+    "priority": 50,
+    "lines": [
+      { "speaker": "Master Silas", "text": "The forge speaks through its failures as much as its successes. Bring me salvage and I'll show you what I mean." }
+    ]
+  },
+  {
+    "id": "silas_tier2_unlock",
+    "npcId": "master_silas",
+    "priority": 80,
+    "requiredWorldFlag": "settlement.workshop_tools",
+    "blockedWorldFlag": "settlement.advanced_alloys",
+    "lines": [
+      { "speaker": "Master Silas", "text": "The basic rails are humming again. With a little more investment, I can retool the alloy chambers for advanced component work." }
+    ],
+    "settlementUpgradeId": "advanced_alloys",
+    "setWorldFlag": "settlement.advanced_alloys"
+  },
+  {
+    "id": "silas_tier3_unlock",
+    "npcId": "master_silas",
+    "priority": 85,
+    "requiredWorldFlag": "settlement.advanced_alloys",
+    "blockedWorldFlag": "settlement.fusion_forge",
+    "lines": [
+      { "speaker": "Master Silas", "text": "The alloy work gave me an idea. That old fusion cradle in the back — it can be restored. Fusion work is art, not just engineering." }
+    ],
+    "settlementUpgradeId": "fusion_forge",
+    "setWorldFlag": "settlement.fusion_forge"
+  },
+  {
+    "id": "silas_after_fusion",
+    "npcId": "master_silas",
+    "priority": 70,
+    "requiredWorldFlag": "settlement.fusion_forge",
+    "lines": [
+      { "speaker": "Master Silas", "text": "The fusion cradle is running. Bring two compatible frames to the forge and let the machine decide what they become together." }
+    ]
+  },
+
+  {
+    "id": "elena_idle",
+    "npcId": "elena_apothecary",
+    "priority": 50,
+    "lines": [
+      { "speaker": "Elena", "text": "A repaired machine still needs care between battles. Stop by when your team looks worn." }
+    ]
+  },
+  {
+    "id": "elena_tier2_unlock",
+    "npcId": "elena_apothecary",
+    "priority": 80,
+    "requiredWorldFlag": "settlement.apothecary_stock",
+    "blockedWorldFlag": "settlement.field_kit_supply",
+    "lines": [
+      { "speaker": "Elena", "text": "With the base stock restocked, I can start building proper field kits. More potions, better recovery. Your team will feel the difference mid-battle." }
+    ],
+    "settlementUpgradeId": "field_kit_supply",
+    "setWorldFlag": "settlement.field_kit_supply"
+  },
+  {
+    "id": "elena_tier3_unlock",
+    "npcId": "elena_apothecary",
+    "priority": 85,
+    "requiredWorldFlag": "settlement.field_kit_supply",
+    "blockedWorldFlag": "settlement.experimental_compounds",
+    "lines": [
+      { "speaker": "Elena", "text": "The frontier zones carry materials I've never been able to study before. Let me run experiments. The compounds could change how your team fights entirely." }
+    ],
+    "settlementUpgradeId": "experimental_compounds",
+    "setWorldFlag": "settlement.experimental_compounds"
+  },
+  {
+    "id": "elena_after",
+    "npcId": "elena_apothecary",
+    "priority": 70,
+    "requiredWorldFlag": "settlement.experimental_compounds",
+    "lines": [
+      { "speaker": "Elena", "text": "The compound lab is stable. Some of these formulas are older than Ironhaven — I'm still learning what they were designed to cure." }
+    ]
+  },
+
+  {
+    "id": "rex_town_idle",
+    "npcId": "commander_rex",
+    "priority": 50,
+    "lines": [
+      { "speaker": "Commander Rex", "text": "Ironhaven's walls hold because people chose to stay and fight for them. Don't let that count for nothing out there." }
+    ]
+  },
+  {
+    "id": "rex_town_relay",
+    "npcId": "commander_rex",
+    "priority": 80,
+    "requiredWorldFlag": "settlement.watchtower_network",
+    "blockedWorldFlag": "settlement.relay_expansion",
+    "lines": [
+      { "speaker": "Commander Rex", "text": "The watchtower sees farther now, but the relay range still ends at the ridgeline. Let me route the expansion and we'll have eyes on every major approach." }
+    ],
+    "settlementUpgradeId": "relay_expansion",
+    "setWorldFlag": "settlement.relay_expansion"
+  },
+  {
+    "id": "rex_town_hub",
+    "npcId": "commander_rex",
+    "priority": 85,
+    "requiredWorldFlag": "settlement.relay_expansion",
+    "blockedWorldFlag": "settlement.command_hub",
+    "lines": [
+      { "speaker": "Commander Rex", "text": "With relay coverage in place, we're ready for a proper command hub. Coordination, rapid response, tactical routing — Ironhaven becomes more than a waypoint." }
+    ],
+    "settlementUpgradeId": "command_hub",
+    "setWorldFlag": "settlement.command_hub"
+  },
+  {
+    "id": "rex_town_after",
+    "npcId": "commander_rex",
+    "priority": 70,
+    "requiredWorldFlag": "settlement.command_hub",
+    "lines": [
+      { "speaker": "Commander Rex", "text": "The hub is operational. Every field unit we send out now has a real command structure behind it. That changes what's possible." }
+    ]
+  },
+
+  {
+    "id": "cogs_idle",
+    "npcId": "professor_cogs",
+    "priority": 50,
+    "lines": [
+      { "speaker": "Professor Cogs", "text": "Every battle logged is data. Every rout survived is a dissertation. Keep fighting and I'll keep learning." }
+    ]
+  },
+  {
+    "id": "cogs_tier2_unlock",
+    "npcId": "professor_cogs",
+    "priority": 80,
+    "requiredWorldFlag": "settlement.survey_drones",
+    "blockedWorldFlag": "settlement.data_vaults",
+    "lines": [
+      { "speaker": "Professor Cogs", "text": "The drones are feeding us raw survey data, but without proper vaults to index it we're drowning in noise. Fund the data vaults and I'll turn noise into knowledge." }
+    ],
+    "settlementUpgradeId": "data_vaults",
+    "setWorldFlag": "settlement.data_vaults"
+  },
+  {
+    "id": "cogs_tier3_unlock",
+    "npcId": "professor_cogs",
+    "priority": 85,
+    "requiredWorldFlag": "settlement.data_vaults",
+    "blockedWorldFlag": "settlement.prototype_lab",
+    "lines": [
+      { "speaker": "Professor Cogs", "text": "The vaults gave me the patterns I needed. There is a design space in the data that no standard forging method reaches. Give me a prototype lab and I'll show you what the frontier was actually trying to build." }
+    ],
+    "settlementUpgradeId": "prototype_lab",
+    "setWorldFlag": "settlement.prototype_lab"
+  },
+  {
+    "id": "cogs_after",
+    "npcId": "professor_cogs",
+    "priority": 70,
+    "requiredWorldFlag": "settlement.prototype_lab",
+    "lines": [
+      { "speaker": "Professor Cogs", "text": "The prototype lab is running. What I'm seeing in the foundry data could rewrite everything we thought we knew about pre-collapse engineering." }
+    ]
+  },
+
+  {
+    "id": "bolt_town_idle",
+    "npcId": "bolt_town",
+    "priority": 50,
+    "lines": [
+      { "speaker": "Bolt", "text": "A Forge Master with your record? I've been waiting for you to swing by. The dungeon's calling if you're ready for a real test." }
+    ]
+  },
+  {
+    "id": "bolt_town_hub_hint",
+    "npcId": "bolt_town",
+    "priority": 70,
+    "requiredWorldFlag": "settlement.command_hub",
+    "lines": [
+      { "speaker": "Bolt", "text": "Now that the command hub is online, I can track your dungeon runs properly. Every ten floors, expect the parameters to shift. I'll be watching." }
+    ]
+  },
+
+  {
+    "id": "jax_idle",
+    "npcId": "jax_trader",
+    "priority": 50,
+    "lines": [
+      { "speaker": "Jax", "text": "If it's broken, lost, or forgotten, I probably know where it ended up. And if I don't, I'll find out for the right price." }
+    ]
+  },
+  {
+    "id": "jax_scavenge_start",
+    "npcId": "jax_trader",
+    "priority": 92,
+    "requiredQuestId": "scavenge_run",
+    "requiredQuestState": "NOT_STARTED",
+    "requiredWorldFlag": "frontier.quarry_lane_restored",
+    "lines": [
+      { "speaker": "Jax", "text": "There's a sealed supply cache in the quarry's lower lane — old enough that even Jora doesn't know what's in it. Help me crack it open and we split whatever's inside." }
+    ],
+    "setQuestId": "scavenge_run",
+    "setQuestStep": "find_cache"
+  },
+  {
+    "id": "jax_scavenge_mid",
+    "npcId": "jax_trader",
+    "priority": 82,
+    "requiredQuestId": "scavenge_run",
+    "requiredQuestState": "find_cache",
+    "lines": [
+      { "speaker": "Jax", "text": "Quarry lower lane, past the sluice. The cache has a triple-lock seal — your scanner can read the combination off the corrosion pattern." }
+    ]
+  },
+  {
+    "id": "jax_scavenge_finish",
+    "npcId": "jax_trader",
+    "priority": 91,
+    "requiredQuestId": "scavenge_run",
+    "requiredQuestState": "return_jax",
+    "lines": [
+      { "speaker": "Jax", "text": "Pre-collapse salvage, barely touched by the weather. That's a solid find, partner. Consider this the start of something good." }
+    ],
+    "completeQuestId": "scavenge_run",
+    "rewardGold": 80,
+    "rewardExperience": 65,
+    "rewardPotions": 1
+  },
+
+  {
+    "id": "kira_town_idle",
+    "npcId": "kira_smith",
+    "priority": 50,
+    "lines": [
+      { "speaker": "Kira", "text": "The forge doesn't care about rank. It only cares about heat and patience. I've got plenty of both." }
+    ]
+  },
+  {
+    "id": "kira_town_after_accord",
+    "npcId": "kira_smith",
+    "priority": 75,
+    "requiredQuestId": "forgefire_accord",
+    "requiredQuestCompleted": true,
+    "lines": [
+      { "speaker": "Kira", "text": "After the plateau accord, I finally had enough material to set up a proper Ironhaven smithy. If Master Silas needs heat work done right, he knows where I am." }
     ]
   }
 ]

@@ -1,0 +1,272 @@
+{
+    "activeFile": "",
+    "expandedProjectPaths": [
+        "."
+    ],
+    "fileStates": {
+        "/Users/grantbrooks/Documents/GitHub/RogueForge/assets/5Tiled_files/Characters.tmx": {
+            "scale": 1.98349609375,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": -128.05671803456255,
+                "y": 0
+            }
+        },
+        "/Users/grantbrooks/Documents/GitHub/RogueForge/assets/5Tiled_files/Characters.tmx#Character1": {
+            "scaleInDock": 1
+        },
+        "/Users/grantbrooks/Documents/GitHub/RogueForge/assets/5Tiled_files/Characters.tmx#Character2": {
+            "scaleInDock": 1
+        },
+        "/Users/grantbrooks/Documents/GitHub/RogueForge/assets/5Tiled_files/Characters.tmx#Character3": {
+            "scaleInDock": 1
+        },
+        "/Users/grantbrooks/Documents/GitHub/RogueForge/assets/5Tiled_files/Characters.tmx#Character_details": {
+            "scaleInDock": 1
+        },
+        "/Users/grantbrooks/Documents/GitHub/RogueForge/assets/5Tiled_files/Dungeon Tileset.tmx": {
+            "scale": 1.98,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": -260.1010101010101,
+                "y": -4.0404040404040416
+            }
+        },
+        "/Users/grantbrooks/Documents/GitHub/RogueForge/assets/5Tiled_files/Dungeon Tileset.tmx#Animated_objects": {
+            "scaleInDock": 1
+        },
+        "/Users/grantbrooks/Documents/GitHub/RogueForge/assets/5Tiled_files/Dungeon Tileset.tmx#Objects": {
+            "dynamicWrapping": false,
+            "scaleInDock": 1
+        },
+        "/Users/grantbrooks/Documents/GitHub/RogueForge/assets/5Tiled_files/Dungeon Tileset.tmx#Objects_small_details": {
+            "dynamicWrapping": false,
+            "scaleInDock": 1
+        },
+        "/Users/grantbrooks/Documents/GitHub/RogueForge/assets/5Tiled_files/Dungeon Tileset.tmx#Tileset": {
+            "scaleInDock": 1
+        },
+        "/Users/grantbrooks/Documents/GitHub/RogueForge/assets/5Tiled_files/Enemies.tmx": {
+            "scale": 1.98349609375,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": -128.05671803456255,
+                "y": 0
+            }
+        },
+        "/Users/grantbrooks/Documents/GitHub/RogueForge/assets/5Tiled_files/Enemies.tmx#Character_details": {
+            "scaleInDock": 1
+        },
+        "/Users/grantbrooks/Documents/GitHub/RogueForge/assets/5Tiled_files/Enemies.tmx#Enemy1": {
+            "scaleInDock": 1
+        },
+        "/Users/grantbrooks/Documents/GitHub/RogueForge/assets/5Tiled_files/Enemies.tmx#Enemy3": {
+            "scaleInDock": 1
+        },
+        "/Users/grantbrooks/Documents/GitHub/RogueForge/assets/5Tiled_files/Enemies.tmx#Enemy4": {
+            "scaleInDock": 1
+        },
+        "Bridge_Wood-extruded.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "Bridge_Wood.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "Fences.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "Objects.tsx": {
+            "dynamicWrapping": true,
+            "scaleInDock": 1,
+            "scaleInEditor": 4
+        },
+        "abyssal_rift.tmx": {
+            "scale": 0.7052430555555556,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 733.0805967209886,
+                "y": 618.2265767318203
+            }
+        },
+        "clockwork_sanctum.tmx": {
+            "scale": 0.7052430555555556,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 733.0805967209886,
+                "y": 618.2265767318203
+            }
+        },
+        "coastal_shallows.tmx": {
+            "scale": 0.7556175595238095,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 702.7364482300231,
+                "y": 577.0114716163655
+            }
+        },
+        "crystal_depths.tmx": {
+            "scale": 0.7052430555555556,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 733.0805967209886,
+                "y": 618.2265767318203
+            }
+        },
+        "dragon_peak.tmx": {
+            "scale": 0.7052430555555556,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 733.0805967209886,
+                "y": 618.2265767318203
+            }
+        },
+        "frozen_vale.tmx": {
+            "scale": 0.7052430555555556,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 733.0805967209886,
+                "y": 618.2265767318203
+            }
+        },
+        "infinite_dungeon.tmx": {
+            "scale": 0.7556175595238095,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 702.7364482300231,
+                "y": 577.0114716163655
+            }
+        },
+        "objects.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "rusty_quarry.tmx": {
+            "scale": 0.7556175595238095,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 702.7364482300231,
+                "y": 577.0114716163655
+            }
+        },
+        "scorched_plateau.tmx": {
+            "scale": 0.7052430555555556,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 733.0805967209886,
+                "y": 618.2265767318203
+            }
+        },
+        "shadow_caves.tmx": {
+            "scale": 0.7556175595238095,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 702.7364482300231,
+                "y": 577.0114716163655
+            }
+        },
+        "sky_fortress.tmx": {
+            "scale": 0.7052430555555556,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 733.0805967209886,
+                "y": 618.2265767318203
+            }
+        },
+        "sunken_abyss.tmx": {
+            "scale": 0.7556175595238095,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 702.7364482300231,
+                "y": 577.0114716163655
+            }
+        },
+        "the_void.tmx": {
+            "scale": 0.7052430555555556,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 733.0805967209886,
+                "y": 618.2265767318203
+            }
+        },
+        "tileset.tsx": {
+            "dynamicWrapping": false,
+            "scaleInDock": 1,
+            "scaleInEditor": 4
+        },
+        "verdant_fields.tmx": {
+            "scale": 0.72,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 805.5555555555555,
+                "y": 572.2222222222222
+            }
+        },
+        "verdant_fields_v2.tmx": {
+            "expandedObjectLayers": [
+                4
+            ],
+            "scale": 2,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 372,
+                "y": 360
+            }
+        },
+        "verdant_fields_v2.tmx#Objects": {
+            "scaleInDock": 1
+        },
+        "volcanic_core.tmx": {
+            "scale": 0.7052430555555556,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 733.0805967209886,
+                "y": 618.2265767318203
+            }
+        },
+        "whispering_forest.tmx": {
+            "scale": 0.72,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 690.2777777777777,
+                "y": 572.2222222222222
+            }
+        }
+    },
+    "last.externalTilesetPath": "/Users/grantbrooks/Documents/GitHub/RogueForge/assets/maps",
+    "last.imagePath": "/Users/grantbrooks/Documents/GitHub/RogueForge/assets/Cute_Fantasy_Free/Outdoor decoration",
+    "map.height": 60,
+    "map.lastUsedFormat": "tmx",
+    "map.tileHeight": 16,
+    "map.tileWidth": 16,
+    "map.width": 120,
+    "openFiles": [
+    ],
+    "project": "untitled.tiled-project",
+    "property.type": "float",
+    "recentFiles": [
+        "whispering_forest.tmx",
+        "volcanic_core.tmx",
+        "verdant_fields.tmx",
+        "the_void.tmx",
+        "sunken_abyss.tmx",
+        "sky_fortress.tmx",
+        "shadow_caves.tmx",
+        "scorched_plateau.tmx",
+        "rusty_quarry.tmx",
+        "infinite_dungeon.tmx",
+        "frozen_vale.tmx",
+        "dragon_peak.tmx"
+    ],
+    "tileset.lastUsedFilter": "Tiled tileset files (*.tsx *.xml)",
+    "tileset.lastUsedFormat": "tsx",
+    "tileset.margin": 8,
+    "tileset.spacing": 16,
+    "tileset.tileSize": {
+        "height": 16,
+        "width": 16
+    },
+    "tileset.type": 0
+}
