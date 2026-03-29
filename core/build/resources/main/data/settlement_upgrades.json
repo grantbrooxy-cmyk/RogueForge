@@ -18,7 +18,7 @@
     "type": "crafting",
     "requiredUpgradeId": "workshop_tools",
     "description": "Retool the alloy chambers for superior component materials.",
-    "rewardEquipmentId": "alloy_plating",
+    "rewardEquipmentId": "heavy_plating",
     "rewardPotions": 0,
     "rewardGold": 80
   },
@@ -30,7 +30,7 @@
     "type": "crafting",
     "requiredUpgradeId": "advanced_alloys",
     "description": "Restore the ancient fusion cradle for equipment synthesis.",
-    "rewardEquipmentId": "forge_sigil",
+    "rewardEquipmentId": "aegis_actuators",
     "rewardPotions": 0,
     "rewardGold": 150
   },
@@ -65,7 +65,7 @@
     "type": "healing",
     "requiredUpgradeId": "field_kit_supply",
     "description": "Develop frontier-derived compounds with unique combat applications.",
-    "rewardEquipmentId": "catalyst_vial",
+    "rewardEquipmentId": "oracle_headpiece",
     "rewardPotions": 2,
     "rewardGold": 120
   },
@@ -88,7 +88,7 @@
     "type": "military",
     "requiredUpgradeId": "watchtower_network",
     "description": "Extend relay coverage to the ridgeline for broader approach visibility.",
-    "rewardEquipmentId": "signal_amplifier",
+    "rewardEquipmentId": "signal_circlet",
     "rewardPotions": 0,
     "rewardGold": 100
   },
@@ -100,7 +100,7 @@
     "type": "military",
     "requiredUpgradeId": "relay_expansion",
     "description": "Establish a full command hub enabling tactical coordination across zones.",
-    "rewardEquipmentId": "commander_badge",
+    "rewardEquipmentId": "command_loop",
     "rewardPotions": 1,
     "rewardGold": 180
   },
@@ -123,7 +123,7 @@
     "type": "research",
     "requiredUpgradeId": "survey_drones",
     "description": "Build indexed data vaults to convert drone survey noise into usable intelligence.",
-    "rewardEquipmentId": "index_core",
+    "rewardEquipmentId": "oracle_prism",
     "rewardPotions": 0,
     "rewardGold": 110
   },
@@ -135,7 +135,7 @@
     "type": "research",
     "requiredUpgradeId": "data_vaults",
     "description": "Open a prototype lab to reach the design space hidden in pre-collapse foundry data.",
-    "rewardEquipmentId": "prototype_frame",
+    "rewardEquipmentId": "vanguard_frame",
     "rewardPotions": 0,
     "rewardGold": 200
   }

@@ -14,6 +14,9 @@ import java.util.Map;
 public class QuestManager {
     public static final String NOT_STARTED = "NOT_STARTED";
     public static final String COMPLETED = "__COMPLETED__";
+    private static final String IRONHAVEN_ARRIVAL_QUEST = "ironhaven_arrival";
+    private static final String IRONHAVEN_SURVEY_STEP = "survey_town";
+    private static final String IRONHAVEN_SURVEY_COMPLETE_FLAG = "arrival.town_surveyed";
 
     private final Map<String, QuestDefinition> definitions = new LinkedHashMap<>();
 
@@ -40,29 +43,10 @@ public class QuestManager {
         if (state == null) {
             return;
         }
-        bootstrapLegacyState(state);
         for (QuestDefinition definition : definitions.values()) {
             if (definition.isAutoStart() && NOT_STARTED.equals(getQuestState(state, definition.getId()))) {
                 startQuest(state, definition.getId());
             }
-        }
-    }
-
-    private void bootstrapLegacyState(GameState state) {
-        if (!state.getQuestStates().isEmpty()) {
-            return;
-        }
-
-        if (state.hasQuestFlag("quest_shard_completed")) {
-            state.setQuestState("shard_hunt", COMPLETED);
-        } else if (state.hasQuestFlag("quest_shard_started")) {
-            state.setQuestState("shard_hunt", state.hasKeyItem("luminous_shard") ? "return_shard" : "search_shard");
-        }
-
-        if (state.hasQuestFlag("quest_core_completed")) {
-            state.setQuestState("core_ascent", COMPLETED);
-        } else if (state.hasQuestFlag("quest_core_started")) {
-            state.setQuestState("core_ascent", state.hasKeyItem("sun_core") ? "return_core" : "search_core");
         }
     }
 
@@ -100,6 +84,43 @@ public class QuestManager {
         if (state != null && questId != null && !questId.isEmpty()) {
             state.setQuestState(questId, COMPLETED);
         }
+    }
+
+    public void recordNpcConversation(GameState state, WorldStateManager worldStateManager, String zoneId, String npcId) {
+        if (state == null || worldStateManager == null || npcId == null || npcId.isEmpty()) {
+            return;
+        }
+        if (!IRONHAVEN_SURVEY_STEP.equals(getQuestState(state, IRONHAVEN_ARRIVAL_QUEST))) {
+            return;
+        }
+        if (!"town".equals(zoneId) && !"verdant_fields".equals(zoneId)) {
+            return;
+        }
+
+        String surveyFlag = getIronhavenSurveyFlag(npcId);
+        if (surveyFlag == null) {
+            return;
+        }
+
+        worldStateManager.setFlag(state, surveyFlag, true);
+        if (worldStateManager.isFlagActive(state, "arrival.spoke_mira")
+            && worldStateManager.isFlagActive(state, "arrival.spoke_tor")
+            && worldStateManager.isFlagActive(state, "arrival.spoke_edda")) {
+            worldStateManager.setFlag(state, IRONHAVEN_SURVEY_COMPLETE_FLAG, true);
+        }
+    }
+
+    private String getIronhavenSurveyFlag(String npcId) {
+        if ("mira".equals(npcId)) {
+            return "arrival.spoke_mira";
+        }
+        if ("tor".equals(npcId)) {
+            return "arrival.spoke_tor";
+        }
+        if ("edda_town".equals(npcId)) {
+            return "arrival.spoke_edda";
+        }
+        return null;
     }
 
     public void syncProgress(GameState state, WorldStateManager worldStateManager) {

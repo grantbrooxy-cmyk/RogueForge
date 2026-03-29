@@ -5,6 +5,8 @@ package com.rogueforge.game.data;
  * Represents a game zone/level with difficulty range and monsters.
  */
 public class ZoneDefinition {
+    public static final String WORLD_TYPE_STATIC = "static";
+    public static final String WORLD_TYPE_EXPANSIVE_FRONTIER = "expansive_frontier";
 
     private String id;
     private String name;
@@ -13,6 +15,10 @@ public class ZoneDefinition {
     private String rankCeiling;
     private String bossId;
     private String[] monsterIds;
+    private String worldType;
+    private int expansiveWidthTiles;
+    private int expansiveHeightTiles;
+    private int starterSafeRadiusTiles;
 
     /**
      * No-arg constructor required for JSON deserialization.
@@ -57,5 +63,25 @@ public class ZoneDefinition {
 
     public String[] getMonsterIds() {
         return monsterIds;
+    }
+
+    public String getWorldType() {
+        return worldType != null && !worldType.isEmpty() ? worldType : WORLD_TYPE_STATIC;
+    }
+
+    public boolean isExpansiveFrontier() {
+        return WORLD_TYPE_EXPANSIVE_FRONTIER.equals(getWorldType());
+    }
+
+    public int getExpansiveWidthTiles() {
+        return expansiveWidthTiles > 0 ? expansiveWidthTiles : 0;
+    }
+
+    public int getExpansiveHeightTiles() {
+        return expansiveHeightTiles > 0 ? expansiveHeightTiles : 0;
+    }
+
+    public int getStarterSafeRadiusTiles() {
+        return starterSafeRadiusTiles > 0 ? starterSafeRadiusTiles : 0;
     }
 }

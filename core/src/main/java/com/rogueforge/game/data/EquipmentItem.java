@@ -7,10 +7,13 @@ import com.rogueforge.game.combat.WeaponType;
  * Represents a piece of equipment with slot type and stat bonuses.
  */
 public class EquipmentItem {
+    public static final String TARGET_PLAYER = "PLAYER";
+    public static final String TARGET_ROBOT = "ROBOT";
 
     private String id;
     private String name;
     private String slotType;
+    private String equipTarget = TARGET_ROBOT;
     private int hpBonus;
     private int attackBonus;
     private int defenseBonus;
@@ -28,12 +31,13 @@ public class EquipmentItem {
     public EquipmentItem() {
     }
 
-    public EquipmentItem(String id, String name, String slotType, int hpBonus,
+    public EquipmentItem(String id, String name, String slotType, String equipTarget, int hpBonus,
                         int attackBonus, int defenseBonus, int speedBonus, int intelligenceBonus,
                         long cost, int tier, String gradeRequirement, String uniqueBoost) {
         this.id = id;
         this.name = name;
         this.slotType = slotType;
+        this.equipTarget = equipTarget;
         this.hpBonus = hpBonus;
         this.attackBonus = attackBonus;
         this.defenseBonus = defenseBonus;
@@ -55,6 +59,22 @@ public class EquipmentItem {
 
     public String getSlotType() {
         return slotType;
+    }
+
+    public String getEquipTarget() {
+        return equipTarget != null ? equipTarget : TARGET_ROBOT;
+    }
+
+    public void setEquipTarget(String equipTarget) {
+        this.equipTarget = equipTarget;
+    }
+
+    public boolean isPlayerEquipment() {
+        return TARGET_PLAYER.equals(getEquipTarget());
+    }
+
+    public boolean isRobotEquipment() {
+        return TARGET_ROBOT.equals(getEquipTarget());
     }
 
     public int getHpBonus() {

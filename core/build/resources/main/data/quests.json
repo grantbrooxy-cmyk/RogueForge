@@ -21,7 +21,7 @@
     "startStepId": "speak_mira_intro",
     "steps": [
       { "id": "speak_mira_intro", "objective": "Speak with Mira about proving your crew's capabilities." },
-      { "id": "verdant_patrol", "objective": "Take your crew into Verdant Fields and survive the frontier.", "completionWorldFlag": "arrival.first_battle_won" },
+      { "id": "verdant_patrol", "objective": "Head through Ironhaven's east gate into Verdant Fields and survive the frontier.", "completionWorldFlag": "arrival.first_battle_won" },
       { "id": "return_mira_intro", "objective": "Return to Mira and show her what your team is capable of." }
     ]
   },

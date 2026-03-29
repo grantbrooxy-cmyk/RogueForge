@@ -1,5 +1,5 @@
 {
-    "activeFile": "",
+    "activeFile": "coastal_shallows.tmx",
     "expandedProjectPaths": [
         "."
     ],
@@ -85,10 +85,10 @@
         },
         "abyssal_rift.tmx": {
             "scale": 0.7052430555555556,
-            "selectedLayer": 0,
+            "selectedLayer": 7,
             "viewCenter": {
-                "x": 733.0805967209886,
-                "y": 618.2265767318203
+                "x": 830.9192063413914,
+                "y": 591.2855103146079
             }
         },
         "clockwork_sanctum.tmx": {
@@ -243,10 +243,16 @@
     "map.tileWidth": 16,
     "map.width": 120,
     "openFiles": [
+        "abyssal_rift.tmx",
+        "crystal_depths.tmx",
+        "coastal_shallows.tmx"
     ],
     "project": "untitled.tiled-project",
     "property.type": "float",
     "recentFiles": [
+        "abyssal_rift.tmx",
+        "crystal_depths.tmx",
+        "coastal_shallows.tmx",
         "whispering_forest.tmx",
         "volcanic_core.tmx",
         "verdant_fields.tmx",
@@ -255,10 +261,7 @@
         "sky_fortress.tmx",
         "shadow_caves.tmx",
         "scorched_plateau.tmx",
-        "rusty_quarry.tmx",
-        "infinite_dungeon.tmx",
-        "frozen_vale.tmx",
-        "dragon_peak.tmx"
+        "rusty_quarry.tmx"
     ],
     "tileset.lastUsedFilter": "Tiled tileset files (*.tsx *.xml)",
     "tileset.lastUsedFormat": "tsx",

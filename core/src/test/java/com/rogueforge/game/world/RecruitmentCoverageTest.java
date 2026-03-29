@@ -3,6 +3,7 @@ package com.rogueforge.game.world;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.utils.Json;
 import com.rogueforge.game.data.ZoneDefinition;
+import com.rogueforge.game.engine.world.TmxWorldLoader;
 import com.rogueforge.game.robot.RobotDefinition;
 import com.rogueforge.game.support.GdxTestSupport;
 import java.util.Arrays;

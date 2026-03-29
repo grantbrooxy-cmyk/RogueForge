@@ -2,6 +2,8 @@ package com.rogueforge.game.world;
 
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
+import com.rogueforge.game.engine.world.InfiniteDungeonLayoutGenerator;
+import com.rogueforge.game.engine.world.TmxWorldLoader;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

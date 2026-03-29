@@ -500,7 +500,7 @@
     <property name="targetSpawn" value="from_coast" />
     </properties>
   </object>
-  <object id="21" name="sunken_abyss_dive" x="1500" y="370" width="72" height="72">
+  <object id="21" name="sunken_abyss_dive" x="1500" y="246" width="72" height="72">
    <properties>
     <property name="label" value="Sunken Abyss" />
     <property name="targetZone" value="sunken_abyss" />

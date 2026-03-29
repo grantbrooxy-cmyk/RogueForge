@@ -15,6 +15,8 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Vector2;
 import com.rogueforge.game.core.RogueForgeGame;
 import com.rogueforge.game.core.ScreenManager;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Lightweight interior map for houses, NPC conversation, and chest looting.
@@ -48,11 +50,26 @@ public class HouseInteriorScreen implements Screen {
     private String activeDialog;
     private String lootMessage;
     private float lootTimer;
+    private final String openingSpeaker;
+    private final String openingDialog;
+    private final List<com.rogueforge.game.world.DialogueSystem.DialoguePage> activeDialogueSequence = new ArrayList<>();
+    private int activeDialogueSequenceIndex;
+    private int dialogPageIndex;
+    private String dialogPageTrackingText;
+    private String dialogPageTrackingSpeaker;
+
     public HouseInteriorScreen(RogueForgeGame game, ScreenManager screenManager, GameScreen gameScreen, GameScreen.House house) {
+        this(game, screenManager, gameScreen, house, null, null);
+    }
+
+    public HouseInteriorScreen(RogueForgeGame game, ScreenManager screenManager, GameScreen gameScreen,
+                               GameScreen.House house, String openingSpeaker, String openingDialog) {
         this.game = game;
         this.screenManager = screenManager;
         this.gameScreen = gameScreen;
         this.house = house;
+        this.openingSpeaker = openingSpeaker;
+        this.openingDialog = openingDialog;
         this.camera = new OrthographicCamera();
         this.camera.setToOrtho(false, 420f, 300f);
         this.uiCamera = new OrthographicCamera();
@@ -88,6 +105,10 @@ public class HouseInteriorScreen implements Screen {
     @Override
     public void show() {
         Gdx.input.setInputProcessor(null);
+        if (openingDialog != null && !openingDialog.isEmpty()) {
+            activeSpeaker = openingSpeaker != null && !openingSpeaker.isEmpty() ? openingSpeaker : house.name;
+            activeDialog = openingDialog;
+        }
     }
 
     @Override
@@ -112,8 +133,11 @@ public class HouseInteriorScreen implements Screen {
             return;
         }
         if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) {
-            activeSpeaker = null;
-            activeDialog = null;
+            if (!advanceDialogPage()) {
+                if (!advanceDialogueSequence()) {
+                    clearActiveDialog();
+                }
+            }
             lootMessage = null;
             lootTimer = 0f;
         }
@@ -136,6 +160,12 @@ public class HouseInteriorScreen implements Screen {
         playerPos.y = clamp(playerPos.y + dy * PLAYER_SPEED * delta, 48f, 264f);
 
         if (Gdx.input.isKeyJustPressed(Input.Keys.E)) {
+            if (hasActiveDialog()) {
+                if (!advanceDialogPage() && !advanceDialogueSequence()) {
+                    clearActiveDialog();
+                }
+                return;
+            }
             if (!tryExit()) {
                 if (!tryOpenChest()) {
                     if (!tryInteractWithFeature()) {
@@ -207,11 +237,10 @@ public class HouseInteriorScreen implements Screen {
             }
             com.rogueforge.game.world.DialogueSystem.DialogueResult result =
                 gameScreen.interactWithInteriorNpc(closestNpc.id, closestNpc.name);
-            activeSpeaker = result.speaker != null ? result.speaker : closestNpc.name;
-            activeDialog = result.text != null && !result.text.isEmpty() ? result.text : closestNpc.dialog;
+            showDialogueSequence(result.pages, result.speaker != null ? result.speaker : closestNpc.name,
+                result.text != null && !result.text.isEmpty() ? result.text : closestNpc.dialog);
         } else {
-            activeSpeaker = null;
-            activeDialog = null;
+            clearActiveDialog();
         }
     }
 
@@ -325,17 +354,31 @@ public class HouseInteriorScreen implements Screen {
         uiCamera.setToOrtho(false, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 
         if (activeDialog != null && activeSpeaker != null) {
+            resetDialogPageIfNeeded();
+            List<String> pages = paginateDialog(activeDialog, 86, 3);
+            String currentPage = pages.get(Math.min(dialogPageIndex, pages.size() - 1));
+            List<String> wrapped = wrapTextLines(currentPage, 86);
             shapeRenderer.setProjectionMatrix(uiCamera.combined);
             shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
             shapeRenderer.setColor(0.05f, 0.06f, 0.1f, 0.92f);
-            shapeRenderer.rect(28f, 28f, Gdx.graphics.getWidth() - 56f, 104f);
+            shapeRenderer.rect(28f, 28f, Gdx.graphics.getWidth() - 56f, 124f);
             shapeRenderer.end();
 
             batch.setProjectionMatrix(uiCamera.combined);
             batch.begin();
             font.setColor(Color.WHITE);
-            font.draw(batch, activeSpeaker, 44f, 112f);
-            font.draw(batch, activeDialog, 44f, 80f);
+            font.draw(batch, activeSpeaker, 44f, 128f);
+            float y = 96f;
+            for (String line : wrapped) {
+                font.draw(batch, line, 44f, y);
+                y -= 22f;
+                if (y < 52f) {
+                    break;
+                }
+            }
+            font.draw(batch,
+                dialogPageIndex + 1 < pages.size() ? "E / Enter: Continue" : "E / Enter: Close",
+                44f, 44f);
             batch.end();
         }
 
@@ -351,6 +394,141 @@ public class HouseInteriorScreen implements Screen {
 
     private float clamp(float value, float min, float max) {
         return Math.max(min, Math.min(max, value));
+    }
+
+    private List<String> wrapTextLines(String text, int maxChars) {
+        List<String> lines = new ArrayList<>();
+        if (text == null || text.isEmpty()) {
+            return lines;
+        }
+
+        StringBuilder currentLine = new StringBuilder();
+        for (String word : text.split("\\s+")) {
+            if (currentLine.length() == 0) {
+                currentLine.append(word);
+                continue;
+            }
+            if (currentLine.length() + 1 + word.length() > maxChars) {
+                lines.add(currentLine.toString());
+                currentLine.setLength(0);
+                currentLine.append(word);
+            } else {
+                currentLine.append(' ').append(word);
+            }
+        }
+        if (currentLine.length() > 0) {
+            lines.add(currentLine.toString());
+        }
+        return lines;
+    }
+
+    private List<String> paginateDialog(String text, int maxChars, int linesPerPage) {
+        List<String> wrappedLines = wrapTextLines(text, maxChars);
+        List<String> pages = new ArrayList<>();
+        if (wrappedLines.isEmpty()) {
+            pages.add("");
+            return pages;
+        }
+        StringBuilder currentPage = new StringBuilder();
+        int lineCount = 0;
+        for (String line : wrappedLines) {
+            if (currentPage.length() > 0) {
+                currentPage.append('\n');
+            }
+            currentPage.append(line);
+            lineCount++;
+            if (lineCount >= linesPerPage) {
+                pages.add(currentPage.toString());
+                currentPage.setLength(0);
+                lineCount = 0;
+            }
+        }
+        if (currentPage.length() > 0) {
+            pages.add(currentPage.toString());
+        }
+        return pages;
+    }
+
+    private boolean hasActiveDialog() {
+        return activeSpeaker != null && activeDialog != null && !activeDialog.isEmpty();
+    }
+
+    private void resetDialogPageIfNeeded() {
+        if (!hasActiveDialog()) {
+            dialogPageIndex = 0;
+            dialogPageTrackingText = null;
+            dialogPageTrackingSpeaker = null;
+            return;
+        }
+        if (!activeDialog.equals(dialogPageTrackingText) || !activeSpeaker.equals(dialogPageTrackingSpeaker)) {
+            dialogPageIndex = 0;
+            dialogPageTrackingText = activeDialog;
+            dialogPageTrackingSpeaker = activeSpeaker;
+        }
+    }
+
+    private boolean advanceDialogPage() {
+        if (!hasActiveDialog()) {
+            return false;
+        }
+        resetDialogPageIfNeeded();
+        List<String> pages = paginateDialog(activeDialog, 86, 3);
+        if (dialogPageIndex + 1 < pages.size()) {
+            dialogPageIndex++;
+            return true;
+        }
+        return false;
+    }
+
+    private boolean advanceDialogueSequence() {
+        if (activeDialogueSequenceIndex + 1 < activeDialogueSequence.size()) {
+            activeDialogueSequenceIndex++;
+            showCurrentDialogueSequencePage();
+            return true;
+        }
+        return false;
+    }
+
+    private void showDialogueSequence(List<com.rogueforge.game.world.DialogueSystem.DialoguePage> pages,
+                                      String fallbackSpeaker, String fallbackText) {
+        activeDialogueSequence.clear();
+        activeDialogueSequenceIndex = 0;
+        if (pages != null) {
+            for (com.rogueforge.game.world.DialogueSystem.DialoguePage page : pages) {
+                if (page == null || page.text == null || page.text.isEmpty()) {
+                    continue;
+                }
+                activeDialogueSequence.add(page);
+            }
+        }
+        if (activeDialogueSequence.isEmpty()) {
+            activeDialogueSequence.add(new com.rogueforge.game.world.DialogueSystem.DialoguePage(fallbackSpeaker, fallbackText));
+        }
+        showCurrentDialogueSequencePage();
+    }
+
+    private void showCurrentDialogueSequencePage() {
+        if (activeDialogueSequence.isEmpty()) {
+            clearActiveDialog();
+            return;
+        }
+        com.rogueforge.game.world.DialogueSystem.DialoguePage page =
+            activeDialogueSequence.get(Math.min(activeDialogueSequenceIndex, activeDialogueSequence.size() - 1));
+        activeSpeaker = page.speaker;
+        activeDialog = page.text;
+        dialogPageIndex = 0;
+        dialogPageTrackingText = activeDialog;
+        dialogPageTrackingSpeaker = activeSpeaker;
+    }
+
+    private void clearActiveDialog() {
+        activeSpeaker = null;
+        activeDialog = null;
+        activeDialogueSequence.clear();
+        activeDialogueSequenceIndex = 0;
+        dialogPageIndex = 0;
+        dialogPageTrackingText = null;
+        dialogPageTrackingSpeaker = null;
     }
 
     @Override

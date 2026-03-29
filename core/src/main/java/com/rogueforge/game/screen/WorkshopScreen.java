@@ -202,7 +202,7 @@ public class WorkshopScreen implements Screen {
             }
 
             if (currentTab == 1) {
-                List<EquipmentItem> catalog = gameScreen.getEquipmentCatalog();
+                List<EquipmentItem> catalog = gameScreen.getEquipmentCatalogForPartyMember(selectedPartyMember);
                 for (int i = 0; i < catalog.size(); i++) {
                     float cardX = equipmentCardX(w(), i);
                     float cardY = equipmentCardY(h, i);
@@ -213,7 +213,7 @@ public class WorkshopScreen implements Screen {
                             : gameScreen.equipRobotItem(selectedPartyMember - 1, catalog.get(i));
                         statusMessage = equipped
                             ? "Equipped " + catalog.get(i).getName() + "."
-                            : "Grade requirement not met for " + catalog.get(i).getName() + ".";
+                            : "Cannot equip " + catalog.get(i).getName() + " right now.";
                         return;
                     }
                 }
@@ -547,8 +547,8 @@ public class WorkshopScreen implements Screen {
     }
 
     private void drawEquipmentPanel(float w, float h, float mx, float my) {
-        List<EquipmentItem> catalog = gameScreen.getEquipmentCatalog();
         boolean playerSelected = selectedPartyMember == 0;
+        List<EquipmentItem> catalog = gameScreen.getEquipmentCatalogForPartyMember(selectedPartyMember);
         Map<String, String> equipped = playerSelected
             ? gameScreen.getPlayerEquipmentSlots()
             : gameScreen.getRobotEquipmentSlots(selectedPartyMember - 1);

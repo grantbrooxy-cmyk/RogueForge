@@ -1,7 +1,7 @@
 [
   {
     "id": "workshop",
-    "zoneId": "verdant_fields",
+    "zoneId": "town",
     "vendorName": "Rooke",
     "locationLabel": "Workshop Counter",
     "entries": [
@@ -16,7 +16,7 @@
   },
   {
     "id": "apothecary",
-    "zoneId": "verdant_fields",
+    "zoneId": "town",
     "vendorName": "Iris",
     "locationLabel": "Herbalist Shelves",
     "entries": [
@@ -26,6 +26,18 @@
       { "type": "equipment", "itemId": "heavy_plating", "cost": 140 },
       { "type": "healing", "label": "Repair Kit x5", "quantity": 5, "cost": 110, "requiredWorldFlag": "settlement.apothecary_stock" },
       { "type": "equipment", "itemId": "oracle_prism", "cost": 320, "requiredWorldFlag": "settlement.survey_drones" }
+    ]
+  },
+  {
+    "id": "verdant_outpost",
+    "zoneId": "verdant_fields",
+    "vendorName": "Field Rigger",
+    "locationLabel": "Frontier Supply Crate",
+    "entries": [
+      { "type": "healing", "label": "Repair Kit x2", "quantity": 2, "cost": 36 },
+      { "type": "equipment", "itemId": "bronze_edge", "cost": 88 },
+      { "type": "equipment", "itemId": "swift_boots", "cost": 72 },
+      { "type": "equipment", "itemId": "spark_ring", "cost": 118 }
     ]
   },
   {

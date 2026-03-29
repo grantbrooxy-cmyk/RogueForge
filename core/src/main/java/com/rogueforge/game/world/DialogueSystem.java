@@ -79,22 +79,22 @@ public class DialogueSystem {
         DialogueResult result = new DialogueResult();
         result.dialogueId = definition.getId();
         DialogueLine[] lines = definition.getLines();
-        StringBuilder sb = new StringBuilder();
-        String speaker = null;
         for (DialogueLine line : lines) {
             if (line == null || line.getText() == null || line.getText().isEmpty()) {
                 continue;
             }
-            if (speaker == null && line.getSpeaker() != null && !line.getSpeaker().isEmpty()) {
-                speaker = line.getSpeaker();
-            }
-            if (sb.length() > 0) {
-                sb.append(' ');
-            }
-            sb.append(line.getText());
+            String speaker = line.getSpeaker() != null && !line.getSpeaker().isEmpty()
+                ? line.getSpeaker()
+                : definition.getNpcId();
+            result.pages.add(new DialoguePage(speaker, line.getText()));
         }
-        result.speaker = speaker != null ? speaker : definition.getNpcId();
-        result.text = sb.toString();
+        if (!result.pages.isEmpty()) {
+            result.speaker = result.pages.get(0).speaker;
+            result.text = result.pages.get(0).text;
+        } else {
+            result.speaker = definition.getNpcId();
+            result.text = "";
+        }
         result.rewardGold = definition.getRewardGold();
         result.rewardExperience = definition.getRewardExperience();
         result.rewardPotions = definition.getRewardPotions();
@@ -112,6 +112,7 @@ public class DialogueSystem {
         public String dialogueId;
         public String speaker;
         public String text;
+        public final List<DialoguePage> pages = new ArrayList<>();
         public long rewardGold;
         public int rewardExperience;
         public int rewardPotions;
@@ -122,5 +123,15 @@ public class DialogueSystem {
         public String setWorldFlag;
         public String recruitEventId;
         public String settlementUpgradeId;
+    }
+
+    public static class DialoguePage {
+        public final String speaker;
+        public final String text;
+
+        public DialoguePage(String speaker, String text) {
+            this.speaker = speaker != null ? speaker : "";
+            this.text = text != null ? text : "";
+        }
     }
 }

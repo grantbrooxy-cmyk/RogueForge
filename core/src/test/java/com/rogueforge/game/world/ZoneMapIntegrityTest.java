@@ -2,8 +2,11 @@ package com.rogueforge.game.world;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
+import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Json;
 import com.rogueforge.game.data.ZoneDefinition;
+import com.rogueforge.game.engine.world.TmxWorldLoader;
 import com.rogueforge.game.support.GdxTestSupport;
 import java.util.HashMap;
 import java.util.Map;
@@ -15,6 +18,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ZoneMapIntegrityTest {
+    private static final float PLAYER_SIZE = 56f;
+    private static final float DOOR_INTERACTION_RANGE = 42f;
+    private static final float SEARCH_STEP = 8f;
 
     @BeforeAll
     static void bootGdx() {
@@ -39,6 +45,10 @@ class ZoneMapIntegrityTest {
             assertTrue(
                 mapFile.exists(),
                 "Missing map file for zone " + definition.getId() + ": " + definition.getTilemapPath()
+            );
+            assertFalse(
+                mapFile.readString().contains("name=\"questFlag\""),
+                "Map " + definition.getId() + " still uses legacy questFlag TMX properties. Use world-flag properties instead."
             );
 
             TmxWorldLoader.LoadedZone loaded = loader.load(definition);
@@ -75,7 +85,63 @@ class ZoneMapIntegrityTest {
                             + door.targetZoneId + ":" + door.targetSpawnId
                     );
                 }
+
+                assertTrue(
+                    hasAccessibleDoorApproach(zone, door),
+                    "Door " + zone.id + ":" + door.id + " has no reachable standing position for the player."
+                );
             }
         }
+    }
+
+    private boolean hasAccessibleDoorApproach(TmxWorldLoader.LoadedZone zone, TmxWorldLoader.Door door) {
+        float minX = Math.max(0f, door.bounds.x - DOOR_INTERACTION_RANGE - PLAYER_SIZE);
+        float maxX = Math.min(zone.pixelWidth, door.bounds.x + door.bounds.width + DOOR_INTERACTION_RANGE + PLAYER_SIZE);
+        float minY = Math.max(0f, door.bounds.y - DOOR_INTERACTION_RANGE - PLAYER_SIZE);
+        float maxY = Math.min(zone.pixelHeight, door.bounds.y + door.bounds.height + DOOR_INTERACTION_RANGE + PLAYER_SIZE);
+
+        for (float y = minY; y <= maxY; y += SEARCH_STEP) {
+            for (float x = minX; x <= maxX; x += SEARCH_STEP) {
+                if (distanceToRect(x, y, door.bounds) > DOOR_INTERACTION_RANGE) {
+                    continue;
+                }
+                if (!isBlockedAt(zone, x, y, PLAYER_SIZE)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean isBlockedAt(TmxWorldLoader.LoadedZone zone, float x, float y, float size) {
+        float half = size / 2f;
+        if (x - half < 0f || x + half > zone.pixelWidth || y - half < 0f || y + half > zone.pixelHeight) {
+            return true;
+        }
+        Rectangle candidate = new Rectangle(x - half, y - half, size, size);
+        for (Rectangle collision : zone.collisions) {
+            if (candidate.overlaps(collision)) {
+                return true;
+            }
+        }
+        for (TmxWorldLoader.Feature feature : zone.features) {
+            if (!feature.blocksMovement) {
+                continue;
+            }
+            if (candidate.overlaps(feature.bounds)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private float distanceToRect(float x, float y, Rectangle rect) {
+        return distanceToRect(new Vector2(x, y), rect);
+    }
+
+    private float distanceToRect(Vector2 point, Rectangle rect) {
+        float cx = Math.max(rect.x, Math.min(point.x, rect.x + rect.width));
+        float cy = Math.max(rect.y, Math.min(point.y, rect.y + rect.height));
+        return point.dst(cx, cy);
     }
 }

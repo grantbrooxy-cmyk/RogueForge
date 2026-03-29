@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.12.1" orientation="orthogonal" renderorder="right-down" width="120" height="84" tilewidth="16" tileheight="16" infinite="0" nextlayerid="12" nextobjectid="44">
+<map version="1.10" tiledversion="1.12.1" orientation="orthogonal" renderorder="right-down" width="120" height="84" tilewidth="16" tileheight="16" infinite="0" nextlayerid="12" nextobjectid="50">
  <properties>
   <property name="groundStyle" value="meadow" />
-  <property name="safeZone" value="true" />
+  <property name="safeZone" value="false" />
  </properties>
  <tileset firstgid="1" source="tileset.tsx" />
  <tileset firstgid="91" source="objects.tsx" />
@@ -435,27 +435,6 @@
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
  </data></layer><objectgroup id="1" name="features">
-  <object id="1" name="workshop" x="240" y="452" width="240" height="192">
-   <properties>
-    <property name="kind" value="house" />
-    <property name="label" value="Workshop" />
-    <property name="houseId" value="0" />
-   </properties>
-  </object>
-  <object id="2" name="lodge" x="560" y="422" width="288" height="192">
-   <properties>
-    <property name="kind" value="house" />
-    <property name="label" value="Traveler Lodge" />
-    <property name="houseId" value="1" />
-   </properties>
-  </object>
-  <object id="3" name="herbalist" x="900" y="474" width="240" height="180">
-   <properties>
-    <property name="kind" value="house" />
-    <property name="label" value="Herbalist" />
-    <property name="houseId" value="2" />
-   </properties>
-  </object>
   <object id="4" name="cave_wall" x="1590" y="484" width="220" height="300">
    <properties>
     <property name="kind" value="cliff" />
@@ -486,12 +465,6 @@
     <property name="label" value="Coastal Shallows Path" />
    </properties>
   </object>
-  <object id="40" name="dungeon_gate" x="620" y="1020" width="220" height="160">
-   <properties>
-    <property name="kind" value="gate" />
-    <property name="label" value="Infinite Dungeon Sigil" />
-   </properties>
-  </object>
   <object id="30" name="thorn_barrier" x="1250" y="690" width="96" height="72">
    <properties>
     <property name="kind" value="barrier" />
@@ -516,9 +489,10 @@
   </object>
  </objectgroup>
  <objectgroup id="2" name="collisions">
-  <object id="6" x="240" y="452" width="240" height="192" />
-  <object id="7" x="560" y="422" width="288" height="192" />
-  <object id="8" x="900" y="474" width="240" height="180" />
+ <object id="6" x="240" y="452" width="240" height="192" />
+ <object id="7" x="560" y="422" width="288" height="192" />
+ <object id="8" x="900" y="474" width="240" height="180" />
+  <object id="45" x="72" y="560" width="180" height="132" />
   <object id="9" x="1590" y="484" width="220" height="300" />
   <object id="10" x="1120" y="144" width="240" height="160" />
   <object id="11" x="0" y="0" width="1920" height="60" />
@@ -528,12 +502,11 @@
   <object id="37" x="84" y="156" width="220" height="170" />
   <object id="38" x="1500" y="126" width="220" height="150" />
   <object id="39" x="154" y="980" width="240" height="180" />
-  <object id="41" x="620" y="1020" width="220" height="160" />
  </objectgroup>
  <objectgroup id="3" name="spawn_points">
-  <object id="15" name="town_square" type="player" x="380" y="764">
+  <object id="15" name="from_town" type="player" x="420" y="764">
    <properties>
-    <property name="spawnId" value="town_square" />
+    <property name="spawnId" value="from_town" />
    </properties>
   </object>
   <object id="16" name="from_caves" type="player" x="1490" y="764">
@@ -561,33 +534,21 @@
     <property name="spawnId" value="from_coast" />
    </properties>
   </object>
-  <object id="42" name="from_dungeon" type="player" x="730" y="1110">
-   <properties>
-    <property name="spawnId" value="from_dungeon" />
-   </properties>
-  </object>
+  <object id="46" name="field_entry" type="enemy" x="720" y="760" />
   <object id="18" name="enemy_1" type="enemy" x="1320" y="914" />
   <object id="19" name="enemy_2" type="enemy" x="1480" y="824" />
   <object id="20" name="enemy_3" type="enemy" x="1570" y="584" />
   <object id="21" name="enemy_4" type="enemy" x="1320" y="444" />
+  <object id="48" name="enemy_5" type="enemy" x="980" y="748" />
+  <object id="49" name="enemy_6" type="enemy" x="1080" y="668" />
  </objectgroup>
  <objectgroup id="4" name="doors">
-  <object id="22" name="door_workshop" x="330" y="644" width="60" height="46">
+  <object id="22" name="ironhaven_gate" x="270" y="732" width="72" height="72">
    <properties>
-    <property name="label" value="Workshop" />
-    <property name="houseId" value="0" />
-   </properties>
-  </object>
-  <object id="23" name="door_lodge" x="670" y="614" width="68" height="46">
-   <properties>
-    <property name="label" value="Traveler Lodge" />
-    <property name="houseId" value="1" />
-   </properties>
-  </object>
-  <object id="24" name="door_herbalist" x="988" y="654" width="60" height="46">
-   <properties>
-    <property name="label" value="Herbalist" />
-    <property name="houseId" value="2" />
+    <property name="label" value="Ironhaven" />
+    <property name="targetZone" value="town" />
+    <property name="targetSpawn" value="from_fields" />
+    <property name="lockMessage" value="The west gate leads back into Ironhaven." />
    </properties>
   </object>
   <object id="25" name="shadow_caves_gate" x="1670" y="732" width="72" height="72">
@@ -622,41 +583,15 @@
     <property name="targetSpawn" value="from_verdant" />
    </properties>
   </object>
-  <object id="39" name="coastal_shallows_gate" x="240" y="1022" width="72" height="72">
+  <object id="39" name="coastal_shallows_gate" x="240" y="906" width="72" height="72">
    <properties>
     <property name="label" value="Coastal Shallows" />
     <property name="targetZone" value="coastal_shallows" />
     <property name="targetSpawn" value="from_verdant" />
    </properties>
   </object>
-  <object id="43" name="infinite_dungeon_gate" x="694" y="1082" width="72" height="72">
-   <properties>
-    <property name="label" value="Infinite Dungeon" />
-    <property name="targetZone" value="infinite_dungeon" />
-    <property name="targetSpawn" value="from_hub" />
-    <property name="lockMessage" value="A fractured sigil beside Ironhaven opens into the endless training ruin beyond the frontier." />
-   </properties>
-  </object>
  </objectgroup>
  <objectgroup id="5" name="npcs">
-  <object id="27" name="mira" x="480" y="734">
-   <properties>
-    <property name="npcId" value="mira" />
-    <property name="displayName" value="Mira" />
-   </properties>
-  </object>
-  <object id="28" name="tor" x="760" y="744">
-   <properties>
-    <property name="npcId" value="tor" />
-    <property name="displayName" value="Tor" />
-   </properties>
-  </object>
-  <object id="29" name="edda" x="1060" y="734">
-   <properties>
-    <property name="npcId" value="edda_town" />
-    <property name="displayName" value="Edda" />
-   </properties>
-  </object>
  </objectgroup>
  <objectgroup id="6" name="chests">
   <object id="32" name="burned_cache" x="1388" y="708">

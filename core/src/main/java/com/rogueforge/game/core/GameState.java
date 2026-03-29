@@ -40,7 +40,7 @@ public class GameState {
     private long totalGold = 0;
     private int totalEnemiesKilled = 0;
     private float survivalTime = 0f;
-    private String currentZoneId = "verdant_fields";
+    private String currentZoneId = "town";
     private int currentSaveSlot = 0;
     private int infiniteDungeonCurrentFloor = 0;
     private int infiniteDungeonBestFloor = 0;
@@ -52,7 +52,6 @@ public class GameState {
     private final Map<String, Map<String, String>> robotEquipment = new HashMap<>();
     private final List<EquipmentItem> equipmentCatalog = new ArrayList<>();
     private final List<String> ownedEquipmentIds = new ArrayList<>();
-    private final Map<String, Boolean> questFlags = new HashMap<>();
     private final Map<String, String> questStates = new HashMap<>();
     private final List<String> keyItems = new ArrayList<>();
     private final Map<String, Integer> bestiaryScanLevels = new HashMap<>();
@@ -61,6 +60,9 @@ public class GameState {
     private final Map<String, RobotProgressionState> robotProgressionStates = new HashMap<>();
     private final Map<String, Integer> forgeComponents = new HashMap<>();
     private final Map<String, Integer> shardInventory = new HashMap<>();
+    private long unbankedGold = 0;
+    private final Map<String, Integer> unbankedForgeComponents = new HashMap<>();
+    private final Map<String, Integer> unbankedShards = new HashMap<>();
 
     // Forge Core level (1 = base, 2/3/4 unlocked by boss milestones)
     // Gates robot evolution tiers: Tier 2 requires Lv2, Tier 3 requires Lv3.
@@ -92,6 +94,9 @@ public class GameState {
     public long getTotalGold() { return totalGold; }
     public void addGold(long amount) { this.totalGold += amount; }
     public void setTotalGold(long gold) { this.totalGold = gold; }
+    public long getUnbankedGold() { return Math.max(0L, unbankedGold); }
+    public void setUnbankedGold(long amount) { this.unbankedGold = Math.max(0L, amount); }
+    public void addUnbankedGold(long amount) { this.unbankedGold = Math.max(0L, this.unbankedGold + amount); }
     public boolean spendGold(long amount) {
         if (amount < 0 || totalGold < amount) {
             return false;
@@ -269,7 +274,9 @@ public class GameState {
     }
 
     public boolean equipPlayerItem(EquipmentItem item) {
-        if (item == null || !gradeMeetsRequirement(getUnlockedGrade(), item.getGradeRequirement())) {
+        if (item == null
+            || !item.isPlayerEquipment()
+            || !gradeMeetsRequirement(getUnlockedGrade(), item.getGradeRequirement())) {
             return false;
         }
         unlockEquipment(item.getId());
@@ -291,6 +298,7 @@ public class GameState {
 
     public boolean equipRobotItem(String robotId, String robotGrade, EquipmentItem item) {
         if (item == null
+            || !item.isRobotEquipment()
             || !gradeMeetsRequirement(robotGrade, item.getGradeRequirement())) {
             return false;
         }
@@ -331,6 +339,40 @@ public class GameState {
 
     public int getForgeComponentCount(String componentId) {
         return forgeComponents.getOrDefault(componentId, 0);
+    }
+
+    public Map<String, Integer> getUnbankedForgeComponents() {
+        return new HashMap<>(unbankedForgeComponents);
+    }
+
+    public void setUnbankedForgeComponents(Map<String, Integer> components) {
+        unbankedForgeComponents.clear();
+        if (components == null) {
+            return;
+        }
+        for (Map.Entry<String, Integer> entry : components.entrySet()) {
+            if (entry.getKey() != null && !entry.getKey().isEmpty() && entry.getValue() != null && entry.getValue() > 0) {
+                unbankedForgeComponents.put(entry.getKey(), entry.getValue());
+            }
+        }
+    }
+
+    public int getUnbankedForgeComponentCount(String componentId) {
+        return unbankedForgeComponents.getOrDefault(componentId, 0);
+    }
+
+    public void addUnbankedForgeComponent(String componentId, int amount) {
+        if (componentId == null || componentId.isEmpty() || amount == 0) {
+            return;
+        }
+        unbankedForgeComponents.put(componentId, Math.max(0, unbankedForgeComponents.getOrDefault(componentId, 0) + amount));
+        if (unbankedForgeComponents.get(componentId) <= 0) {
+            unbankedForgeComponents.remove(componentId);
+        }
+    }
+
+    public void clearUnbankedForgeComponents() {
+        unbankedForgeComponents.clear();
     }
 
     public void addForgeComponent(String componentId, int amount) {
@@ -376,6 +418,40 @@ public class GameState {
 
     public int getShardCount(String grade) {
         return shardInventory.getOrDefault(grade, 0);
+    }
+
+    public Map<String, Integer> getUnbankedShards() {
+        return new HashMap<>(unbankedShards);
+    }
+
+    public void setUnbankedShards(Map<String, Integer> shards) {
+        unbankedShards.clear();
+        if (shards == null) {
+            return;
+        }
+        for (Map.Entry<String, Integer> entry : shards.entrySet()) {
+            if (entry.getKey() != null && !entry.getKey().isEmpty() && entry.getValue() != null && entry.getValue() > 0) {
+                unbankedShards.put(entry.getKey(), entry.getValue());
+            }
+        }
+    }
+
+    public int getUnbankedShardCount(String grade) {
+        return unbankedShards.getOrDefault(grade, 0);
+    }
+
+    public void addUnbankedShard(String grade, int amount) {
+        if (grade == null || grade.isEmpty() || amount == 0) {
+            return;
+        }
+        unbankedShards.put(grade, Math.max(0, unbankedShards.getOrDefault(grade, 0) + amount));
+        if (unbankedShards.get(grade) <= 0) {
+            unbankedShards.remove(grade);
+        }
+    }
+
+    public void clearUnbankedShards() {
+        unbankedShards.clear();
     }
 
     public void addShard(String grade, int amount) {
@@ -444,25 +520,6 @@ public class GameState {
         if (robotId != null) {
             robotProgressionStates.remove(robotId);
         }
-    }
-
-    public Map<String, Boolean> getQuestFlags() {
-        return new HashMap<>(questFlags);
-    }
-
-    public void setQuestFlags(Map<String, Boolean> flags) {
-        questFlags.clear();
-        if (flags != null) {
-            questFlags.putAll(flags);
-        }
-    }
-
-    public boolean hasQuestFlag(String flag) {
-        return Boolean.TRUE.equals(questFlags.get(flag));
-    }
-
-    public void setQuestFlag(String flag, boolean value) {
-        questFlags.put(flag, value);
     }
 
     public Map<String, String> getQuestStates() {

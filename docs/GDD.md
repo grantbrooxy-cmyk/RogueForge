@@ -14,6 +14,7 @@ Companion documents:
 
 - `docs/Narrative_Bible.md` for story, world, zones, factions, NPCs, and quest structure
 - `docs/Systems_Spec.md` for combat, progression, economy, equipment, and hub systems
+- `docs/Run_World_Meta_Structure.md` for the relationship between roguelite expeditions, persistent world building, and meta progression
 
 Where useful, this document distinguishes between:
 

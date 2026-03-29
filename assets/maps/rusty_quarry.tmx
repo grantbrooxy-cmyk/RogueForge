@@ -500,7 +500,7 @@
     <property name="targetSpawn" value="from_quarry" />
     </properties>
   </object>
-  <object id="22" name="scorched_plateau_lift" x="1540" y="350" width="72" height="72">
+  <object id="22" name="scorched_plateau_lift" x="1640" y="350" width="72" height="72">
    <properties>
     <property name="label" value="Scorched Plateau" />
     <property name="targetZone" value="scorched_plateau" />

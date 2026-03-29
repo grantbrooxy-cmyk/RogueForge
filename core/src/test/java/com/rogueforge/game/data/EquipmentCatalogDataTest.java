@@ -6,6 +6,7 @@ import com.rogueforge.game.support.GdxTestSupport;
 import com.rogueforge.game.world.SettlementUpgradeDefinition;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeAll;
@@ -19,6 +20,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class EquipmentCatalogDataTest {
     private static final Set<String> SLOT_TYPES = Set.of("HEAD", "BODY", "ARMS", "LEGS", "WEAPON", "ACCESSORY");
     private static final Set<String> GRADE_ORDER = Set.of("G", "F", "E", "D", "C", "B", "A", "S", "S+", "S++", "S+++");
+    private static final Set<String> EQUIP_TARGETS = Set.of(EquipmentItem.TARGET_PLAYER, EquipmentItem.TARGET_ROBOT);
+    private static final Set<String> PLAYER_BANNED_KEYWORDS = Set.of(
+        "actuator", "carapace", "chassis", "circlet", "core", "drive", "frame", "loop", "prism", "relay", "servo", "visor"
+    );
 
     @BeforeAll
     static void bootGdx() {
@@ -37,14 +42,18 @@ class EquipmentCatalogDataTest {
 
         Set<String> ids = new HashSet<>();
         Set<String> grades = new HashSet<>();
+        Set<String> targets = new HashSet<>();
         for (EquipmentItem item : items) {
             assertTrue(ids.add(item.getId()), "Duplicate equipment id: " + item.getId());
             assertTrue(SLOT_TYPES.contains(item.getSlotType()), "Unexpected slot type: " + item.getSlotType());
             assertTrue(item.getTier() >= 1 && item.getTier() <= 6, "Unexpected tier for " + item.getId());
             grades.add(item.getGradeRequirement());
+            assertTrue(EQUIP_TARGETS.contains(item.getEquipTarget()), "Unexpected equip target: " + item.getEquipTarget());
+            targets.add(item.getEquipTarget());
         }
 
         assertEquals(GRADE_ORDER, grades, "Equipment catalog should cover the full grade ladder.");
+        assertEquals(EQUIP_TARGETS, targets, "Equipment catalog should define both player and robot gear.");
 
         for (int tier = 1; tier <= 6; tier++) {
             final int currentTier = tier;
@@ -53,6 +62,14 @@ class EquipmentCatalogDataTest {
                 .map(EquipmentItem::getSlotType)
                 .collect(Collectors.toSet());
             assertEquals(SLOT_TYPES, tierSlots, "Tier " + currentTier + " should cover every slot type.");
+        }
+
+        for (String target : EQUIP_TARGETS) {
+            Set<String> targetSlots = Arrays.stream(items)
+                .filter(item -> target.equals(item.getEquipTarget()))
+                .map(EquipmentItem::getSlotType)
+                .collect(Collectors.toSet());
+            assertEquals(SLOT_TYPES, targetSlots, target + " gear should cover every slot type.");
         }
     }
 
@@ -106,5 +123,51 @@ class EquipmentCatalogDataTest {
         }
 
         assertFalse(ids.isEmpty());
+    }
+
+    @Test
+    void playerGearUsesHumanFacingNamesAndPlayerRecipesStayOutOfRobotCategories() {
+        EquipmentItem[] items = new Json().fromJson(
+            EquipmentItem[].class,
+            Gdx.files.internal("data/equipment.json").readString()
+        );
+        assertNotNull(items);
+
+        Map<String, EquipmentItem> itemsById = Arrays.stream(items)
+            .collect(Collectors.toMap(EquipmentItem::getId, item -> item));
+
+        for (EquipmentItem item : items) {
+            if (!item.isPlayerEquipment()) {
+                continue;
+            }
+            String normalizedName = item.getName().toLowerCase();
+            for (String bannedKeyword : PLAYER_BANNED_KEYWORDS) {
+                assertFalse(
+                    normalizedName.contains(bannedKeyword),
+                    "Player gear should avoid robot-style naming: " + item.getId() + " -> " + item.getName()
+                );
+            }
+        }
+
+        ForgeRecipeDefinition[] recipes = new Json().fromJson(
+            ForgeRecipeDefinition[].class,
+            Gdx.files.internal("data/forge_recipes.json").readString()
+        );
+        assertNotNull(recipes);
+
+        for (ForgeRecipeDefinition recipe : recipes) {
+            EquipmentItem result = itemsById.get(recipe.getResultEquipmentId());
+            assertNotNull(result, "Recipe result should resolve: " + recipe.getId());
+            if (result.isPlayerEquipment()) {
+                assertFalse(
+                    recipe.getCategory().toLowerCase().contains("robot"),
+                    "Player recipe category should not read like robot gear: " + recipe.getId()
+                );
+                assertFalse(
+                    recipe.getDescription().toLowerCase().contains("robot"),
+                    "Player recipe description should not describe robot gear: " + recipe.getId()
+                );
+            }
+        }
     }
 }

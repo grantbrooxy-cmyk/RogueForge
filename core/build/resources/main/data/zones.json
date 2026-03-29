@@ -1,5 +1,6 @@
 [
-  { "id": "verdant_fields", "name": "Verdant Fields", "tilemapPath": "maps/verdant_fields.tmx", "rankFloor": "G", "rankCeiling": "F", "bossId": null, "monsterIds": ["slime_g", "goblin_f"] },
+  { "id": "town", "name": "Ironhaven", "tilemapPath": "maps/town.tmx", "rankFloor": "G", "rankCeiling": "G", "bossId": null, "monsterIds": [] },
+  { "id": "verdant_fields", "name": "Verdant Fields", "tilemapPath": "maps/verdant_fields.tmx", "rankFloor": "G", "rankCeiling": "F", "bossId": null, "monsterIds": ["slime_g", "goblin_f"], "worldType": "expansive_frontier", "expansiveWidthTiles": 512, "expansiveHeightTiles": 512, "starterSafeRadiusTiles": 24 },
   { "id": "whispering_forest", "name": "Whispering Forest", "tilemapPath": "maps/whispering_forest.tmx", "rankFloor": "G", "rankCeiling": "F", "bossId": "rust_king_e", "monsterIds": ["widow_f", "slime_g", "rust_king_e"] },
   { "id": "rusty_quarry", "name": "Rusty Quarry", "tilemapPath": "maps/rusty_quarry.tmx", "rankFloor": "F", "rankCeiling": "E", "bossId": "iron_maiden_d", "monsterIds": ["goblin_f", "quarry_mole_e", "iron_maiden_d"] },
   { "id": "coastal_shallows", "name": "Coastal Shallows", "tilemapPath": "maps/coastal_shallows.tmx", "rankFloor": "F", "rankCeiling": "E", "bossId": "circuit_breaker_c", "monsterIds": ["tide_hopper_f", "slime_g", "circuit_breaker_c"] },

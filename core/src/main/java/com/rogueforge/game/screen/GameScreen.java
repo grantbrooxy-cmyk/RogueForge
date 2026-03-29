@@ -23,6 +23,28 @@ import com.rogueforge.game.core.RogueForgeGame;
 import com.rogueforge.game.core.ScreenManager;
 import com.rogueforge.game.core.GameLoop;
 import com.rogueforge.game.core.GameState;
+import com.rogueforge.game.engine.base.BaseBuildingEngine;
+import com.rogueforge.game.engine.base.BaseDefenderProfile;
+import com.rogueforge.game.engine.base.BaseDefenderUnit;
+import com.rogueforge.game.engine.base.BaseDefenseDirector;
+import com.rogueforge.game.engine.base.BasePlacementResult;
+import com.rogueforge.game.engine.base.BaseRaidState;
+import com.rogueforge.game.engine.base.BaseState;
+import com.rogueforge.game.engine.base.DefenderAssignment;
+import com.rogueforge.game.engine.base.DefenderRole;
+import com.rogueforge.game.engine.base.PlacedStructure;
+import com.rogueforge.game.engine.base.StructureDefinition;
+import com.rogueforge.game.engine.GameEngineServices;
+import com.rogueforge.game.engine.meta.CyberneticBonuses;
+import com.rogueforge.game.engine.meta.CyberneticEnhancementEngine;
+import com.rogueforge.game.engine.meta.DeathDraftResult;
+import com.rogueforge.game.engine.meta.RunOutcomeSummary;
+import com.rogueforge.game.engine.world.FrontierTerrainSampler;
+import com.rogueforge.game.engine.world.FrontierBiomeCatalog;
+import com.rogueforge.game.engine.world.FrontierBiomeDefinition;
+import com.rogueforge.game.engine.world.FrontierZoneGenerator;
+import com.rogueforge.game.engine.world.InfiniteDungeonLayoutGenerator;
+import com.rogueforge.game.engine.world.TmxWorldLoader;
 import com.rogueforge.game.combat.AbilityDefinition;
 import com.rogueforge.game.combat.AbilityRegistry;
 import com.rogueforge.game.combat.WeaponType;
@@ -30,6 +52,7 @@ import com.rogueforge.game.data.EquipmentItem;
 import com.rogueforge.game.data.ForgeComponentDefinition;
 import com.rogueforge.game.data.ForgeIngredientDefinition;
 import com.rogueforge.game.data.ForgeRecipeDefinition;
+import com.rogueforge.game.data.MetaProgressionState;
 import com.rogueforge.game.data.MonsterDefinition;
 import com.rogueforge.game.data.SaveFile;
 import com.rogueforge.game.data.ShopDefinition;
@@ -39,6 +62,7 @@ import com.rogueforge.game.data.ZoneDefinition;
 import com.rogueforge.game.economy.ShopInventory;
 import com.rogueforge.game.persistence.SaveManager;
 import com.rogueforge.game.persistence.SettingsManager;
+import com.rogueforge.game.persistence.MetaProgressionManager;
 import com.rogueforge.game.progression.AbilityEvolutionManager;
 import com.rogueforge.game.progression.AbilityProgressionState;
 import com.rogueforge.game.progression.RobotEvolutionManager;
@@ -47,13 +71,11 @@ import com.rogueforge.game.progression.WeaponProficiencyState;
 import com.rogueforge.game.progression.CombatArtRegistry;
 import com.rogueforge.game.progression.WeaponProficiencyTracker;
 import com.rogueforge.game.robot.RobotDefinition;
-import com.rogueforge.game.world.TmxWorldLoader;
 import com.rogueforge.game.world.DialogueSystem;
 import com.rogueforge.game.world.QuestManager;
 import com.rogueforge.game.world.RobotRecruitmentManager;
 import com.rogueforge.game.world.SettlementManager;
 import com.rogueforge.game.world.SettlementState;
-import com.rogueforge.game.world.InfiniteDungeonLayoutGenerator;
 import com.rogueforge.game.world.WorldStateManager;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -136,6 +158,15 @@ public class GameScreen implements Screen {
     private static final float ROBOT_FOLLOW_SPEED = 320f;
     private static final float ROBOT_FOLLOW_GAP = 52f;
     private static final float ROBOT_MAX_HEALTH = 75f;
+    private static final float BASE_DEFENDER_SIZE = 42f;
+    private static final float BASE_DEFENDER_LEASH_RANGE = 132f;
+    private static final float BASE_DEFENDER_ATTACK_DAMAGE_SCALE = 0.7f;
+    private static final float BASE_DEFENDER_CONTACT_RANGE = 28f;
+    private static final float BASE_RAID_THREAT_PER_SECOND = 0.02f;
+    private static final float BASE_RAID_TRIGGER_THREAT = 1f;
+    private static final float BASE_RAID_COOLDOWN_SECONDS = 85f;
+    private static final int BASE_STRUCTURE_REPAIR_STEP = 40;
+    private static final float BASE_STRUCTURE_CONTACT_RANGE = 26f;
     private static final float PLAYER_AGILITY = 26f;
     private static final float PLAYER_STRENGTH = 18f;
     private static final float PLAYER_INTELLIGENCE = 14f;
@@ -156,21 +187,33 @@ public class GameScreen implements Screen {
     private final Map<String, ForgeComponentDefinition> forgeComponentDefinitions = new HashMap<>();
     private final List<ForgeRecipeDefinition> forgeRecipes = new ArrayList<>();
     private final List<StoryEventDefinition> storyEvents = new ArrayList<>();
-    private final TmxWorldLoader worldLoader = new TmxWorldLoader();
-    private final InfiniteDungeonLayoutGenerator infiniteDungeonLayoutGenerator = new InfiniteDungeonLayoutGenerator();
-    private final SettingsManager settingsManager = new SettingsManager();
-    private final SaveManager saveManager = new SaveManager();
-    private final QuestManager questManager = new QuestManager();
-    private final DialogueSystem dialogueSystem = new DialogueSystem();
-    private final WorldStateManager worldStateManager = new WorldStateManager();
-    private final RobotRecruitmentManager recruitmentManager = new RobotRecruitmentManager();
-    private final SettlementManager settlementManager = new SettlementManager();
+    private final GameEngineServices engineServices = new GameEngineServices();
+    private final BaseBuildingEngine baseBuildingEngine = engineServices.getBaseBuildingEngine();
+    private final BaseDefenseDirector baseDefenseDirector = engineServices.getBaseDefenseDirector();
+    private final CyberneticEnhancementEngine cyberneticEnhancementEngine = engineServices.getCyberneticEnhancementEngine();
+    private final TmxWorldLoader worldLoader = engineServices.getWorldLoader();
+    private final InfiniteDungeonLayoutGenerator infiniteDungeonLayoutGenerator = engineServices.getInfiniteDungeonLayoutGenerator();
+    private final FrontierZoneGenerator frontierZoneGenerator = engineServices.getFrontierZoneGenerator();
+    private final SettingsManager settingsManager = engineServices.getSettingsManager();
+    private final SaveManager saveManager = engineServices.getSaveManager();
+    private final MetaProgressionManager metaProgressionManager = new MetaProgressionManager();
+    private final QuestManager questManager = engineServices.getQuestManager();
+    private final DialogueSystem dialogueSystem = engineServices.getDialogueSystem();
+    private final WorldStateManager worldStateManager = engineServices.getWorldStateManager();
+    private final RobotRecruitmentManager recruitmentManager = engineServices.getRecruitmentManager();
+    private final SettlementManager settlementManager = engineServices.getSettlementManager();
     private final Map<String, Boolean> openedChestStates = new HashMap<>();
-    private final Map<String, Boolean> questFlags = new HashMap<>();
+    private final List<String> harvestedFrontierFeatureIds = new ArrayList<>();
+    private final List<String> claimedFrontierBaseSiteIds = new ArrayList<>();
+    private final Map<String, BaseState> baseStatesByZoneId = new HashMap<>();
+    private final List<BaseDefenderUnit> activeBaseDefenders = new ArrayList<>();
     private final List<String> keyItems = new ArrayList<>();
     private TmxWorldLoader.LoadedZone currentZone;
     private ZoneDefinition currentZoneDefinition;
+    private FrontierTerrainSampler frontierTerrainSampler;
+    private FrontierBiomeCatalog frontierBiomeCatalog;
     private String difficultyMode = "NORMAL";
+    private final MetaProgressionState metaProgressionState;
 
     // Robot attack visualization (current frame only)
     private final List<RobotAttackLine> robotAttackLines = new ArrayList<>();
@@ -179,6 +222,7 @@ public class GameScreen implements Screen {
     private long totalGold = 0;
     private int totalEnemiesKilled = 0;
     private float survivalTime = 0f;
+    private long worldSeed = 0L;
     private int healingPotions = 3;
     private int playerLevel = 1;
     private int playerExperience = 0;
@@ -189,10 +233,20 @@ public class GameScreen implements Screen {
     private Map<String, String> playerEquipment = new HashMap<>();
     private List<String> collectedRobotIds = new ArrayList<>();
     private List<String> activeRobotIds = new ArrayList<>();
-    private String currentZoneId = "verdant_fields";
+    private String currentZoneId = "town";
     private int currentSaveSlot = 0;
     private String activeDialog = null;
     private String activeSpeaker = null;
+    private boolean questMenuOpen = false;
+    private boolean buildModeOpen = false;
+    private int selectedBuildStructureIndex = 0;
+    private static final String OPENING_HOME_INTRO_FLAG = "intro.player_home_seen";
+    private boolean pendingOpeningCutscene = false;
+    private final List<DialogueSystem.DialoguePage> activeDialogueSequence = new ArrayList<>();
+    private int activeDialogueSequenceIndex = 0;
+    private int dialogPageIndex = 0;
+    private String dialogPageTrackingText = null;
+    private String dialogPageTrackingSpeaker = null;
 
     private boolean isPaused = false;
     private boolean battleActive = false;
@@ -223,6 +277,10 @@ public class GameScreen implements Screen {
         this.playerName = saveFile != null && saveFile.getPlayerName() != null
             ? saveFile.getPlayerName()
             : "Player";
+        this.metaProgressionState = metaProgressionManager.load();
+        this.worldSeed = saveFile != null && saveFile.getWorldSeed() != 0L
+            ? saveFile.getWorldSeed()
+            : generateWorldSeed();
         this.gameState = new GameState(playerName);
 
         for (int i = 0; i < ROBOT_COUNT; i++) {
@@ -238,12 +296,11 @@ public class GameScreen implements Screen {
         }
         if (activeRobotIds.isEmpty()) {
             activeRobotIds.add("scout_mk1");
-            activeRobotIds.add("guardian_mk1");
-            activeRobotIds.add("striker_mk1");
         }
         normalizeActiveRobotSlots();
+        clampActiveRobotsToUnlockedSlots();
         if (collectedRobotIds.isEmpty()) {
-            for (String robotId : activeRobotIds) {
+            for (String robotId : List.of("scout_mk1", "guardian_mk1", "striker_mk1")) {
                 if (robotId != null && !robotId.isEmpty() && !collectedRobotIds.contains(robotId)) {
                     collectedRobotIds.add(robotId);
                 }
@@ -272,7 +329,7 @@ public class GameScreen implements Screen {
         loadShopDefinitions();
         ensureRobotProgressionStates();
         initializeActiveRobotHealthForNewRun();
-        loadZone(currentZoneId, "town_square", true);
+        loadZone(currentZoneId, saveFile == null ? "home_spawn" : "town_square", true);
 
         hudOverlay.setPlayerHealth(playerHealth, playerMaxHealth);
         hudOverlay.setCurrency(totalGold);
@@ -280,6 +337,9 @@ public class GameScreen implements Screen {
 
         if (saveFile != null) {
             loadFromSave(saveFile);
+        } else {
+            applyMetaEnhancementsToFreshRun();
+            pendingOpeningCutscene = true;
         }
     }
 
@@ -301,6 +361,7 @@ public class GameScreen implements Screen {
     @Override
     public void show() {
         ensureGameInputProcessor();
+        triggerOpeningCutsceneIfNeeded();
     }
 
     private void ensureGameInputProcessor() {
@@ -375,6 +436,24 @@ public class GameScreen implements Screen {
     @Override
     public void render(float delta) {
         if (!isPaused && !battleActive) {
+            if (questMenuOpen) {
+                if (Gdx.input.isKeyJustPressed(Input.Keys.Q) || Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+                    questMenuOpen = false;
+                    return;
+                }
+            } else {
+                if (Gdx.input.isKeyJustPressed(Input.Keys.Q)) {
+                    questMenuOpen = true;
+                    return;
+                }
+            }
+            if (!questMenuOpen && Gdx.input.isKeyJustPressed(Input.Keys.B)) {
+                toggleBuildMode();
+                return;
+            }
+        }
+
+        if (!isPaused && !battleActive && !questMenuOpen && !buildModeOpen) {
             if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
                 pauseGame();
                 return;
@@ -385,10 +464,19 @@ public class GameScreen implements Screen {
             }
         }
 
-        if (!isPaused) {
+        if (!isPaused && !battleActive && buildModeOpen) {
+            if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+                buildModeOpen = false;
+                return;
+            }
+            handleBuildModeShortcuts();
+        }
+
+        if (!isPaused && !questMenuOpen) {
             gameLoop.update(delta);
             updatePlayer(delta);
             updateRobots(delta);
+            updateBaseDefenders(delta);
             updateEnemies(delta);
             updateAttackEffects(delta);
             updateGoldPopups(delta);
@@ -410,6 +498,7 @@ public class GameScreen implements Screen {
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
         drawGroundTiles();
+        drawBuildPreview();
 
         // Draw enemies
         drawHouses();
@@ -419,6 +508,7 @@ public class GameScreen implements Screen {
         drawPlayerSprite();
         drawAttackFlash();
 
+        drawBaseDefenders();
         drawRobots();
         drawRobotAttackLines();
 
@@ -428,8 +518,37 @@ public class GameScreen implements Screen {
         // HUD on top
         hudOverlay.render();
         drawDialogOverlay();
+        drawQuestOverlay();
+        drawBuildOverlay();
 
         robotAttackLines.clear();
+    }
+
+    private void drawBuildPreview() {
+        if (!buildModeOpen || currentZone == null) {
+            return;
+        }
+        StructureDefinition structureDefinition = getSelectedBuildStructure();
+        if (structureDefinition == null) {
+            return;
+        }
+        BasePlacementResult placement = getCurrentBuildPlacementResult(structureDefinition);
+        float[] preview = getBuildPreviewOrigin(structureDefinition);
+        Rectangle bounds = new Rectangle(
+            preview[0],
+            preview[1],
+            structureDefinition.getWidthTiles() * currentZone.tileWidth,
+            structureDefinition.getHeightTiles() * currentZone.tileHeight
+        );
+
+        shapeRenderer.setProjectionMatrix(gameCamera.combined);
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        Color fill = placement != null && placement.isAllowed()
+            ? new Color(0.24f, 0.72f, 0.44f, 0.26f)
+            : new Color(0.88f, 0.24f, 0.20f, 0.26f);
+        shapeRenderer.setColor(fill);
+        shapeRenderer.rect(bounds.x, bounds.y, bounds.width, bounds.height);
+        shapeRenderer.end();
     }
 
     private void spawnEnemies() {
@@ -616,7 +735,7 @@ public class GameScreen implements Screen {
         for (int gx = startX; gx <= endX; gx++) {
             for (int gy = startY; gy <= endY; gy++) {
                 Texture tile = ((gx + gy) & 1) == 0 ? groundTileTexture : wallTileTexture;
-                applyGroundTint(((gx + gy) & 1) == 0);
+                applyGroundTint(gx, gy, ((gx + gy) & 1) == 0);
                 batch.draw(tile, gx * tileSize, gy * tileSize, tileSize, tileSize);
             }
         }
@@ -624,9 +743,13 @@ public class GameScreen implements Screen {
         batch.end();
     }
 
-    private void applyGroundTint(boolean primaryTile) {
+    private void applyGroundTint(int gx, int gy, boolean primaryTile) {
         if (currentZone == null) {
             batch.setColor(Color.WHITE);
+            return;
+        }
+        if (currentZoneDefinition != null && currentZoneDefinition.isExpansiveFrontier() && frontierTerrainSampler != null) {
+            applyExpansiveFrontierTint(gx, gy, primaryTile);
             return;
         }
         switch (currentZone.groundStyle) {
@@ -691,6 +814,30 @@ public class GameScreen implements Screen {
                 batch.setColor(primaryTile ? new Color(0.58f, 0.76f, 0.42f, 1f) : new Color(0.38f, 0.60f, 0.32f, 1f));
                 break;
         }
+    }
+
+    private void applyExpansiveFrontierTint(int gx, int gy, boolean primaryTile) {
+        FrontierTerrainSampler.TerrainSample sample = frontierTerrainSampler.sample(gx, gy);
+        FrontierBiomeDefinition biome = frontierBiomeCatalog != null
+            ? frontierBiomeCatalog.resolve(sample.type)
+            : new FrontierBiomeCatalog().resolve(sample.type);
+        Color tint = primaryTile ? biome.getPrimaryTint() : biome.getSecondaryTint();
+
+        if (sample.moisture > 0.44f) {
+            tint = lerpColor(tint, biome.getMoistureTint(), 0.2f);
+        } else if (sample.ruggedness > 0.45f) {
+            tint = lerpColor(tint, biome.getRuggedTint(), 0.18f);
+        }
+        batch.setColor(tint);
+    }
+
+    private Color lerpColor(Color from, Color to, float alpha) {
+        return new Color(
+            from.r + (to.r - from.r) * alpha,
+            from.g + (to.g - from.g) * alpha,
+            from.b + (to.b - from.b) * alpha,
+            1f
+        );
     }
 
     /** Returns the groundStyle of the currently loaded zone, or "meadow" if none is loaded. */
@@ -789,6 +936,13 @@ public class GameScreen implements Screen {
         }
 
         if (Gdx.input.isKeyJustPressed(Input.Keys.E)) {
+            if (hasActiveDialog()) {
+                dismissMessages();
+                return;
+            }
+            if (buildModeOpen && tryPlaceSelectedStructure()) {
+                return;
+            }
             if (!tryInteractWithDoor()) {
                 if (!tryReadHouseSign()) {
                     if (!tryInteractWithWorldFeature()) {
@@ -799,6 +953,7 @@ public class GameScreen implements Screen {
                 }
             }
         }
+        bankExpeditionHaulIfPossible(false);
     }
 
     private void updateAttackEffects(float delta) {
@@ -813,6 +968,7 @@ public class GameScreen implements Screen {
     }
 
     private void updateEnemies(float delta) {
+        updateBaseRaidState(delta);
         boolean allDead = true;
 
         for (Enemy enemy : enemies) {
@@ -824,10 +980,12 @@ public class GameScreen implements Screen {
                 enemy.attackTimer -= delta;
             }
 
+            Vector2 targetPos = selectEnemyAggroTarget(enemy);
+            float targetDistance = targetPos != null ? enemy.pos.dst(targetPos) : Float.MAX_VALUE;
             float distToPlayer = enemy.pos.dst(playerPos);
 
-            if (distToPlayer <= ENEMY_AGGRO_RANGE) {
-                Vector2 direction = new Vector2(playerPos).sub(enemy.pos);
+            if (targetPos != null && targetDistance <= ENEMY_AGGRO_RANGE) {
+                Vector2 direction = new Vector2(targetPos).sub(enemy.pos);
                 if (direction.len() > 0) {
                     direction.nor();
                     enemy.facing.set(direction);
@@ -835,6 +993,31 @@ public class GameScreen implements Screen {
                 }
                 enemy.pos.x += direction.x * enemy.speed * delta;
                 enemy.pos.y += direction.y * enemy.speed * delta;
+                BaseDefenderUnit defenderTarget = findClosestLivingBaseDefender(enemy.pos);
+                if (defenderTarget != null
+                    && enemy.pos.dst(defenderTarget.getPosition()) <= BASE_DEFENDER_CONTACT_RANGE
+                    && enemy.attackTimer <= 0f) {
+                    float damage = Math.max(2f, ENEMY_MELEE_DAMAGE + enemy.strength * 0.2f - defenderTarget.getDefense() * 0.12f);
+                    defenderTarget.setCurrentHealth(defenderTarget.getCurrentHealth() - damage);
+                    defenderTarget.setAttackTimer(Math.max(defenderTarget.getAttackTimer(), 0.2f));
+                    enemy.attackTimer = ENEMY_MELEE_COOLDOWN;
+                    if (defenderTarget.getCurrentHealth() <= 0f) {
+                        defenderTarget.setActive(false);
+                    }
+                    persistDefenderHealth(defenderTarget);
+                }
+                PlacedStructure structureTarget = findClosestAttackableStructure(enemy.pos);
+                if (structureTarget != null
+                    && enemy.pos.dst(getStructureCenter(structureTarget)) <= BASE_STRUCTURE_CONTACT_RANGE
+                    && enemy.attackTimer <= 0f) {
+                    int damage = Math.max(4, Math.round(ENEMY_MELEE_DAMAGE + enemy.strength * 0.3f));
+                    baseBuildingEngine.applyStructureDamage(getCurrentBaseState(), structureTarget.getInstanceId(), damage);
+                    refreshStructureFeatureLabel(structureTarget.getInstanceId());
+                    if (!structureTarget.isActive()) {
+                        removeInactiveStructureFeature(structureTarget.getInstanceId());
+                    }
+                    enemy.attackTimer = ENEMY_MELEE_COOLDOWN;
+                }
                 if (!battleActive && distToPlayer <= ENCOUNTER_TRIGGER_RANGE) {
                     startEncounter(enemy);
                     return;
@@ -872,6 +1055,246 @@ public class GameScreen implements Screen {
         refreshHud();
     }
 
+    private void updateBaseRaidState(float delta) {
+        BaseState baseState = getCurrentBaseState();
+        if (baseState == null || currentZoneDefinition == null || !currentZoneDefinition.isExpansiveFrontier()) {
+            return;
+        }
+        BaseRaidState raidState = baseState.getRaidState();
+        if (raidState.getCooldownSeconds() > 0f) {
+            raidState.setCooldownSeconds(raidState.getCooldownSeconds() - delta);
+        }
+        if (!hasOperationalBase(baseState)) {
+            raidState.setActive(false);
+            raidState.setThreatLevel(0f);
+            raidState.setWaveIndex(0);
+            return;
+        }
+        if (!raidState.isActive()) {
+            float threatGain = delta * BASE_RAID_THREAT_PER_SECOND * Math.max(1, baseState.getPlacedStructures().size());
+            raidState.setThreatLevel(Math.min(BASE_RAID_TRIGGER_THREAT, raidState.getThreatLevel() + threatGain));
+            if (raidState.getCooldownSeconds() <= 0f && raidState.getThreatLevel() >= BASE_RAID_TRIGGER_THREAT) {
+                launchBaseRaid(baseState);
+            }
+            return;
+        }
+        if (countLiveRaidEnemies() == 0) {
+            raidState.setActive(false);
+            raidState.setThreatLevel(0f);
+            raidState.setCooldownSeconds(BASE_RAID_COOLDOWN_SECONDS);
+            showStandaloneDialog("Frontier", "Raid repelled. Your base holds for now.");
+        }
+    }
+
+    private Enemy findClosestEnemyForDefender(BaseDefenderUnit defender) {
+        Enemy nearestEnemy = null;
+        float nearestDistance = defender != null ? defender.getDetectionRange() : Float.MAX_VALUE;
+        if (defender == null) {
+            return null;
+        }
+        for (Enemy enemy : enemies) {
+            if (enemy == null || !enemy.alive) {
+                continue;
+            }
+            float distance = defender.getPosition().dst(enemy.pos);
+            float anchorDistance = enemy.pos.dst(defender.getGuardPosition());
+            if (distance <= nearestDistance || anchorDistance <= defender.getDetectionRange()) {
+                if (distance < nearestDistance) {
+                    nearestDistance = distance;
+                    nearestEnemy = enemy;
+                }
+            }
+        }
+        return nearestEnemy;
+    }
+
+    private Vector2 selectEnemyAggroTarget(Enemy enemy) {
+        if (enemy == null) {
+            return null;
+        }
+        Vector2 target = new Vector2(playerPos);
+        float bestDistance = enemy.pos.dst(playerPos);
+
+        RobotCompanion robot = findClosestLivingRobot(enemy.pos);
+        if (robot != null) {
+            float robotDistance = enemy.pos.dst(robot.pos);
+            if (robotDistance < bestDistance) {
+                bestDistance = robotDistance;
+                target = new Vector2(robot.pos);
+            }
+        }
+
+        BaseDefenderUnit defender = findClosestLivingBaseDefender(enemy.pos);
+        if (defender != null) {
+            float defenderDistance = enemy.pos.dst(defender.getPosition());
+            if (defenderDistance < bestDistance) {
+                bestDistance = defenderDistance;
+                target = new Vector2(defender.getPosition());
+            }
+        }
+
+        PlacedStructure structure = findClosestAttackableStructure(enemy.pos);
+        if (structure != null) {
+            Vector2 structureCenter = getStructureCenter(structure);
+            float structureDistance = enemy.pos.dst(structureCenter);
+            if (structureDistance < bestDistance) {
+                target = structureCenter;
+            }
+        }
+        return target;
+    }
+
+    private BaseDefenderUnit findClosestLivingBaseDefender(Vector2 source) {
+        BaseDefenderUnit nearest = null;
+        float nearestDistance = Float.MAX_VALUE;
+        if (source == null) {
+            return null;
+        }
+        for (BaseDefenderUnit defender : activeBaseDefenders) {
+            if (defender == null || !defender.isActive()) {
+                continue;
+            }
+            float distance = source.dst(defender.getPosition());
+            if (distance < nearestDistance) {
+                nearestDistance = distance;
+                nearest = defender;
+            }
+        }
+        return nearest;
+    }
+
+    private PlacedStructure findClosestAttackableStructure(Vector2 source) {
+        BaseState baseState = getCurrentBaseState();
+        if (baseState == null || source == null) {
+            return null;
+        }
+        PlacedStructure nearest = null;
+        float nearestDistance = Float.MAX_VALUE;
+        for (PlacedStructure structure : baseState.getPlacedStructures()) {
+            if (structure == null || !structure.isActive()) {
+                continue;
+            }
+            float distance = source.dst(getStructureCenter(structure));
+            if (distance < nearestDistance) {
+                nearestDistance = distance;
+                nearest = structure;
+            }
+        }
+        return nearest;
+    }
+
+    private Vector2 getStructureCenter(PlacedStructure structure) {
+        Rectangle bounds = structure != null ? structure.getBounds() : new Rectangle();
+        return new Vector2(bounds.x + bounds.width / 2f, bounds.y + bounds.height / 2f);
+    }
+
+    private void moveDefenderTowardThreat(BaseDefenderUnit defender, Enemy target, float delta) {
+        if (defender == null || target == null) {
+            return;
+        }
+        Vector2 desiredTarget = new Vector2(target.pos);
+        if (target.pos.dst(defender.getGuardPosition()) > BASE_DEFENDER_LEASH_RANGE) {
+            desiredTarget = new Vector2(defender.getGuardPosition()).lerp(target.pos, 0.45f);
+        }
+        moveBaseDefender(defender, desiredTarget, delta);
+    }
+
+    private void moveDefenderTowardIdlePoint(BaseDefenderUnit defender, float delta) {
+        if (defender == null) {
+            return;
+        }
+        moveBaseDefender(defender, baseDefenseDirector.getIdleTarget(defender, survivalTime), delta);
+    }
+
+    private void moveBaseDefender(BaseDefenderUnit defender, Vector2 target, float delta) {
+        if (defender == null || target == null) {
+            return;
+        }
+        Vector2 move = new Vector2(target).sub(defender.getPosition());
+        if (move.len2() <= 4f) {
+            return;
+        }
+        float maxStep = defender.getMoveSpeed() * delta;
+        if (move.len() > maxStep && maxStep > 0f) {
+            move.nor().scl(maxStep);
+        }
+        float nextX = defender.getPosition().x + move.x;
+        float nextY = defender.getPosition().y + move.y;
+        if (!isBlockedAt(nextX, nextY, BASE_DEFENDER_SIZE)) {
+            defender.getPosition().set(nextX, nextY);
+        }
+        defender.setAnimationTime(defender.getAnimationTime() + delta);
+    }
+
+    private boolean hasOperationalBase(BaseState baseState) {
+        if (baseState == null) {
+            return false;
+        }
+        for (PlacedStructure structure : baseState.getPlacedStructures()) {
+            if (structure != null && structure.isActive() && structure.getCurrentHitPoints() > 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private int countLiveRaidEnemies() {
+        int live = 0;
+        for (Enemy enemy : enemies) {
+            if (enemy != null && enemy.alive && enemy.raidSpawned) {
+                live++;
+            }
+        }
+        return live;
+    }
+
+    private void launchBaseRaid(BaseState baseState) {
+        if (baseState == null || currentZone == null) {
+            return;
+        }
+        BaseRaidState raidState = baseState.getRaidState();
+        raidState.setActive(true);
+        raidState.setWaveIndex(raidState.getWaveIndex() + 1);
+        raidState.setThreatLevel(BASE_RAID_TRIGGER_THREAT);
+        PlacedStructure anchor = findClosestAttackableStructure(playerPos);
+        if (anchor == null) {
+            return;
+        }
+        Vector2 center = getStructureCenter(anchor);
+        int spawnCount = Math.min(3 + Math.max(0, raidState.getWaveIndex() - 1), 6);
+        for (int i = 0; i < spawnCount; i++) {
+            Enemy enemy = createZoneEnemy(
+                new Vector2(center.x + 180f + i * 18f, center.y + ((i & 1) == 0 ? 96f : -96f)),
+                enemies.size() + i
+            );
+            enemy.raidSpawned = true;
+            enemy.patrolTarget = new Vector2(center);
+            enemies.add(enemy);
+        }
+        showStandaloneDialog("Frontier", "Raid detected near your base. Defenders to stations.");
+    }
+
+    private void persistDefenderHealth(BaseDefenderUnit defender) {
+        BaseState baseState = getCurrentBaseState();
+        if (baseState == null || defender == null || defender.getRobotId() == null || defender.getRobotId().isEmpty()) {
+            return;
+        }
+        baseState.setDefenderHealth(defender.getRobotId(), defender.getCurrentHealth());
+    }
+
+    private void removeInactiveStructureFeature(String structureInstanceId) {
+        if (currentZone == null || structureInstanceId == null || structureInstanceId.isEmpty()) {
+            return;
+        }
+        for (int i = currentZone.features.size - 1; i >= 0; i--) {
+            TmxWorldLoader.Feature feature = currentZone.features.get(i);
+            if (feature != null && structureInstanceId.equals(feature.id)) {
+                currentZone.features.removeIndex(i);
+            }
+        }
+        syncCurrentZoneBaseDefenders();
+    }
+
     private void updateRobots(float delta) {
         robotAttackLines.clear();
 
@@ -904,6 +1327,41 @@ public class GameScreen implements Screen {
             }
             robot.angleDeg = robot.facing.angleDeg();
             followTarget = robot.pos;
+        }
+    }
+
+    private void updateBaseDefenders(float delta) {
+        if (currentZone == null || activeBaseDefenders.isEmpty()) {
+            return;
+        }
+        for (BaseDefenderUnit defender : activeBaseDefenders) {
+            if (defender == null || !defender.isActive()) {
+                continue;
+            }
+            if (defender.getAttackTimer() > 0f) {
+                defender.setAttackTimer(defender.getAttackTimer() - delta);
+            }
+
+            Enemy target = findClosestEnemyForDefender(defender);
+            if (target != null && target.alive) {
+                moveDefenderTowardThreat(defender, target, delta);
+                float distance = defender.getPosition().dst(target.pos);
+                if (distance <= defender.getAttackRange() && defender.getAttackTimer() <= 0f) {
+                    RobotAttackLine attackLine = new RobotAttackLine();
+                    attackLine.from = new Vector2(defender.getPosition());
+                    attackLine.to = new Vector2(target.pos);
+                    robotAttackLines.add(attackLine);
+                    target.hp -= defender.getAttackPower() * BASE_DEFENDER_ATTACK_DAMAGE_SCALE;
+                    defender.setAttackTimer(defender.getAttackCooldown());
+                    if (target.hp <= 0f) {
+                        onEnemyKilled(target);
+                    }
+                }
+                persistDefenderHealth(defender);
+            } else {
+                moveDefenderTowardIdlePoint(defender, delta);
+                persistDefenderHealth(defender);
+            }
         }
     }
 
@@ -1086,6 +1544,12 @@ public class GameScreen implements Screen {
             tint = new Color(0.9f, 0.44f, 0.2f, 0.92f);
         } else if ("strength_boulder".equals(feature.interactionType)) {
             tint = new Color(0.54f, 0.46f, 0.36f, 1f);
+        } else if ("harvest_resource".equals(feature.interactionType)) {
+            tint = new Color(0.82f, 0.72f, 0.34f, 0.96f);
+        } else if ("claim_outpost_site".equals(feature.interactionType)) {
+            tint = new Color(0.34f, 0.64f, 0.88f, 0.9f);
+        } else if ("player_structure".equals(feature.kind)) {
+            tint = getPlayerStructureTint(feature);
         } else if ("cliff".equals(feature.kind)) {
             tint = new Color(0.36f, 0.36f, 0.42f, 1f);
         } else if ("gate".equals(feature.kind)) {
@@ -1103,8 +1567,34 @@ public class GameScreen implements Screen {
         if (feature.label != null && !feature.label.isEmpty()) {
             font.draw(batch, feature.label, feature.bounds.x + 8f, feature.bounds.y + feature.bounds.height + 26f);
         }
-        if (isFeatureInteractable(feature) && isFacingInteractionRect(feature.bounds)) {
+        if ("player_structure".equals(feature.kind) && buildModeOpen && isFacingInteractionRect(feature.bounds)) {
+            String action = isAssignableDefenderPost(feature) ? "R: Remove  T: Repair  F: Assign" : "R: Remove  T: Repair";
+            font.draw(batch, action, feature.bounds.x + 8f, feature.bounds.y - 10f);
+        } else if (isFeatureInteractable(feature) && isFacingInteractionRect(feature.bounds)) {
             font.draw(batch, "E: " + getFeatureActionLabel(feature), feature.bounds.x + 8f, feature.bounds.y - 10f);
+        }
+    }
+
+    private Color getPlayerStructureTint(TmxWorldLoader.Feature feature) {
+        PlacedStructure structure = getPlacedStructure(feature != null ? feature.persistentStateId : null);
+        StructureDefinition definition = structure != null
+            ? baseBuildingEngine.getStructureRegistry().get(structure.getStructureDefinitionId())
+            : null;
+        if (definition == null) {
+            return new Color(0.56f, 0.56f, 0.62f, 1f);
+        }
+        switch (definition.getCategory()) {
+            case DEFENSE:
+                return new Color(0.76f, 0.38f, 0.26f, 0.96f);
+            case STORAGE:
+                return new Color(0.58f, 0.46f, 0.24f, 0.96f);
+            case CRAFTING:
+                return new Color(0.42f, 0.66f, 0.84f, 0.96f);
+            case POWER:
+                return new Color(0.84f, 0.78f, 0.34f, 0.96f);
+            case WALL:
+            default:
+                return new Color(0.56f, 0.56f, 0.62f, 0.96f);
         }
     }
 
@@ -1176,6 +1666,60 @@ public class GameScreen implements Screen {
             shapeRenderer.rect(barX, barY, barWidth * hpPercent, barHeight);
         }
 
+        shapeRenderer.end();
+    }
+
+    private void drawBaseDefenders() {
+        if (activeBaseDefenders.isEmpty()) {
+            return;
+        }
+
+        batch.setProjectionMatrix(gameCamera.combined);
+        batch.begin();
+        for (BaseDefenderUnit defender : activeBaseDefenders) {
+            if (defender == null || !defender.isActive()) {
+                continue;
+            }
+            Vector2 guardHeading = new Vector2(defender.getGuardPosition()).sub(defender.getPosition());
+            if (guardHeading.isZero()) {
+                guardHeading.set(0f, -1f);
+            }
+            drawShadow(defender.getPosition().x, defender.getPosition().y, BASE_DEFENDER_SIZE + 12f, 16f, 0.38f);
+            TextureRegion sprite = getAnimatedFrame(
+                robotAnimations[getDefenderSpriteIndex(defender.getRobotId())],
+                guardHeading,
+                true,
+                defender.getAnimationTime()
+            );
+            drawAnimatedSprite(
+                sprite,
+                guardHeading,
+                defender.getPosition().x - BASE_DEFENDER_SIZE / 2f,
+                defender.getPosition().y - BASE_DEFENDER_SIZE / 2f,
+                BASE_DEFENDER_SIZE,
+                BASE_DEFENDER_SIZE
+            );
+            font.setColor(Color.WHITE);
+            font.draw(batch, defender.getDisplayName(), defender.getPosition().x - 28f, defender.getPosition().y + BASE_DEFENDER_SIZE / 2f + 18f);
+        }
+        batch.end();
+
+        shapeRenderer.setProjectionMatrix(gameCamera.combined);
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        for (BaseDefenderUnit defender : activeBaseDefenders) {
+            if (defender == null || !defender.isActive()) {
+                continue;
+            }
+            float barWidth = BASE_DEFENDER_SIZE;
+            float barHeight = 3f;
+            float barX = defender.getPosition().x - barWidth / 2f;
+            float barY = defender.getPosition().y + BASE_DEFENDER_SIZE / 2f + 4f;
+            float hpPercent = defender.getCurrentHealth() / Math.max(1f, defender.getMaxHealth());
+            shapeRenderer.setColor(0.2f, 0.2f, 0.2f, 0.8f);
+            shapeRenderer.rect(barX, barY, barWidth, barHeight);
+            shapeRenderer.setColor(0.84f, 0.68f, 0.22f, 0.92f);
+            shapeRenderer.rect(barX, barY, barWidth * hpPercent, barHeight);
+        }
         shapeRenderer.end();
     }
 
@@ -1318,27 +1862,339 @@ public class GameScreen implements Screen {
             return;
         }
 
+        resetDialogPageIfNeeded();
+        List<String> dialogPages = paginateDialog(activeDialog, 82, 3);
+        String currentPage = dialogPages.get(Math.min(dialogPageIndex, dialogPages.size() - 1));
+        List<String> wrappedDialog = wrapTextLines(currentPage, 82);
         uiViewport.apply();
         float w = uiViewport.getWorldWidth();
         shapeRenderer.setProjectionMatrix(uiCamera.combined);
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
         shapeRenderer.setColor(0.05f, 0.06f, 0.1f, 0.92f);
-        shapeRenderer.rect(30f, 30f, w - 60f, 100f);
+        shapeRenderer.rect(30f, 30f, w - 60f, 120f);
         shapeRenderer.end();
 
         batch.setProjectionMatrix(uiCamera.combined);
         batch.begin();
         font.setColor(Color.WHITE);
-        font.draw(batch, activeSpeaker, 48f, 112f);
-        font.draw(batch, activeDialog, 48f, 78f);
-        font.draw(batch, "Press E near an NPC to change the conversation.", 48f, 48f);
+        font.draw(batch, activeSpeaker, 48f, 128f);
+        float y = 98f;
+        for (String line : wrappedDialog) {
+            font.draw(batch, line, 48f, y);
+            y -= 22f;
+            if (y < 58f) {
+                break;
+            }
+        }
+        font.draw(batch,
+            dialogPageIndex + 1 < dialogPages.size()
+                ? "Press E or Enter to continue."
+                : "Press E near an NPC to change the conversation.",
+            48f, 48f);
         batch.end();
     }
 
+    private void drawQuestOverlay() {
+        if (!questMenuOpen) {
+            return;
+        }
+
+        List<String> questLines = getQuestJournalLines();
+        List<String> wrappedObjective = wrapTextLines(getCurrentObjective(), 64);
+
+        uiViewport.apply();
+        float w = uiViewport.getWorldWidth();
+        float h = uiViewport.getWorldHeight();
+
+        shapeRenderer.setProjectionMatrix(uiCamera.combined);
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        shapeRenderer.setColor(0.03f, 0.04f, 0.08f, 0.86f);
+        shapeRenderer.rect(0f, 0f, w, h);
+        shapeRenderer.setColor(0.09f, 0.11f, 0.16f, 0.97f);
+        shapeRenderer.rect(140f, 88f, w - 280f, h - 176f);
+        shapeRenderer.end();
+
+        batch.setProjectionMatrix(uiCamera.combined);
+        batch.begin();
+        font.setColor(Color.WHITE);
+        font.draw(batch, "Quest Log", 172f, h - 126f);
+        font.setColor(Color.LIGHT_GRAY);
+        font.draw(batch, "Q or ESC to close", w - 300f, h - 126f);
+
+        float y = h - 176f;
+        font.setColor(new Color(0.88f, 0.9f, 0.98f, 1f));
+        font.draw(batch, "Current Objective", 172f, y);
+        y -= 34f;
+        font.setColor(Color.WHITE);
+        for (String line : wrappedObjective) {
+            font.draw(batch, line, 172f, y);
+            y -= 26f;
+        }
+
+        y -= 20f;
+        font.setColor(new Color(0.88f, 0.9f, 0.98f, 1f));
+        font.draw(batch, "Active Quests", 172f, y);
+        y -= 34f;
+        font.setColor(Color.WHITE);
+        if (questLines.isEmpty()) {
+            font.draw(batch, "No active quests. Explore the frontier and talk to the crew.", 172f, y);
+        } else {
+            int drawn = 0;
+            for (String questLine : questLines) {
+                for (String wrapped : wrapTextLines(questLine, 78)) {
+                    if (drawn >= 12) {
+                        break;
+                    }
+                    font.draw(batch, wrapped, 172f, y);
+                    y -= 24f;
+                    drawn++;
+                }
+                if (drawn >= 12) {
+                    break;
+                }
+                y -= 10f;
+            }
+        }
+        batch.end();
+    }
+
+    private void drawBuildOverlay() {
+        if (!buildModeOpen) {
+            return;
+        }
+
+        StructureDefinition selected = getSelectedBuildStructure();
+        BasePlacementResult placement = selected != null ? getCurrentBuildPlacementResult(selected) : null;
+        String claimedSiteId = selected != null ? findBuildClaimSiteId(selected) : null;
+        String materialLine = selected != null ? buildStructureCostLine(selected) : "No structure selected.";
+
+        uiViewport.apply();
+        float w = uiViewport.getWorldWidth();
+        float h = uiViewport.getWorldHeight();
+        shapeRenderer.setProjectionMatrix(uiCamera.combined);
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        shapeRenderer.setColor(0.03f, 0.06f, 0.08f, 0.84f);
+        shapeRenderer.rect(24f, h - 194f, w - 48f, 170f);
+        shapeRenderer.end();
+
+        batch.setProjectionMatrix(uiCamera.combined);
+        batch.begin();
+        font.setColor(Color.WHITE);
+        font.draw(batch, "Build Mode", 42f, h - 42f);
+        font.setColor(Color.LIGHT_GRAY);
+        font.draw(batch, "B/ESC close  LEFT/RIGHT cycle  E place  R remove  T repair  F assign reserve bot", 42f, h - 68f);
+        font.setColor(new Color(0.88f, 0.94f, 0.98f, 1f));
+        font.draw(batch, selected != null ? selected.getDisplayName() : "No structure", 42f, h - 100f);
+        font.setColor(Color.WHITE);
+        font.draw(batch, materialLine, 42f, h - 124f);
+        String statusLine;
+        BaseRaidState raidState = getCurrentBaseState() != null ? getCurrentBaseState().getRaidState() : null;
+        if (selected == null) {
+            statusLine = "No structure definitions loaded.";
+        } else if (claimedSiteId == null || claimedSiteId.isEmpty()) {
+            statusLine = "Stand inside a claimed outpost site to place structures.";
+        } else if (placement != null && placement.isAllowed()) {
+            statusLine = "Placement valid at " + claimedSiteId + ".";
+        } else {
+            statusLine = placement != null && placement.getMessage() != null ? placement.getMessage() : "Placement blocked.";
+        }
+        font.draw(batch, statusLine, 42f, h - 148f);
+        if (raidState != null) {
+            font.draw(batch,
+                raidState.isActive()
+                    ? "Raid active: wave " + Math.max(1, raidState.getWaveIndex()) + " threat " + String.format(Locale.US, "%.2f", raidState.getThreatLevel())
+                    : "Raid pressure " + String.format(Locale.US, "%.2f", raidState.getThreatLevel()) + "  cooldown " + String.format(Locale.US, "%.0fs", raidState.getCooldownSeconds()),
+                42f, h - 168f);
+        }
+        batch.end();
+    }
+
+    private List<String> wrapTextLines(String text, int maxChars) {
+        List<String> lines = new ArrayList<>();
+        if (text == null || text.isEmpty()) {
+            return lines;
+        }
+        String[] words = text.split("\\s+");
+        StringBuilder current = new StringBuilder();
+        for (String word : words) {
+            if (current.length() == 0) {
+                current.append(word);
+                continue;
+            }
+            if (current.length() + 1 + word.length() <= maxChars) {
+                current.append(' ').append(word);
+            } else {
+                lines.add(current.toString());
+                current.setLength(0);
+                current.append(word);
+            }
+        }
+        if (current.length() > 0) {
+            lines.add(current.toString());
+        }
+        return lines;
+    }
+
+    private List<String> paginateDialog(String text, int maxChars, int linesPerPage) {
+        List<String> wrappedLines = wrapTextLines(text, maxChars);
+        List<String> pages = new ArrayList<>();
+        if (wrappedLines.isEmpty()) {
+            pages.add("");
+            return pages;
+        }
+        StringBuilder currentPage = new StringBuilder();
+        int lineCount = 0;
+        for (String line : wrappedLines) {
+            if (currentPage.length() > 0) {
+                currentPage.append('\n');
+            }
+            currentPage.append(line);
+            lineCount++;
+            if (lineCount >= linesPerPage) {
+                pages.add(currentPage.toString());
+                currentPage.setLength(0);
+                lineCount = 0;
+            }
+        }
+        if (currentPage.length() > 0) {
+            pages.add(currentPage.toString());
+        }
+        return pages;
+    }
+
+    private void showStandaloneDialog(String speaker, String text) {
+        activeDialogueSequence.clear();
+        activeDialogueSequenceIndex = 0;
+        activeDialogueSequence.add(new DialogueSystem.DialoguePage(speaker, text));
+        showCurrentDialogueSequencePage();
+    }
+
+    private void showDialogueSequence(List<DialogueSystem.DialoguePage> pages, String fallbackSpeaker, String fallbackText) {
+        activeDialogueSequence.clear();
+        activeDialogueSequenceIndex = 0;
+        if (pages != null) {
+            for (DialogueSystem.DialoguePage page : pages) {
+                if (page == null || page.text == null || page.text.isEmpty()) {
+                    continue;
+                }
+                activeDialogueSequence.add(page);
+            }
+        }
+        if (activeDialogueSequence.isEmpty()) {
+            activeDialogueSequence.add(new DialogueSystem.DialoguePage(fallbackSpeaker, fallbackText));
+        }
+        showCurrentDialogueSequencePage();
+    }
+
+    private void showCurrentDialogueSequencePage() {
+        if (activeDialogueSequence.isEmpty()) {
+            clearActiveDialog();
+            return;
+        }
+        DialogueSystem.DialoguePage page = activeDialogueSequence.get(Math.min(activeDialogueSequenceIndex, activeDialogueSequence.size() - 1));
+        activeSpeaker = page.speaker;
+        activeDialog = page.text;
+        dialogPageIndex = 0;
+        dialogPageTrackingText = activeDialog;
+        dialogPageTrackingSpeaker = activeSpeaker;
+    }
+
+    private boolean hasActiveDialog() {
+        return activeSpeaker != null && activeDialog != null && !activeDialog.isEmpty();
+    }
+
+    private void resetDialogPageIfNeeded() {
+        if (!hasActiveDialog()) {
+            dialogPageIndex = 0;
+            dialogPageTrackingText = null;
+            dialogPageTrackingSpeaker = null;
+            return;
+        }
+        if (!activeDialog.equals(dialogPageTrackingText) || !activeSpeaker.equals(dialogPageTrackingSpeaker)) {
+            dialogPageIndex = 0;
+            dialogPageTrackingText = activeDialog;
+            dialogPageTrackingSpeaker = activeSpeaker;
+        }
+    }
+
+    private boolean advanceDialogPage() {
+        if (!hasActiveDialog()) {
+            return false;
+        }
+        resetDialogPageIfNeeded();
+        List<String> pages = paginateDialog(activeDialog, 82, 3);
+        if (dialogPageIndex + 1 < pages.size()) {
+            dialogPageIndex++;
+            return true;
+        }
+        return false;
+    }
+
+    private boolean advanceDialogueSequence() {
+        if (activeDialogueSequenceIndex + 1 < activeDialogueSequence.size()) {
+            activeDialogueSequenceIndex++;
+            showCurrentDialogueSequencePage();
+            return true;
+        }
+        return false;
+    }
+
+    private void clearActiveDialog() {
+        activeSpeaker = null;
+        activeDialog = null;
+        activeDialogueSequence.clear();
+        activeDialogueSequenceIndex = 0;
+        dialogPageIndex = 0;
+        dialogPageTrackingText = null;
+        dialogPageTrackingSpeaker = null;
+    }
+
     private void transitionToGameOver() {
-        GameOverScreen gameOverScreen = new GameOverScreen(game, screenManager);
+        clearUnbankedExpeditionHaul();
+        metaProgressionState.setDeathCount(metaProgressionState.getDeathCount() + 1);
+        DeathDraftResult deathDraft = cyberneticEnhancementEngine.buildDeathDraft(metaProgressionState, buildRunOutcomeSummary());
+        metaProgressionManager.save(metaProgressionState);
+        GameOverScreen gameOverScreen = new GameOverScreen(
+            game,
+            screenManager,
+            metaProgressionState,
+            deathDraft,
+            metaProgressionManager,
+            cyberneticEnhancementEngine
+        );
         gameOverScreen.setGameStats((int) totalGold, totalEnemiesKilled, survivalTime);
         screenManager.replace(gameOverScreen);
+    }
+
+    private void clearUnbankedExpeditionHaul() {
+        gameState.setUnbankedGold(0L);
+        gameState.clearUnbankedForgeComponents();
+        gameState.clearUnbankedShards();
+    }
+
+    private RunOutcomeSummary buildRunOutcomeSummary() {
+        BaseState baseState = getCurrentBaseState();
+        int structuresBuilt = 0;
+        int claimedSites = 0;
+        if (baseState != null) {
+            for (PlacedStructure structure : baseState.getPlacedStructures()) {
+                if (structure != null && structure.isActive()) {
+                    structuresBuilt++;
+                }
+            }
+            claimedSites = baseState.getClaimedSiteIds().size();
+        }
+        int defeatedBosses = gameState.getDefeatedBossCount();
+        String rank = currentZoneDefinition != null ? currentZoneDefinition.getRankFloor() : "G";
+        return new RunOutcomeSummary(
+            rank,
+            totalEnemiesKilled,
+            survivalTime,
+            playerLevel,
+            defeatedBosses,
+            structuresBuilt,
+            claimedSites
+        );
     }
 
     @Override
@@ -1398,8 +2254,13 @@ public class GameScreen implements Screen {
     }
 
     public void dismissMessages() {
-        activeSpeaker = null;
-        activeDialog = null;
+        if (advanceDialogPage()) {
+            return;
+        }
+        if (advanceDialogueSequence()) {
+            return;
+        }
+        clearActiveDialog();
     }
 
     public void pauseGame() {
@@ -1417,6 +2278,13 @@ public class GameScreen implements Screen {
     public GameLoop getGameLoop() { return gameLoop; }
     public HUDOverlay getHUDOverlay() { return hudOverlay; }
 
+    private long generateWorldSeed() {
+        long seed = System.currentTimeMillis();
+        seed ^= ((long) playerName.hashCode()) << 32;
+        seed ^= 0x9E3779B97F4A7C15L;
+        return seed != 0L ? seed : 1L;
+    }
+
     public SaveFile buildSaveFile(int slot) {
         syncActiveRobotHealthToProgression();
         SaveFile sf = new SaveFile();
@@ -1426,25 +2294,31 @@ public class GameScreen implements Screen {
         sf.setPlayerX(playerPos.x);
         sf.setPlayerY(playerPos.y);
         sf.setCurrencyBalance(gameState.getTotalGold());
+        sf.setUnbankedCurrencyBalance(gameState.getUnbankedGold());
+        sf.setWorldSeed(worldSeed);
         sf.setHealingPotions(gameState.getHealingPotions());
         sf.setPlayerLevel(gameState.getPlayerLevel());
         sf.setPlayerExperience(gameState.getPlayerExperience());
         sf.setPlayerEquipment(new HashMap<>(gameState.getPlayerEquipmentSlots()));
         sf.setOwnedEquipmentIds(new ArrayList<>(gameState.getOwnedEquipmentIds()));
-        sf.setQuestFlags(new HashMap<>(gameState.getQuestFlags()));
         sf.setQuestStates(new HashMap<>(gameState.getQuestStates()));
         sf.setBestiaryScanLevels(new HashMap<>(gameState.getBestiaryScanLevels()));
         sf.setKeyItems(new ArrayList<>(gameState.getKeyItems()));
         sf.setWorldStateFlags(new HashMap<>(gameState.getWorldStateFlags()));
         sf.setSettlementUpgrades(new HashMap<>(gameState.getSettlementUpgrades()));
         sf.setForgeComponents(new HashMap<>(gameState.getForgeComponents()));
+        sf.setUnbankedForgeComponents(new HashMap<>(gameState.getUnbankedForgeComponents()));
         sf.setShardInventory(new HashMap<>(gameState.getShardInventory()));
+        sf.setUnbankedShardInventory(new HashMap<>(gameState.getUnbankedShards()));
         sf.setForgeCoreLevel(gameState.getForgeCoreLevel());
         sf.setInfiniteDungeonCurrentFloor(gameState.getInfiniteDungeonCurrentFloor());
         sf.setInfiniteDungeonBestFloor(gameState.getInfiniteDungeonBestFloor());
         sf.setInfiniteDungeonFloorsCleared(gameState.getInfiniteDungeonFloorsCleared());
         sf.setInfiniteDungeonRunActive(gameState.isInfiniteDungeonRunActive());
         sf.setDefeatedBossIds(new ArrayList<>(gameState.getDefeatedBossIds()));
+        sf.setHarvestedFrontierFeatureIds(new ArrayList<>(harvestedFrontierFeatureIds));
+        sf.setClaimedFrontierBaseSiteIds(new ArrayList<>(claimedFrontierBaseSiteIds));
+        sf.setBaseStates(buildBaseStateSaveData());
         sf.setCurrentZoneId(gameState.getCurrentZoneId());
         sf.setRobotEquipment(copyRobotEquipment(robotEquipment));
         sf.setCollectedRobotIds(new ArrayList<>(gameState.getCollectedRobotIds()));
@@ -1468,6 +2342,8 @@ public class GameScreen implements Screen {
 
     private void loadFromSave(SaveFile saveFile) {
         currentZoneId = saveFile.getCurrentZoneId() != null ? saveFile.getCurrentZoneId() : currentZoneId;
+        worldSeed = saveFile.getWorldSeed() != 0L ? saveFile.getWorldSeed() : generateWorldSeed();
+        loadBaseStatesFromSave(saveFile);
         gameState.setInfiniteDungeonCurrentFloor(saveFile.getInfiniteDungeonCurrentFloor());
         gameState.setInfiniteDungeonBestFloor(saveFile.getInfiniteDungeonBestFloor());
         gameState.setInfiniteDungeonFloorsCleared(saveFile.getInfiniteDungeonFloorsCleared());
@@ -1483,6 +2359,7 @@ public class GameScreen implements Screen {
         gameState.setPlayerHealth(playerHealth);
         gameState.setPlayerMaxHealth(playerMaxHealth);
         gameState.setTotalGold(totalGold);
+        gameState.setUnbankedGold(saveFile.getUnbankedCurrencyBalance());
         gameState.setHealingPotions(healingPotions);
         gameState.setPlayerLevel(playerLevel);
         gameState.setPlayerExperience(playerExperience);
@@ -1497,11 +2374,6 @@ public class GameScreen implements Screen {
             seedStarterOwnedEquipment();
         }
         gameState.setOwnedEquipmentIds(ownedEquipmentIds);
-        questFlags.clear();
-        if (saveFile.getQuestFlags() != null) {
-            questFlags.putAll(saveFile.getQuestFlags());
-        }
-        gameState.setQuestFlags(questFlags);
         gameState.setQuestStates(saveFile.getQuestStates());
         gameState.setBestiaryScanLevels(saveFile.getBestiaryScanLevels());
         keyItems.clear();
@@ -1512,9 +2384,14 @@ public class GameScreen implements Screen {
         gameState.setWorldStateFlags(saveFile.getWorldStateFlags());
         gameState.setSettlementUpgrades(saveFile.getSettlementUpgrades());
         gameState.setForgeComponents(saveFile.getForgeComponents());
+        gameState.setUnbankedForgeComponents(saveFile.getUnbankedForgeComponents());
         gameState.setShardInventory(saveFile.getShardInventory());
+        gameState.setUnbankedShards(saveFile.getUnbankedShardInventory());
         gameState.setForgeCoreLevel(saveFile.getForgeCoreLevel());
         gameState.setDefeatedBossIds(saveFile.getDefeatedBossIds());
+        harvestedFrontierFeatureIds.clear();
+        harvestedFrontierFeatureIds.addAll(saveFile.getHarvestedFrontierFeatureIds());
+        syncClaimedFrontierBaseSiteIds();
         worldStateManager.initialize(gameState);
         questManager.initialize(gameState);
         questManager.syncProgress(gameState, worldStateManager);
@@ -1536,6 +2413,7 @@ public class GameScreen implements Screen {
             ? new ArrayList<>(saveFile.getActiveRobotIds())
             : new ArrayList<>();
         normalizeActiveRobotSlots();
+        clampActiveRobotsToUnlockedSlots();
         gameState.setCollectedRobotIds(collectedRobotIds);
         gameState.setActiveRobotIds(activeRobotIds);
         gameState.setRobotProgressionStates(saveFile.getRobotProgressionStates());
@@ -1595,6 +2473,7 @@ public class GameScreen implements Screen {
             enemyState.setPatrolTargetX(enemy.patrolTarget.x);
             enemyState.setPatrolTargetY(enemy.patrolTarget.y);
             enemyState.setDungeonFloor(enemy.dungeonFloor);
+            enemyState.setRaidSpawned(enemy.raidSpawned);
             enemyStates.add(enemyState);
         }
         return enemyStates;
@@ -1762,12 +2641,12 @@ public class GameScreen implements Screen {
         }
         if (result.droppedShards != null) {
             for (Map.Entry<String, Integer> entry : result.droppedShards.entrySet()) {
-                gameState.addShard(entry.getKey(), entry.getValue());
+                addShardLoot(entry.getKey(), entry.getValue());
             }
         }
         if (result.droppedComponents != null) {
             for (Map.Entry<String, Integer> entry : result.droppedComponents.entrySet()) {
-                gameState.addForgeComponent(entry.getKey(), entry.getValue());
+                addForgeComponentLoot(entry.getKey(), entry.getValue());
             }
         }
         handleBattleStoryEvents(result);
@@ -1805,10 +2684,9 @@ public class GameScreen implements Screen {
         gameState.setInfiniteDungeonCurrentFloor(completedFloor + 1);
         gameState.setInfiniteDungeonRunActive(true);
         regenerateInfiniteDungeonFloor("from_boss_gate", true);
-        activeSpeaker = "Bolt Simulation";
-        activeDialog = completedFloor % INFINITE_DUNGEON_BOSS_INTERVAL == 0
+        showStandaloneDialog("Bolt Simulation", completedFloor % INFINITE_DUNGEON_BOSS_INTERVAL == 0
             ? "Boss floor cleared. Routing you deeper into the challenge loop."
-            : "Floor " + completedFloor + " cleared. Preparing the next trial.";
+            : "Floor " + completedFloor + " cleared. Preparing the next trial.");
         refreshHud();
     }
 
@@ -1827,6 +2705,9 @@ public class GameScreen implements Screen {
     private void handleBattleStoryEvents(BattleScreen.BattleResult result) {
         if (result == null || !result.enemyDefeated || result.enemyReferences == null || result.enemyHealth == null) {
             return;
+        }
+        if (!currentZoneIsSafe()) {
+            worldStateManager.setFlag(gameState, "arrival.first_battle_won", true);
         }
         List<String> defeatedEnemyIds = new ArrayList<>();
         for (int i = 0; i < result.enemyReferences.length && i < result.enemyHealth.length; i++) {
@@ -1907,10 +2788,9 @@ public class GameScreen implements Screen {
             addExperience(definition.getRewardExperience());
         }
         if (definition.getSpeaker() != null && !definition.getSpeaker().isEmpty()) {
-            activeSpeaker = definition.getSpeaker();
-        }
-        if (definition.getText() != null && !definition.getText().isEmpty()) {
-            activeDialog = definition.getText();
+            showStandaloneDialog(definition.getSpeaker(), definition.getText());
+        } else if (definition.getText() != null && !definition.getText().isEmpty()) {
+            showStandaloneDialog("", definition.getText());
         }
         return true;
     }
@@ -2033,7 +2913,9 @@ public class GameScreen implements Screen {
     private void normalizeActiveRobotSlots() {
         List<String> normalized = new ArrayList<>();
         for (String robotId : activeRobotIds) {
-            normalized.add(robotId != null && !robotId.isEmpty() ? robotId : null);
+            if (robotId != null && !robotId.isEmpty() && !normalized.contains(robotId)) {
+                normalized.add(robotId);
+            }
         }
         while (normalized.size() < ROBOT_COUNT) {
             normalized.add(null);
@@ -2042,6 +2924,14 @@ public class GameScreen implements Screen {
             normalized = new ArrayList<>(normalized.subList(0, ROBOT_COUNT));
         }
         activeRobotIds = normalized;
+    }
+
+    private void clampActiveRobotsToUnlockedSlots() {
+        int slotLimit = getPartySlotLimit();
+        for (int i = slotLimit; i < ROBOT_COUNT && i < activeRobotIds.size(); i++) {
+            activeRobotIds.set(i, null);
+            robots[i].health = 0f;
+        }
     }
 
     private void syncActiveRobotHealthToProgression() {
@@ -2211,6 +3101,12 @@ public class GameScreen implements Screen {
         gameState.setCurrentZoneId(zoneId);
         currentZoneDefinition = definition;
         currentZone = worldLoader.load(definition);
+        frontierTerrainSampler = definition.isExpansiveFrontier() ? new FrontierTerrainSampler(worldSeed) : null;
+        frontierBiomeCatalog = definition.isExpansiveFrontier() ? new FrontierBiomeCatalog() : null;
+        if (definition.isExpansiveFrontier()) {
+            currentZone = frontierZoneGenerator.generate(definition, currentZone, worldSeed);
+            hydrateSavedBaseStructures(currentZone, definition.getId());
+        }
         handleInfiniteDungeonZoneLoad(previousZoneId, spawnId);
         if (isInfiniteDungeonZone()) {
             currentZone = infiniteDungeonLayoutGenerator.generate(currentZone, getInfiniteDungeonCurrentFloor());
@@ -2250,6 +3146,8 @@ public class GameScreen implements Screen {
             positionRobotsBehindPlayer();
         }
 
+        syncCurrentZoneBaseDefenders();
+
         if (resetEnemies) {
             spawnEnemies();
         }
@@ -2273,13 +3171,11 @@ public class GameScreen implements Screen {
             gameState.getInfiniteDungeonCurrentFloor()
         ));
         if (!INFINITE_DUNGEON_ZONE_ID.equals(previousZoneId)) {
-            activeSpeaker = "Bolt Simulation";
-            activeDialog = "Challenge loop synchronized. Resuming at floor "
-                + gameState.getInfiniteDungeonCurrentFloor() + ".";
+            showStandaloneDialog("Bolt Simulation", "Challenge loop synchronized. Resuming at floor "
+                + gameState.getInfiniteDungeonCurrentFloor() + ".");
         } else if ("from_boss_gate".equals(spawnId)) {
-            activeSpeaker = "Bolt Simulation";
-            activeDialog = "Deep trial gate accepted. Floor "
-                + gameState.getInfiniteDungeonCurrentFloor() + " is now active.";
+            showStandaloneDialog("Bolt Simulation", "Deep trial gate accepted. Floor "
+                + gameState.getInfiniteDungeonCurrentFloor() + " is now active.");
         }
     }
 
@@ -2299,6 +3195,7 @@ public class GameScreen implements Screen {
             playerPos.set(resolvedSpawn);
             positionRobotsBehindPlayer();
         }
+        syncCurrentZoneBaseDefenders();
         if (resetEnemies) {
             spawnEnemies();
         }
@@ -2354,7 +3251,7 @@ public class GameScreen implements Screen {
     }
 
     private boolean isHubTownZone() {
-        return "town".equals(currentZoneId) || "verdant_fields".equals(currentZoneId);
+        return "town".equals(currentZoneId);
     }
 
     private void positionRobotsBehindPlayer() {
@@ -2399,11 +3296,55 @@ public class GameScreen implements Screen {
             house = House.createLodge(feature.houseId, feature.label, feature.bounds.x, feature.bounds.y, feature.bounds.width, feature.bounds.height);
         } else if (feature.houseId == 2) {
             house = House.createHerbalist(feature.houseId, feature.label, feature.bounds.x, feature.bounds.y, feature.bounds.width, feature.bounds.height);
+        } else if (feature.houseId == 3) {
+            house = House.createPlayerHome(feature.houseId, feature.label, feature.bounds.x, feature.bounds.y, feature.bounds.width, feature.bounds.height);
         } else {
             return null;
         }
         house.zoneId = currentZoneId;
         return house;
+    }
+
+    private void triggerOpeningCutsceneIfNeeded() {
+        if (!pendingOpeningCutscene) {
+            return;
+        }
+        pendingOpeningCutscene = false;
+        House playerHome = findHouseById(3);
+        if (playerHome == null || worldStateManager.isFlagActive(gameState, OPENING_HOME_INTRO_FLAG)) {
+            return;
+        }
+        worldStateManager.setFlag(gameState, OPENING_HOME_INTRO_FLAG, true);
+        activeSpeaker = null;
+        activeDialog = null;
+        screenManager.push(new CutsceneScreen(
+            game,
+            screenManager,
+            buildOpeningCutscenePages(),
+            () -> screenManager.push(new HouseInteriorScreen(game, screenManager, this, playerHome))
+        ));
+        autosave();
+    }
+
+    private List<CutsceneScreen.Page> buildOpeningCutscenePages() {
+        List<CutsceneScreen.Page> pages = new ArrayList<>();
+        pages.add(new CutsceneScreen.Page(
+            "Mechara",
+            "The old world did not end all at once. It collapsed in fires, failing machines, and broken defenses until only scattered settlements remained behind whatever walls they could keep powered."
+        ));
+        pages.add(new CutsceneScreen.Page(
+            "Forge Core Archive",
+            "Ironhaven is one of those settlements. Its people survive by salvaging what the frontier leaves behind, rebuilding their crews, and sending the strong to hold back what still prowls beyond the gates."
+        ));
+        pages.add(new CutsceneScreen.Page(
+            "Morning Brief",
+            "You wake in your own home to the low hum of the Forge Core. Bram has already sent word: he wants to speak with you at once. Something in the frontier is changing, and Ironhaven needs someone ready to grow strong enough to defend what is left."
+        ));
+        return pages;
+    }
+
+    public boolean isWorldFlagActive(String flag) {
+        return flag != null && !flag.isEmpty() && worldStateManager.isFlagActive(gameState, flag);
     }
 
     private void applyHouseChestState(House house) {
@@ -2436,13 +3377,11 @@ public class GameScreen implements Screen {
         refreshHud();
     }
 
-    private boolean hasQuestFlag(String flag) {
-        return gameState.hasQuestFlag(flag);
-    }
-
-    private void setQuestFlag(String flag, boolean value) {
-        gameState.setQuestFlag(flag, value);
-        questFlags.put(flag, value);
+    private boolean isProgressFlagActive(String flag) {
+        if (flag == null || flag.isEmpty()) {
+            return false;
+        }
+        return worldStateManager.isFlagActive(gameState, flag);
     }
 
     private boolean hasKeyItem(String keyItem) {
@@ -2478,8 +3417,11 @@ public class GameScreen implements Screen {
             result = new DialogueSystem.DialogueResult();
             result.speaker = speakerName;
             result.text = "The road keeps changing, but a good crew still finds its way.";
+            result.pages.add(new DialogueSystem.DialoguePage(result.speaker, result.text));
         }
         applyDialogueResult(result);
+        questManager.recordNpcConversation(gameState, worldStateManager, currentZoneId, npcId);
+        questManager.syncProgress(gameState, worldStateManager);
         refreshHud();
         return result;
     }
@@ -2529,6 +3471,7 @@ public class GameScreen implements Screen {
             activeDialog = activeDialog != null && !activeDialog.isEmpty()
                 ? activeDialog + " " + recruitment.message
                 : recruitment.message;
+            dialogPageTrackingText = null;
         }
     }
 
@@ -3045,8 +3988,7 @@ public class GameScreen implements Screen {
 
         if (nearbyNpc != null) {
             DialogueSystem.DialogueResult conversation = resolveNpcDialogue(nearbyNpc.id, nearbyNpc.name);
-            activeSpeaker = conversation.speaker != null ? conversation.speaker : nearbyNpc.name;
-            activeDialog = conversation.text;
+            showDialogueSequence(conversation.pages, conversation.speaker != null ? conversation.speaker : nearbyNpc.name, conversation.text);
             if (conversation.rewardGold > 0) {
                 addGold(conversation.rewardGold);
             }
@@ -3057,8 +3999,7 @@ public class GameScreen implements Screen {
                 addExperience(conversation.rewardExperience);
             }
         } else {
-            activeSpeaker = null;
-            activeDialog = null;
+            clearActiveDialog();
         }
     }
 
@@ -3079,8 +4020,7 @@ public class GameScreen implements Screen {
     private boolean tryEnterHouse() {
         for (House house : houses) {
             if (canUseHouseDoor(house)) {
-                activeSpeaker = null;
-                activeDialog = null;
+                clearActiveDialog();
                 screenManager.push(new HouseInteriorScreen(game, screenManager, this, house));
                 return true;
             }
@@ -3091,8 +4031,7 @@ public class GameScreen implements Screen {
     private boolean tryReadHouseSign() {
         for (House house : houses) {
             if (canReadHouseSign(house)) {
-                activeSpeaker = "Sign";
-                activeDialog = house.name;
+                showStandaloneDialog("Sign", house.name);
                 return true;
             }
         }
@@ -3114,34 +4053,30 @@ public class GameScreen implements Screen {
                 continue;
             }
             if (door.lockedByKeyItem != null && !hasKeyItem(door.lockedByKeyItem)) {
-                activeSpeaker = "Warning";
-                activeDialog = door.lockMessage != null && !door.lockMessage.isEmpty()
+                showStandaloneDialog("Warning", door.lockMessage != null && !door.lockMessage.isEmpty()
                     ? door.lockMessage + " You can still press through if you're ready."
-                    : "This route is dangerous for an unprepared party.";
+                    : "This route is dangerous for an unprepared party.");
             }
-            if (door.lockedByFlag != null
-                && !hasQuestFlag(door.lockedByFlag)
-                && !worldStateManager.isFlagActive(gameState, door.lockedByFlag)) {
-                activeSpeaker = "Warning";
-                activeDialog = door.lockMessage != null && !door.lockMessage.isEmpty()
+            if (door.lockedByWorldFlag != null
+                && !door.lockedByWorldFlag.isEmpty()
+                && !isProgressFlagActive(door.lockedByWorldFlag)) {
+                showStandaloneDialog("Warning", door.lockMessage != null && !door.lockMessage.isEmpty()
                     ? door.lockMessage + " The frontier won't stop you, but it may punish you."
-                    : "You have not completed the local objective yet.";
+                    : "You have not completed the local objective yet.");
             }
             if (door.requiredWorldFlag != null && !door.requiredWorldFlag.isEmpty()
                 && !worldStateManager.isFlagActive(gameState, door.requiredWorldFlag)) {
-                activeSpeaker = "Warning";
-                activeDialog = door.lockMessage != null && !door.lockMessage.isEmpty()
+                showStandaloneDialog("Warning", door.lockMessage != null && !door.lockMessage.isEmpty()
                     ? door.lockMessage
-                    : "The route is dormant for now.";
+                    : "The route is dormant for now.");
                 return true;
             }
             if (door.targetZoneId != null) {
                 if (isInfiniteDungeonZone() && currentZoneId.equals(door.targetZoneId)) {
                     if (!allDungeonEnemiesDefeated()) {
-                        activeSpeaker = "Bolt Simulation";
-                        activeDialog = door.lockMessage != null && !door.lockMessage.isEmpty()
+                        showStandaloneDialog("Bolt Simulation", door.lockMessage != null && !door.lockMessage.isEmpty()
                             ? door.lockMessage
-                            : "Clear the current floor before the next gate will answer.";
+                            : "Clear the current floor before the next gate will answer.");
                         return true;
                     }
                     gameState.setInfiniteDungeonCurrentFloor(getInfiniteDungeonCurrentFloor() + 1);
@@ -3162,7 +4097,7 @@ public class GameScreen implements Screen {
     }
 
     private boolean currentZoneIsSafe() {
-        return currentZone != null && currentZone.safeZone;
+        return currentZone != null && currentZone.isSafeAt(playerPos);
     }
 
     private boolean canUseHouseDoor(House house) {
@@ -3228,9 +4163,8 @@ public class GameScreen implements Screen {
             if (chest.keyItemReward != null && !chest.keyItemReward.isEmpty()) {
                 addKeyItem(chest.keyItemReward);
             }
-            if (chest.questFlag != null && !chest.questFlag.isEmpty()) {
-                setQuestFlag(chest.questFlag, true);
-                worldStateManager.setFlag(gameState, chest.questFlag, true);
+            if (chest.completionWorldFlag != null && !chest.completionWorldFlag.isEmpty()) {
+                worldStateManager.setFlag(gameState, chest.completionWorldFlag, true);
             }
             if (chest.recruitEventId != null && !chest.recruitEventId.isEmpty()) {
                 applyRecruitment(chest.recruitEventId);
@@ -3243,8 +4177,7 @@ public class GameScreen implements Screen {
                 worldStateManager.setFlag(gameState, "recruit.medic_frame_found", true);
             }
             questManager.syncProgress(gameState, worldStateManager);
-            activeSpeaker = "Chest";
-            activeDialog = chest.message;
+            showStandaloneDialog("Chest", chest.message);
             refreshHud();
             return true;
         }
@@ -3266,22 +4199,28 @@ public class GameScreen implements Screen {
                 screenManager.push(new ShopScreen(game, screenManager, this, shopName, createShopInventory(feature.shopId)));
                 return true;
             }
+            if ("harvest_resource".equals(feature.interactionType)) {
+                return tryHarvestResourceFeature(feature);
+            }
+            if ("claim_outpost_site".equals(feature.interactionType)) {
+                return tryClaimFrontierBaseSite(feature);
+            }
             if (hasWorldInteractionCapability(feature.interactionType)) {
                 if (feature.completionWorldFlag != null && !feature.completionWorldFlag.isEmpty()) {
                     worldStateManager.setFlag(gameState, feature.completionWorldFlag, true);
                 }
                 questManager.syncProgress(gameState, worldStateManager);
-                activeSpeaker = feature.label != null && !feature.label.isEmpty() ? feature.label : "Frontier";
-                activeDialog = feature.interactionMessage != null && !feature.interactionMessage.isEmpty()
+                showStandaloneDialog(feature.label != null && !feature.label.isEmpty() ? feature.label : "Frontier",
+                    feature.interactionMessage != null && !feature.interactionMessage.isEmpty()
                     ? feature.interactionMessage
-                    : "Your crew clears the obstruction and opens the route ahead.";
+                    : "Your crew clears the obstruction and opens the route ahead.");
                 refreshHud();
                 return true;
             }
-            activeSpeaker = feature.label != null && !feature.label.isEmpty() ? feature.label : "Frontier";
-            activeDialog = feature.blockedMessage != null && !feature.blockedMessage.isEmpty()
+            showStandaloneDialog(feature.label != null && !feature.label.isEmpty() ? feature.label : "Frontier",
+                feature.blockedMessage != null && !feature.blockedMessage.isEmpty()
                 ? feature.blockedMessage
-                : "Your current crew can't clear this obstacle yet.";
+                : "Your current crew can't clear this obstacle yet.");
             return true;
         }
         return false;
@@ -3303,6 +4242,15 @@ public class GameScreen implements Screen {
     }
 
     private boolean isFeatureCompleted(TmxWorldLoader.Feature feature) {
+        if (feature == null) {
+            return false;
+        }
+        if ("harvest_resource".equals(feature.interactionType)) {
+            return isHarvestedFrontierFeature(feature.persistentStateId);
+        }
+        if ("claim_outpost_site".equals(feature.interactionType)) {
+            return isClaimedFrontierBaseSite(feature.persistentStateId);
+        }
         return feature != null
             && feature.completionWorldFlag != null
             && !feature.completionWorldFlag.isEmpty()
@@ -3311,6 +4259,7 @@ public class GameScreen implements Screen {
 
     private boolean isFeatureInteractable(TmxWorldLoader.Feature feature) {
         return feature != null
+            && !"player_structure".equals(feature.kind)
             && feature.interactionType != null
             && !feature.interactionType.isEmpty()
             && isFeatureVisible(feature);
@@ -3329,6 +4278,10 @@ public class GameScreen implements Screen {
                 return "Burn Away";
             case "strength_boulder":
                 return "Clear";
+            case "harvest_resource":
+                return "Harvest";
+            case "claim_outpost_site":
+                return "Survey";
             default:
                 return "Interact";
         }
@@ -3345,6 +4298,703 @@ public class GameScreen implements Screen {
             default:
                 return false;
         }
+    }
+
+    private boolean tryHarvestResourceFeature(TmxWorldLoader.Feature feature) {
+        if (feature == null || feature.resourceId == null || feature.resourceId.isEmpty()) {
+            showStandaloneDialog("Frontier", "This node cannot be harvested yet.");
+            return true;
+        }
+        if (isHarvestedFrontierFeature(feature.persistentStateId)) {
+            showStandaloneDialog(feature.label != null ? feature.label : "Frontier", "This node has already been stripped clean.");
+            return true;
+        }
+        harvestedFrontierFeatureIds.add(feature.persistentStateId);
+        int harvestedAmount = Math.max(1, Math.max(1, feature.resourceAmount) + getCyberneticBonuses().getHarvestYieldBonus());
+        addForgeComponentLoot(feature.resourceId, harvestedAmount);
+        showStandaloneDialog(feature.label != null && !feature.label.isEmpty() ? feature.label : "Frontier",
+            feature.interactionMessage != null && !feature.interactionMessage.isEmpty()
+                ? feature.interactionMessage
+                : "Your crew recovers " + harvestedAmount + " " + feature.resourceId + ".");
+        refreshHud();
+        bankExpeditionHaulIfPossible(true);
+        return true;
+    }
+
+    private boolean tryClaimFrontierBaseSite(TmxWorldLoader.Feature feature) {
+        if (feature == null || feature.persistentStateId == null || feature.persistentStateId.isEmpty()) {
+            return false;
+        }
+        BaseState baseState = getOrCreateBaseState(currentZoneId);
+        baseState.claimSite(feature.persistentStateId);
+        syncClaimedFrontierBaseSiteIds();
+        showStandaloneDialog(feature.label != null && !feature.label.isEmpty() ? feature.label : "Frontier",
+            "Site logged. This clearing is now reserved for future base structures, reserve bot defenders, and local expansion.");
+        autosave();
+        return true;
+    }
+
+    private boolean isHarvestedFrontierFeature(String persistentStateId) {
+        return persistentStateId != null && harvestedFrontierFeatureIds.contains(persistentStateId);
+    }
+
+    private boolean isClaimedFrontierBaseSite(String persistentStateId) {
+        if (persistentStateId == null || persistentStateId.isEmpty()) {
+            return false;
+        }
+        BaseState baseState = baseStatesByZoneId.get(currentZoneId);
+        return (baseState != null && baseState.hasClaimedSite(persistentStateId))
+            || claimedFrontierBaseSiteIds.contains(persistentStateId);
+    }
+
+    private BaseState getOrCreateBaseState(String zoneId) {
+        String resolvedZoneId = zoneId != null && !zoneId.isEmpty() ? zoneId : currentZoneId;
+        return baseStatesByZoneId.computeIfAbsent(resolvedZoneId, BaseState::new);
+    }
+
+    private void toggleBuildMode() {
+        if (currentZoneDefinition == null || !currentZoneDefinition.isExpansiveFrontier()) {
+            showStandaloneDialog("Frontier", "Build mode is only available in the frontier.");
+            return;
+        }
+        buildModeOpen = !buildModeOpen;
+    }
+
+    private void handleBuildModeShortcuts() {
+        if (Gdx.input.isKeyJustPressed(Input.Keys.LEFT) || Gdx.input.isKeyJustPressed(Input.Keys.COMMA)) {
+            cycleBuildSelection(-1);
+        }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.RIGHT) || Gdx.input.isKeyJustPressed(Input.Keys.PERIOD)) {
+            cycleBuildSelection(1);
+        }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.R)) {
+            removeTargetedStructure();
+        }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.T)) {
+            repairTargetedStructure();
+        }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.F)) {
+            assignReserveBotToTargetedStructure();
+        }
+    }
+
+    private void cycleBuildSelection(int delta) {
+        List<StructureDefinition> definitions = getBuildStructureCatalog();
+        if (definitions.isEmpty()) {
+            selectedBuildStructureIndex = 0;
+            return;
+        }
+        selectedBuildStructureIndex = Math.floorMod(selectedBuildStructureIndex + delta, definitions.size());
+    }
+
+    private List<StructureDefinition> getBuildStructureCatalog() {
+        List<StructureDefinition> definitions = baseBuildingEngine.getStructureRegistry().getAll();
+        definitions.sort((left, right) -> left.getDisplayName().compareToIgnoreCase(right.getDisplayName()));
+        return definitions;
+    }
+
+    private StructureDefinition getSelectedBuildStructure() {
+        List<StructureDefinition> definitions = getBuildStructureCatalog();
+        if (definitions.isEmpty()) {
+            selectedBuildStructureIndex = 0;
+            return null;
+        }
+        selectedBuildStructureIndex = Math.floorMod(selectedBuildStructureIndex, definitions.size());
+        return definitions.get(selectedBuildStructureIndex);
+    }
+
+    private BasePlacementResult getCurrentBuildPlacementResult(StructureDefinition structureDefinition) {
+        if (structureDefinition == null || currentZone == null || frontierTerrainSampler == null) {
+            return null;
+        }
+        float[] preview = getBuildPreviewOrigin(structureDefinition);
+        String claimedSiteId = findBuildClaimSiteId(structureDefinition);
+        return baseBuildingEngine.validatePlacement(
+            structureDefinition.getId(),
+            getOrCreateBaseState(currentZoneId),
+            currentZone,
+            frontierTerrainSampler,
+            claimedSiteId,
+            preview[0],
+            preview[1]
+        );
+    }
+
+    private String findBuildClaimSiteId(StructureDefinition structureDefinition) {
+        if (structureDefinition == null || currentZone == null) {
+            return null;
+        }
+        float[] preview = getBuildPreviewOrigin(structureDefinition);
+        Rectangle previewBounds = new Rectangle(
+            preview[0],
+            preview[1],
+            structureDefinition.getWidthTiles() * currentZone.tileWidth,
+            structureDefinition.getHeightTiles() * currentZone.tileHeight
+        );
+        BaseState baseState = getOrCreateBaseState(currentZoneId);
+        for (TmxWorldLoader.Feature feature : currentZone.features) {
+            if (!"claim_outpost_site".equals(feature.interactionType)
+                || feature.persistentStateId == null
+                || !baseState.hasClaimedSite(feature.persistentStateId)
+                || feature.bounds == null) {
+                continue;
+            }
+            if (feature.bounds.contains(previewBounds.x, previewBounds.y)
+                && feature.bounds.contains(previewBounds.x + previewBounds.width, previewBounds.y + previewBounds.height)) {
+                return feature.persistentStateId;
+            }
+        }
+        return null;
+    }
+
+    private float[] getBuildPreviewOrigin(StructureDefinition structureDefinition) {
+        float tileWidth = currentZone != null ? currentZone.tileWidth : 48f;
+        float tileHeight = currentZone != null ? currentZone.tileHeight : 48f;
+        Vector2 direction = new Vector2(lastMoveDirection);
+        if (direction.isZero()) {
+            direction.set(0f, -1f);
+        } else {
+            direction.nor();
+        }
+        float previewCenterX = playerPos.x + direction.x * Math.max(tileWidth * 2f, 96f);
+        float previewCenterY = playerPos.y + direction.y * Math.max(tileHeight * 2f, 96f);
+        float snappedX = (float) Math.floor(previewCenterX / tileWidth) * tileWidth;
+        float snappedY = (float) Math.floor(previewCenterY / tileHeight) * tileHeight;
+        return new float[] {snappedX, snappedY};
+    }
+
+    private boolean tryPlaceSelectedStructure() {
+        StructureDefinition structureDefinition = getSelectedBuildStructure();
+        if (structureDefinition == null) {
+            showStandaloneDialog("Build Mode", "No buildable structures are available.");
+            return true;
+        }
+        BasePlacementResult placement = getCurrentBuildPlacementResult(structureDefinition);
+        if (placement == null || !placement.isAllowed()) {
+            showStandaloneDialog("Build Mode", placement != null && placement.getMessage() != null
+                ? placement.getMessage()
+                : "That structure cannot be placed here.");
+            return true;
+        }
+        if (!gameState.consumeForgeComponents(structureDefinition.getBuildCosts())) {
+            showStandaloneDialog("Build Mode", "You do not have the required materials: " + buildStructureCostLine(structureDefinition) + ".");
+            return true;
+        }
+        String claimedSiteId = findBuildClaimSiteId(structureDefinition);
+        float[] preview = getBuildPreviewOrigin(structureDefinition);
+        PlacedStructure structure = baseBuildingEngine.placeStructure(
+            structureDefinition.getId(),
+            getOrCreateBaseState(currentZoneId),
+            currentZone,
+            frontierTerrainSampler,
+            claimedSiteId,
+            preview[0],
+            preview[1]
+        );
+        if (structure == null) {
+            for (Map.Entry<String, Integer> entry : structureDefinition.getBuildCosts().entrySet()) {
+                gameState.addForgeComponent(entry.getKey(), entry.getValue());
+            }
+            showStandaloneDialog("Build Mode", "The structure could not be placed.");
+            return true;
+        }
+        addStructureFeatureToCurrentZone(structure);
+        syncCurrentZoneBaseDefenders();
+        refreshHud();
+        autosave();
+        showStandaloneDialog("Build Mode", structureDefinition.getDisplayName() + " placed.");
+        return true;
+    }
+
+    private String buildStructureCostLine(StructureDefinition structureDefinition) {
+        if (structureDefinition == null || structureDefinition.getBuildCosts().isEmpty()) {
+            return "No materials required.";
+        }
+        StringBuilder builder = new StringBuilder();
+        boolean first = true;
+        for (Map.Entry<String, Integer> entry : structureDefinition.getBuildCosts().entrySet()) {
+            if (!first) {
+                builder.append("  ");
+            }
+            first = false;
+            builder.append(getForgeComponentName(entry.getKey()))
+                .append(" ")
+                .append(gameState.getForgeComponentCount(entry.getKey()))
+                .append("/")
+                .append(entry.getValue());
+        }
+        return builder.toString();
+    }
+
+    private void addStructureFeatureToCurrentZone(PlacedStructure structure) {
+        if (currentZone == null || structure == null) {
+            return;
+        }
+        for (int i = currentZone.features.size - 1; i >= 0; i--) {
+            TmxWorldLoader.Feature feature = currentZone.features.get(i);
+            if (feature != null && structure.getInstanceId().equals(feature.id)) {
+                currentZone.features.removeIndex(i);
+            }
+        }
+        currentZone.features.add(createStructureFeature(structure));
+    }
+
+    private TmxWorldLoader.Feature createStructureFeature(PlacedStructure structure) {
+        StructureDefinition definition = structure != null
+            ? baseBuildingEngine.getStructureRegistry().get(structure.getStructureDefinitionId())
+            : null;
+        TmxWorldLoader.Feature feature = new TmxWorldLoader.Feature();
+        feature.id = structure.getInstanceId();
+        feature.kind = "player_structure";
+        feature.label = buildStructureFeatureLabel(structure, definition);
+        feature.bounds = structure.getBounds();
+        feature.blocksMovement = definition != null && definition.blocksMovement();
+        feature.persistentStateId = structure.getInstanceId();
+        return feature;
+    }
+
+    private String buildStructureFeatureLabel(PlacedStructure structure, StructureDefinition definition) {
+        if (definition == null) {
+            return "Structure";
+        }
+        String hpLabel = structure != null
+            ? " HP " + structure.getCurrentHitPoints() + "/" + definition.getMaxHitPoints()
+            : "";
+        if (definition.getDefenderCapacity() > 0 && structure != null) {
+            BaseState baseState = getBaseState(structure.getZoneId());
+            long assigned = baseState != null ? baseState.getAssignedDefenderCount(structure.getInstanceId()) : 0L;
+            return definition.getDisplayName() + " (" + assigned + "/" + definition.getDefenderCapacity() + ")" + hpLabel;
+        }
+        return definition.getDisplayName() + hpLabel;
+    }
+
+    private PlacedStructure getPlacedStructure(String structureInstanceId) {
+        BaseState baseState = getCurrentBaseState();
+        return baseState != null ? baseState.findStructure(structureInstanceId) : null;
+    }
+
+    private TmxWorldLoader.Feature findTargetedStructureFeature() {
+        if (currentZone == null) {
+            return null;
+        }
+        for (TmxWorldLoader.Feature feature : currentZone.features) {
+            if (feature == null || !"player_structure".equals(feature.kind) || feature.bounds == null) {
+                continue;
+            }
+            if (distanceToRect(playerPos, feature.bounds) <= 56f && isFacingInteractionRect(feature.bounds)) {
+                return feature;
+            }
+        }
+        return null;
+    }
+
+    private boolean removeTargetedStructure() {
+        TmxWorldLoader.Feature feature = findTargetedStructureFeature();
+        if (feature == null) {
+            showStandaloneDialog("Build Mode", "Face one of your structures to remove it.");
+            return false;
+        }
+        PlacedStructure structure = getPlacedStructure(feature.id);
+        StructureDefinition definition = structure != null
+            ? baseBuildingEngine.getStructureRegistry().get(structure.getStructureDefinitionId())
+            : null;
+        BaseState baseState = getCurrentBaseState();
+        if (baseState == null || !baseBuildingEngine.removeStructure(baseState, feature.id)) {
+            showStandaloneDialog("Build Mode", "That structure could not be removed.");
+            return false;
+        }
+        if (definition != null) {
+            for (Map.Entry<String, Integer> entry : definition.getBuildCosts().entrySet()) {
+                gameState.addForgeComponent(entry.getKey(), entry.getValue());
+            }
+        }
+        currentZone.features.removeValue(feature, true);
+        syncCurrentZoneBaseDefenders();
+        refreshHud();
+        autosave();
+        showStandaloneDialog("Build Mode", definition != null && !definition.getBuildCosts().isEmpty()
+            ? "Structure dismantled. Refunded " + buildStructureRefundLine(definition) + "."
+            : "Structure dismantled.");
+        return true;
+    }
+
+    private boolean repairTargetedStructure() {
+        TmxWorldLoader.Feature feature = findTargetedStructureFeature();
+        if (feature == null) {
+            showStandaloneDialog("Build Mode", "Face one of your structures to repair it.");
+            return false;
+        }
+        PlacedStructure structure = getPlacedStructure(feature.id);
+        StructureDefinition definition = structure != null
+            ? baseBuildingEngine.getStructureRegistry().get(structure.getStructureDefinitionId())
+            : null;
+        if (structure == null || definition == null) {
+            showStandaloneDialog("Build Mode", "That structure could not be repaired.");
+            return false;
+        }
+        if (structure.getCurrentHitPoints() >= definition.getMaxHitPoints()) {
+            showStandaloneDialog("Build Mode", "That structure is already fully repaired.");
+            return false;
+        }
+        Map<String, Integer> repairCosts = buildRepairCosts(definition, structure);
+        if (!gameState.consumeForgeComponents(repairCosts)) {
+            showStandaloneDialog("Build Mode", "Repair materials needed: " + buildRepairCostLine(repairCosts) + ".");
+            return false;
+        }
+        int repaired = baseBuildingEngine.repairStructure(structure, definition, BASE_STRUCTURE_REPAIR_STEP);
+        refreshStructureFeatureLabel(structure.getInstanceId());
+        syncCurrentZoneBaseDefenders();
+        refreshHud();
+        autosave();
+        showStandaloneDialog("Build Mode", repaired > 0
+            ? definition.getDisplayName() + " repaired."
+            : "Repair failed.");
+        return repaired > 0;
+    }
+
+    private Map<String, Integer> buildRepairCosts(StructureDefinition definition, PlacedStructure structure) {
+        Map<String, Integer> costs = new HashMap<>();
+        if (definition == null || structure == null) {
+            return costs;
+        }
+        float missingRatio = 1f - (structure.getCurrentHitPoints() / Math.max(1f, (float) definition.getMaxHitPoints()));
+        float scaledRatio = Math.max(0.25f, missingRatio * 0.75f);
+        for (Map.Entry<String, Integer> entry : definition.getBuildCosts().entrySet()) {
+            costs.put(entry.getKey(), Math.max(1, Math.round(entry.getValue() * scaledRatio)));
+        }
+        return costs;
+    }
+
+    private String buildRepairCostLine(Map<String, Integer> costs) {
+        if (costs == null || costs.isEmpty()) {
+            return "No materials required";
+        }
+        StringBuilder builder = new StringBuilder();
+        boolean first = true;
+        for (Map.Entry<String, Integer> entry : costs.entrySet()) {
+            if (!first) {
+                builder.append("  ");
+            }
+            first = false;
+            builder.append(getForgeComponentName(entry.getKey()))
+                .append(" ")
+                .append(gameState.getForgeComponentCount(entry.getKey()))
+                .append("/")
+                .append(entry.getValue());
+        }
+        return builder.toString();
+    }
+
+    private String buildStructureRefundLine(StructureDefinition structureDefinition) {
+        if (structureDefinition == null || structureDefinition.getBuildCosts().isEmpty()) {
+            return "no materials";
+        }
+        StringBuilder builder = new StringBuilder();
+        boolean first = true;
+        for (Map.Entry<String, Integer> entry : structureDefinition.getBuildCosts().entrySet()) {
+            if (!first) {
+                builder.append(", ");
+            }
+            first = false;
+            builder.append(entry.getValue()).append(" ").append(getForgeComponentName(entry.getKey()));
+        }
+        return builder.toString();
+    }
+
+    private boolean assignReserveBotToTargetedStructure() {
+        TmxWorldLoader.Feature feature = findTargetedStructureFeature();
+        if (feature == null || !isAssignableDefenderPost(feature)) {
+            showStandaloneDialog("Build Mode", "Face a sentry post to assign a reserve bot.");
+            return false;
+        }
+        List<String> reserveIds = getReserveRobotIds();
+        if (reserveIds.isEmpty()) {
+            showStandaloneDialog("Build Mode", "No reserve bots are available.");
+            return false;
+        }
+        BaseState baseState = getCurrentBaseState();
+        if (baseState == null) {
+            return false;
+        }
+        PlacedStructure structure = baseState.findStructure(feature.id);
+        if (structure == null) {
+            return false;
+        }
+        for (String robotId : reserveIds) {
+            if (baseBuildingEngine.assignDefender(baseState, structure.getInstanceId(), robotId, DefenderRole.GUARD)) {
+                refreshStructureFeatureLabel(structure.getInstanceId());
+                syncCurrentZoneBaseDefenders();
+                autosave();
+                showStandaloneDialog("Build Mode", getRobotDisplayName(robotId) + " assigned to " + feature.label + ".");
+                return true;
+            }
+        }
+        showStandaloneDialog("Build Mode", "That post is full or all reserve bots are already assigned.");
+        return false;
+    }
+
+    private boolean isAssignableDefenderPost(TmxWorldLoader.Feature feature) {
+        if (feature == null || !"player_structure".equals(feature.kind)) {
+            return false;
+        }
+        PlacedStructure structure = getPlacedStructure(feature.id);
+        StructureDefinition definition = structure != null
+            ? baseBuildingEngine.getStructureRegistry().get(structure.getStructureDefinitionId())
+            : null;
+        return definition != null && definition.getDefenderCapacity() > 0;
+    }
+
+    private void refreshStructureFeatureLabel(String structureInstanceId) {
+        if (currentZone == null || structureInstanceId == null || structureInstanceId.isEmpty()) {
+            return;
+        }
+        PlacedStructure structure = getPlacedStructure(structureInstanceId);
+        if (structure == null) {
+            return;
+        }
+        StructureDefinition definition = baseBuildingEngine.getStructureRegistry().get(structure.getStructureDefinitionId());
+        for (TmxWorldLoader.Feature feature : currentZone.features) {
+            if (feature != null && structureInstanceId.equals(feature.id)) {
+                feature.label = buildStructureFeatureLabel(structure, definition);
+                return;
+            }
+        }
+    }
+
+    private String getRobotDisplayName(String robotId) {
+        if (robotId == null || robotId.isEmpty()) {
+            return "Reserve Bot";
+        }
+        for (int i = 0; i < activeRobotIds.size(); i++) {
+            if (robotId.equals(activeRobotIds.get(i))) {
+                return getRobotName(i);
+            }
+        }
+        RobotProgressionState progressionState = getOrCreateRobotProgressionState(robotId);
+        if (progressionState != null && progressionState.getDisplayName() != null && !progressionState.getDisplayName().isEmpty()) {
+            return progressionState.getDisplayName();
+        }
+        RobotDefinition definition = robotDefinitions.get(robotId);
+        if (definition != null && definition.getName() != null && !definition.getName().isEmpty()) {
+            return definition.getName();
+        }
+        return robotId;
+    }
+
+    private void syncCurrentZoneBaseDefenders() {
+        BaseState baseState = getCurrentBaseState();
+        List<BaseDefenderUnit> existingUnits = new ArrayList<>(activeBaseDefenders);
+        activeBaseDefenders.clear();
+        if (baseState == null) {
+            return;
+        }
+        Map<String, BaseDefenderProfile> profiles = new HashMap<>();
+        for (DefenderAssignment assignment : baseState.getDefenderAssignments()) {
+            if (assignment == null || assignment.getRobotId() == null || assignment.getRobotId().isEmpty()) {
+                continue;
+            }
+            if (activeRobotIds.contains(assignment.getRobotId())) {
+                continue;
+            }
+            RobotStatBlock stats = getRobotStatsForRobotId(assignment.getRobotId());
+            profiles.put(assignment.getRobotId(), new BaseDefenderProfile(
+                assignment.getRobotId(),
+                getRobotDisplayName(assignment.getRobotId()),
+                stats.maxHealth,
+                Math.max(10f, stats.strength + stats.intelligence * 0.35f),
+                stats.stamina,
+                120f + stats.agility * 2.2f,
+                108f + stats.agility * 0.6f,
+                196f + stats.agility * 0.8f,
+                Math.max(0.35f, 1.15f - Math.min(0.45f, stats.agility * 0.01f))
+            ));
+        }
+        activeBaseDefenders.addAll(baseDefenseDirector.synchronize(
+            baseState,
+            baseBuildingEngine.getStructureRegistry(),
+            profiles,
+            existingUnits
+        ));
+        for (BaseDefenderUnit defender : activeBaseDefenders) {
+            if (defender != null) {
+                defender.setCurrentHealth(baseState.getDefenderHealth(defender.getRobotId(), defender.getCurrentHealth()));
+            }
+        }
+    }
+
+    private RobotStatBlock getRobotStatsForRobotId(String robotId) {
+        if (robotId == null || robotId.isEmpty()) {
+            return new RobotStatBlock(0f, 0f, 0f, 0f, 0f, 0f);
+        }
+        RobotProgressionState progressionState = getOrCreateRobotProgressionState(robotId);
+        EquipmentTotals equipmentTotals = getEquipmentTotals(robotId);
+        RobotDefinition definition = robotDefinitions.get(robotId);
+        int robotLevel = progressionState != null ? progressionState.getLevel() : 1;
+        int evolutionTier = progressionState != null ? progressionState.getEvolutionTier() : 1;
+        float levelBonus = Math.max(0f, (robotLevel - 1) * RobotEvolutionManager.levelBonusPerLevel());
+        float evolutionMultiplier = RobotEvolutionManager.statMultiplier(evolutionTier);
+        float maxHealth = getRobotEffectiveMaxHealth(robotId, progressionState);
+        RobotStatBlock block = new RobotStatBlock(
+            progressionState != null ? progressionState.getCurrentHealth() : maxHealth,
+            maxHealth,
+            (((definition != null ? definition.getBaseSpeed() : 18f) + levelBonus) * evolutionMultiplier) + equipmentTotals.agilityBonus,
+            (((definition != null ? definition.getBaseAttack() : 16f) + levelBonus) * evolutionMultiplier) + equipmentTotals.strengthBonus,
+            ((((definition != null ? definition.getBaseAttack() : 16f) * 0.75f) + levelBonus * 0.8f) * evolutionMultiplier) + equipmentTotals.intelligenceBonus,
+            (((definition != null ? definition.getBaseDefense() : 14f) + levelBonus) * evolutionMultiplier) + equipmentTotals.staminaBonus
+        );
+        applyRobotClassBonuses(block, getRobotClassForRobotId(robotId));
+        block.currentHealth = Math.min(block.maxHealth, block.currentHealth);
+        return block;
+    }
+
+    private int getDefenderSpriteIndex(String robotId) {
+        return robotAnimations.length == 0 ? 0 : Math.floorMod(robotId != null ? robotId.hashCode() : 0, robotAnimations.length);
+    }
+
+    private List<SaveFile.BaseStateData> buildBaseStateSaveData() {
+        List<SaveFile.BaseStateData> saveData = new ArrayList<>();
+        for (BaseState baseState : baseStatesByZoneId.values()) {
+            if (baseState == null || baseState.getZoneId() == null || baseState.getZoneId().isEmpty()) {
+                continue;
+            }
+            SaveFile.BaseStateData zoneState = new SaveFile.BaseStateData();
+            zoneState.setZoneId(baseState.getZoneId());
+            zoneState.setClaimedSiteIds(baseState.getClaimedSiteIds());
+
+            List<SaveFile.PlacedStructureData> structures = new ArrayList<>();
+            for (PlacedStructure structure : baseState.getPlacedStructures()) {
+                SaveFile.PlacedStructureData structureData = new SaveFile.PlacedStructureData();
+                structureData.setInstanceId(structure.getInstanceId());
+                structureData.setStructureDefinitionId(structure.getStructureDefinitionId());
+                structureData.setZoneId(structure.getZoneId());
+                structureData.setClaimedSiteId(structure.getClaimedSiteId());
+                structureData.setX(structure.getBounds().x);
+                structureData.setY(structure.getBounds().y);
+                structureData.setWidth(structure.getBounds().width);
+                structureData.setHeight(structure.getBounds().height);
+                structureData.setCurrentHitPoints(structure.getCurrentHitPoints());
+                structureData.setActive(structure.isActive());
+                structures.add(structureData);
+            }
+            zoneState.setPlacedStructures(structures);
+
+            List<SaveFile.DefenderAssignmentData> assignments = new ArrayList<>();
+            for (DefenderAssignment assignment : baseState.getDefenderAssignments()) {
+                SaveFile.DefenderAssignmentData assignmentData = new SaveFile.DefenderAssignmentData();
+                assignmentData.setStructureInstanceId(assignment.getStructureInstanceId());
+                assignmentData.setRobotId(assignment.getRobotId());
+                assignmentData.setRole(assignment.getRole().name());
+                assignments.add(assignmentData);
+            }
+            zoneState.setDefenderAssignments(assignments);
+            zoneState.setDefenderHealthByRobotId(baseState.getDefenderHealthByRobotId());
+            zoneState.setRaidActive(baseState.getRaidState().isActive());
+            zoneState.setRaidThreatLevel(baseState.getRaidState().getThreatLevel());
+            zoneState.setRaidCooldownSeconds(baseState.getRaidState().getCooldownSeconds());
+            zoneState.setRaidWaveIndex(baseState.getRaidState().getWaveIndex());
+            saveData.add(zoneState);
+        }
+        return saveData;
+    }
+
+    private void loadBaseStatesFromSave(SaveFile saveFile) {
+        baseStatesByZoneId.clear();
+        if (saveFile == null) {
+            return;
+        }
+        for (SaveFile.BaseStateData zoneState : saveFile.getBaseStates()) {
+            if (zoneState == null || zoneState.getZoneId() == null || zoneState.getZoneId().isEmpty()) {
+                continue;
+            }
+            BaseState baseState = new BaseState(zoneState.getZoneId());
+            for (String siteId : zoneState.getClaimedSiteIds()) {
+                baseState.claimSite(siteId);
+            }
+            for (SaveFile.PlacedStructureData structureData : zoneState.getPlacedStructures()) {
+                if (structureData == null) {
+                    continue;
+                }
+                PlacedStructure structure = new PlacedStructure(
+                    structureData.getInstanceId(),
+                    structureData.getStructureDefinitionId(),
+                    structureData.getZoneId(),
+                    structureData.getClaimedSiteId(),
+                    new Rectangle(
+                        structureData.getX(),
+                        structureData.getY(),
+                        structureData.getWidth(),
+                        structureData.getHeight()
+                    ),
+                    structureData.getCurrentHitPoints()
+                );
+                structure.setActive(structureData.isActive());
+                baseState.addPlacedStructure(structure);
+            }
+            for (SaveFile.DefenderAssignmentData assignmentData : zoneState.getDefenderAssignments()) {
+                if (assignmentData == null) {
+                    continue;
+                }
+                DefenderRole role;
+                try {
+                    role = assignmentData.getRole() != null ? DefenderRole.valueOf(assignmentData.getRole()) : DefenderRole.GUARD;
+                } catch (IllegalArgumentException ex) {
+                    role = DefenderRole.GUARD;
+                }
+                baseState.addDefenderAssignment(new DefenderAssignment(
+                    assignmentData.getStructureInstanceId(),
+                    assignmentData.getRobotId(),
+                    role
+                ));
+            }
+            baseState.setDefenderHealthByRobotId(zoneState.getDefenderHealthByRobotId());
+            baseState.getRaidState().setActive(zoneState.isRaidActive());
+            baseState.getRaidState().setThreatLevel(zoneState.getRaidThreatLevel());
+            baseState.getRaidState().setCooldownSeconds(zoneState.getRaidCooldownSeconds());
+            baseState.getRaidState().setWaveIndex(zoneState.getRaidWaveIndex());
+            baseStatesByZoneId.put(baseState.getZoneId(), baseState);
+        }
+        if (saveFile.getBaseStates().isEmpty() && !saveFile.getClaimedFrontierBaseSiteIds().isEmpty()) {
+            BaseState legacyBaseState = getOrCreateBaseState("verdant_fields");
+            for (String siteId : saveFile.getClaimedFrontierBaseSiteIds()) {
+                legacyBaseState.claimSite(siteId);
+            }
+        }
+        syncClaimedFrontierBaseSiteIds();
+    }
+
+    private void syncClaimedFrontierBaseSiteIds() {
+        claimedFrontierBaseSiteIds.clear();
+        for (BaseState baseState : baseStatesByZoneId.values()) {
+            for (String siteId : baseState.getClaimedSiteIds()) {
+                if (!claimedFrontierBaseSiteIds.contains(siteId)) {
+                    claimedFrontierBaseSiteIds.add(siteId);
+                }
+            }
+        }
+    }
+
+    private void hydrateSavedBaseStructures(TmxWorldLoader.LoadedZone zone, String zoneId) {
+        if (zone == null || zoneId == null || zoneId.isEmpty()) {
+            return;
+        }
+        BaseState baseState = baseStatesByZoneId.get(zoneId);
+        if (baseState == null) {
+            return;
+        }
+        for (PlacedStructure structure : baseState.getPlacedStructures()) {
+            if (structure == null || !structure.isActive()) {
+                continue;
+            }
+            zone.features.add(createStructureFeature(structure));
+        }
+    }
+
+    public BaseState getBaseState(String zoneId) {
+        return zoneId == null || zoneId.isEmpty() ? null : baseStatesByZoneId.get(zoneId);
+    }
+
+    public BaseState getCurrentBaseState() {
+        return getBaseState(currentZoneId);
     }
 
     private void addZoneShopFeatureIfNeeded() {
@@ -3420,7 +5070,15 @@ public class GameScreen implements Screen {
     }
 
     public void addGold(long amount) {
-        gameState.addGold(amount);
+        if (amount <= 0L) {
+            return;
+        }
+        if (shouldTreatCurrentRewardAsExpeditionLoot()) {
+            gameState.addUnbankedGold(amount);
+            bankExpeditionHaulIfPossible(true);
+        } else {
+            gameState.addGold(amount);
+        }
         totalGold = gameState.getTotalGold();
         refreshHud();
     }
@@ -3448,9 +5106,108 @@ public class GameScreen implements Screen {
         return gameState.getHealingPotions();
     }
 
+    private void addForgeComponentLoot(String componentId, int amount) {
+        if (componentId == null || componentId.isEmpty() || amount <= 0) {
+            return;
+        }
+        if (shouldTreatCurrentRewardAsExpeditionLoot()) {
+            gameState.addUnbankedForgeComponent(componentId, amount);
+            bankExpeditionHaulIfPossible(true);
+        } else {
+            gameState.addForgeComponent(componentId, amount);
+        }
+        refreshHud();
+    }
+
+    private void addShardLoot(String grade, int amount) {
+        if (grade == null || grade.isEmpty() || amount <= 0) {
+            return;
+        }
+        if (shouldTreatCurrentRewardAsExpeditionLoot()) {
+            gameState.addUnbankedShard(grade, amount);
+            bankExpeditionHaulIfPossible(true);
+        } else {
+            gameState.addShard(grade, amount);
+        }
+        refreshHud();
+    }
+
+    private boolean shouldTreatCurrentRewardAsExpeditionLoot() {
+        return currentZoneDefinition != null && !canBankExpeditionHaulHere();
+    }
+
+    private boolean canBankExpeditionHaulHere() {
+        return currentZoneIsSafe() || isNearOperationalStorage();
+    }
+
+    private boolean isNearOperationalStorage() {
+        BaseState baseState = getCurrentBaseState();
+        if (baseState == null) {
+            return false;
+        }
+        for (PlacedStructure structure : baseState.getPlacedStructures()) {
+            if (structure == null || !structure.isActive()) {
+                continue;
+            }
+            StructureDefinition definition = baseBuildingEngine.getStructureRegistry().get(structure.getStructureDefinitionId());
+            if (definition == null || definition.getStorageCapacity() <= 0) {
+                continue;
+            }
+            Rectangle bounds = structure.getBounds();
+            Rectangle interactionRect = new Rectangle(bounds.x - 56f, bounds.y - 56f, bounds.width + 112f, bounds.height + 112f);
+            if (interactionRect.contains(playerPos)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void bankExpeditionHaulIfPossible(boolean showFeedback) {
+        if (!canBankExpeditionHaulHere()) {
+            return;
+        }
+        long bankedGold = gameState.getUnbankedGold();
+        Map<String, Integer> bankedComponents = new HashMap<>(gameState.getUnbankedForgeComponents());
+        Map<String, Integer> bankedShards = new HashMap<>(gameState.getUnbankedShards());
+        if (bankedGold <= 0L && bankedComponents.isEmpty() && bankedShards.isEmpty()) {
+            return;
+        }
+        gameState.addGold(bankedGold);
+        gameState.setUnbankedGold(0L);
+        for (Map.Entry<String, Integer> entry : bankedComponents.entrySet()) {
+            gameState.addForgeComponent(entry.getKey(), entry.getValue());
+        }
+        gameState.clearUnbankedForgeComponents();
+        for (Map.Entry<String, Integer> entry : bankedShards.entrySet()) {
+            gameState.addShard(entry.getKey(), entry.getValue());
+        }
+        gameState.clearUnbankedShards();
+        totalGold = gameState.getTotalGold();
+        refreshHud();
+        autosave();
+        if (showFeedback) {
+            showStandaloneDialog("Expedition Banked", buildBankedHaulSummary(bankedGold, bankedComponents, bankedShards));
+        }
+    }
+
+    private String buildBankedHaulSummary(long bankedGold, Map<String, Integer> bankedComponents, Map<String, Integer> bankedShards) {
+        List<String> parts = new ArrayList<>();
+        if (bankedGold > 0L) {
+            parts.add(bankedGold + " gold");
+        }
+        for (Map.Entry<String, Integer> entry : bankedComponents.entrySet()) {
+            parts.add(entry.getValue() + " " + getForgeComponentName(entry.getKey()));
+        }
+        for (Map.Entry<String, Integer> entry : bankedShards.entrySet()) {
+            parts.add(entry.getValue() + " " + entry.getKey() + " shards");
+        }
+        return parts.isEmpty() ? "No expedition haul to secure." : "Haul secured: " + String.join(", ", parts) + ".";
+    }
+
     public void addExperience(int amount) {
+        int adjustedAmount = Math.max(0, Math.round(amount * getCyberneticBonuses().getExperienceMultiplier()));
         gameState.setPlayerHealth(playerHealth);
-        gameState.addExperience(amount, this::getExperienceRequirementForLevel);
+        gameState.addExperience(adjustedAmount, this::getExperienceRequirementForLevel);
         playerExperience = gameState.getPlayerExperience();
         playerLevel = gameState.getPlayerLevel();
         playerHealth = gameState.getPlayerHealth();
@@ -3510,16 +5267,35 @@ public class GameScreen implements Screen {
     }
 
     public RobotStatBlock getPlayerStats() {
+        CyberneticBonuses bonuses = getCyberneticBonuses();
         EquipmentTotals equipmentTotals = getPlayerEquipmentTotals();
         float levelOffset = playerLevel - 1;
         return new RobotStatBlock(
             playerHealth,
-            playerMaxHealth + (levelOffset * 6f) + equipmentTotals.hpBonus,
-            PLAYER_AGILITY + (levelOffset * 0.5f) + equipmentTotals.agilityBonus,
-            PLAYER_STRENGTH + (levelOffset * 0.7f) + equipmentTotals.strengthBonus,
-            PLAYER_INTELLIGENCE + (levelOffset * 0.65f) + equipmentTotals.intelligenceBonus,
-            PLAYER_STAMINA + (levelOffset * 0.6f) + equipmentTotals.staminaBonus
+            playerMaxHealth + (levelOffset * 6f) + equipmentTotals.hpBonus + bonuses.getHpBonus(),
+            PLAYER_AGILITY + (levelOffset * 0.5f) + equipmentTotals.agilityBonus + bonuses.getAgilityBonus(),
+            PLAYER_STRENGTH + (levelOffset * 0.7f) + equipmentTotals.strengthBonus + bonuses.getStrengthBonus(),
+            PLAYER_INTELLIGENCE + (levelOffset * 0.65f) + equipmentTotals.intelligenceBonus + bonuses.getIntelligenceBonus(),
+            PLAYER_STAMINA + (levelOffset * 0.6f) + equipmentTotals.staminaBonus + bonuses.getStaminaBonus()
         );
+    }
+
+    private CyberneticBonuses getCyberneticBonuses() {
+        return cyberneticEnhancementEngine.getBonuses(metaProgressionState);
+    }
+
+    private void applyMetaEnhancementsToFreshRun() {
+        CyberneticBonuses bonuses = getCyberneticBonuses();
+        if (bonuses.getStartingGoldBonus() > 0) {
+            addGold(bonuses.getStartingGoldBonus());
+        }
+        gameState.setHealingPotions(Math.max(0, healingPotions + bonuses.getStartingHealingPotionsBonus()));
+        healingPotions = gameState.getHealingPotions();
+        for (Map.Entry<String, Integer> entry : bonuses.getStartingForgeComponents().entrySet()) {
+            gameState.addForgeComponent(entry.getKey(), entry.getValue());
+        }
+        playerHealth = getPlayerStats().maxHealth;
+        refreshHud();
     }
 
     public String getPlayerName() {
@@ -3569,6 +5345,7 @@ public class GameScreen implements Screen {
     }
 
     public List<String> getQuestJournalLines() {
+        questManager.syncProgress(gameState, worldStateManager);
         List<String> lines = new ArrayList<>();
         lines.addAll(questManager.getActiveQuestLines(gameState, true));
         lines.addAll(questManager.getActiveQuestLines(gameState, false));
@@ -3647,6 +5424,7 @@ public class GameScreen implements Screen {
         ensureRobotProgressionStates();
         robots[partyIndex].health = getStoredRobotHealth(incomingRobotId, getRobotStats(partyIndex).maxHealth);
         syncActiveRobotHealthToProgression();
+        syncCurrentZoneBaseDefenders();
         refreshHud();
 
         String incomingName = getRobotName(partyIndex);
@@ -3674,6 +5452,7 @@ public class GameScreen implements Screen {
             : outgoingRobotId;
         activeRobotIds.set(partyIndex, null);
         gameState.setActiveRobotIds(activeRobotIds);
+        syncCurrentZoneBaseDefenders();
         refreshHud();
         return outgoingName + " moved to reserve. Slot " + (partyIndex + 1) + " is now empty.";
     }
@@ -4028,6 +5807,30 @@ public class GameScreen implements Screen {
         return new ArrayList<>(equipmentCatalog);
     }
 
+    public List<EquipmentItem> getPlayerEquipmentCatalog() {
+        List<EquipmentItem> owned = new ArrayList<>();
+        for (EquipmentItem item : getEquipmentCatalog()) {
+            if (item.isPlayerEquipment()) {
+                owned.add(item);
+            }
+        }
+        return owned;
+    }
+
+    public List<EquipmentItem> getRobotEquipmentCatalog() {
+        List<EquipmentItem> owned = new ArrayList<>();
+        for (EquipmentItem item : getEquipmentCatalog()) {
+            if (item.isRobotEquipment()) {
+                owned.add(item);
+            }
+        }
+        return owned;
+    }
+
+    public List<EquipmentItem> getEquipmentCatalogForPartyMember(int partyMemberIndex) {
+        return partyMemberIndex == 0 ? getPlayerEquipmentCatalog() : getRobotEquipmentCatalog();
+    }
+
     public boolean unlockEquipment(String itemId) {
         boolean unlocked = gameState.unlockEquipment(itemId);
         ownedEquipmentIds.clear();
@@ -4098,6 +5901,9 @@ public class GameScreen implements Screen {
             return "Items must fit the same slot ("
                 + item1.getSlotType() + " vs " + item2.getSlotType() + ").";
         }
+        if (!item1.getEquipTarget().equals(item2.getEquipTarget())) {
+            return "Player gear and robot gear cannot be fused together.";
+        }
         int inputTier = item1.getTier();
         if (inputTier >= 6) {
             return "Mythic-tier items cannot be fused further.";
@@ -4109,7 +5915,8 @@ public class GameScreen implements Screen {
         List<EquipmentItem> pool = new ArrayList<>();
         for (EquipmentItem candidate : equipmentCatalog) {
             if (candidate.getTier() == inputTier + 1
-                    && candidate.getSlotType().equals(item1.getSlotType())) {
+                    && candidate.getSlotType().equals(item1.getSlotType())
+                    && candidate.getEquipTarget().equals(item1.getEquipTarget())) {
                 pool.add(candidate);
             }
         }
@@ -4707,14 +6514,15 @@ public class GameScreen implements Screen {
             return false;
         }
         gameState.setForgeCoreLevel(targetLevel);
-        activeSpeaker = "Forge Core";
+        String message;
         if (targetLevel == 2) {
-            activeDialog = "Five boss systems have fallen. Forge Core Lv2 is online. Tier-II evolutions and a second party slot are now unlocked.";
+            message = "Five boss systems have fallen. Forge Core Lv2 is online. Tier-II evolutions and a second party slot are now unlocked.";
         } else if (targetLevel == 3) {
-            activeDialog = "Ten boss systems have fallen. Forge Core Lv3 surges to life. Tier-III evolutions and a third party slot are now unlocked.";
+            message = "Ten boss systems have fallen. Forge Core Lv3 surges to life. Tier-III evolutions and a third party slot are now unlocked.";
         } else {
-            activeDialog = "Fifteen boss systems have fallen. Forge Core Lv4 reaches full resonance. Ironhaven's highest forge functions are now available.";
+            message = "Fifteen boss systems have fallen. Forge Core Lv4 reaches full resonance. Ironhaven's highest forge functions are now available.";
         }
+        showStandaloneDialog("Forge Core", message);
         return true;
     }
 
@@ -4793,6 +6601,7 @@ public class GameScreen implements Screen {
             enemy.attackTimer = enemyState.getAttackTimer();
             enemy.patrolTarget = new Vector2(enemyState.getPatrolTargetX(), enemyState.getPatrolTargetY());
             enemy.dungeonFloor = enemyState.getDungeonFloor();
+            enemy.raidSpawned = enemyState.isRaidSpawned();
             enemies.add(enemy);
         }
 
@@ -4838,6 +6647,7 @@ public class GameScreen implements Screen {
         float attackCooldown, attackTimer;
         Vector2 patrolTarget;
         int dungeonFloor;
+        boolean raidSpawned;
     }
 
     /**
@@ -4939,6 +6749,15 @@ public class GameScreen implements Screen {
             chests.add(new Chest("herbalist_hidden", new Vector2(92f, 238f), 10, 2, true));
             chests.add(new Chest("herbalist_supplies", new Vector2(310f, 136f), 0, 1, false));
             return new House(id, name, x, y, width, height, npcs, chests, new ArrayList<>());
+        }
+
+        static House createPlayerHome(int id, String name, float x, float y, float width, float height) {
+            List<Chest> chests = new ArrayList<>();
+            chests.add(new Chest("home_supplies", new Vector2(312f, 130f), 12, 1, false));
+            List<InteriorFeature> features = new ArrayList<>();
+            features.add(new InteriorFeature("home_journal", "Old Journal", new Vector2(104f, 218f), "inspect",
+                "A weathered journal maps the same truth on every page: Mechara only survives if someone is willing to step beyond the walls and hold the dark back."));
+            return new House(id, name, x, y, width, height, new ArrayList<>(), chests, features);
         }
     }
 

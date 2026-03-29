@@ -514,7 +514,7 @@
   <object id="15" name="enemy_4" type="enemy" x="1700" y="420" />
  </objectgroup>
  <objectgroup id="4" name="doors">
-  <object id="16" name="frozen_vale_return" x="972" y="1180" width="80" height="80">
+  <object id="16" name="frozen_vale_return" x="972" y="1280" width="80" height="80">
    <properties>
     <property name="label" value="Frozen Vale" />
     <property name="targetZone" value="frozen_vale" />
@@ -528,7 +528,7 @@
     <property name="targetSpawn" value="from_rift" />
    </properties>
   </object>
-  <object id="29" name="the_void_gate" x="1508" y="402" width="80" height="80">
+  <object id="29" name="the_void_gate" x="1408" y="402" width="80" height="80">
    <properties>
     <property name="label" value="The Void" />
     <property name="targetZone" value="the_void" />

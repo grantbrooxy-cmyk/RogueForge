@@ -22,6 +22,7 @@ class GameStateTest {
             "bronze_sword",
             "Bronze Sword",
             "weapon",
+            EquipmentItem.TARGET_PLAYER,
             0,
             4,
             0,
@@ -50,6 +51,7 @@ class GameStateTest {
             "reinforced_plating",
             "Reinforced Plating",
             "armor",
+            EquipmentItem.TARGET_ROBOT,
             12,
             0,
             3,
@@ -65,6 +67,50 @@ class GameStateTest {
         assertFalse(gameState.equipRobotItem("rust_mk1", "E", chassis));
         assertTrue(gameState.equipRobotItem("rust_mk1", "C", chassis));
         assertEquals("reinforced_plating", gameState.getRobotEquipmentSlots("rust_mk1").get("armor"));
+    }
+
+    @Test
+    void equipmentTargetPreventsCrossEquippingBetweenPlayerAndRobots() {
+        GameState gameState = new GameState("Tester");
+        gameState.setPlayerLevel(25);
+
+        EquipmentItem playerItem = new EquipmentItem(
+            "duelist_cloak",
+            "Duelist Cloak",
+            "body",
+            EquipmentItem.TARGET_PLAYER,
+            10,
+            0,
+            2,
+            1,
+            0,
+            140,
+            1,
+            "G",
+            ""
+        );
+        EquipmentItem robotItem = new EquipmentItem(
+            "siege_chassis",
+            "Siege Chassis",
+            "body",
+            EquipmentItem.TARGET_ROBOT,
+            14,
+            0,
+            4,
+            -1,
+            0,
+            160,
+            1,
+            "G",
+            ""
+        );
+        gameState.addEquipmentToCatalog(playerItem);
+        gameState.addEquipmentToCatalog(robotItem);
+
+        assertTrue(gameState.equipPlayerItem(playerItem));
+        assertFalse(gameState.equipPlayerItem(robotItem));
+        assertTrue(gameState.equipRobotItem("rust_mk1", "G", robotItem));
+        assertFalse(gameState.equipRobotItem("rust_mk1", "G", playerItem));
     }
 
     @Test
@@ -157,5 +203,32 @@ class GameStateTest {
         assertEquals(0, gameState.getInfiniteDungeonCurrentFloor());
         assertEquals(0, gameState.getInfiniteDungeonBestFloor());
         assertEquals(0, gameState.getInfiniteDungeonFloorsCleared());
+    }
+
+    @Test
+    void unbankedExpeditionLootTracksSeparatelyFromBankedInventory() {
+        GameState gameState = new GameState("Tester");
+
+        gameState.addGold(120);
+        gameState.addForgeComponent("bone_fiber", 3);
+        gameState.addShard("C", 1);
+        gameState.addUnbankedGold(45);
+        gameState.addUnbankedForgeComponent("bone_fiber", 2);
+        gameState.addUnbankedShard("B", 1);
+
+        assertEquals(120, gameState.getTotalGold());
+        assertEquals(45, gameState.getUnbankedGold());
+        assertEquals(3, gameState.getForgeComponentCount("bone_fiber"));
+        assertEquals(2, gameState.getUnbankedForgeComponentCount("bone_fiber"));
+        assertEquals(1, gameState.getShardCount("C"));
+        assertEquals(1, gameState.getUnbankedShardCount("B"));
+
+        gameState.setUnbankedGold(0);
+        gameState.clearUnbankedForgeComponents();
+        gameState.clearUnbankedShards();
+
+        assertEquals(0, gameState.getUnbankedGold());
+        assertTrue(gameState.getUnbankedForgeComponents().isEmpty());
+        assertTrue(gameState.getUnbankedShards().isEmpty());
     }
 }

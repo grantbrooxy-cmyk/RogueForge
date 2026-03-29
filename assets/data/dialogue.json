@@ -4,9 +4,44 @@
     "npcId": "bram",
     "priority": 200,
     "requiredQuestId": "ironhaven_arrival",
-    "requiredQuestState": "NOT_STARTED",
+    "requiredQuestState": "meet_bram",
     "lines": [
-      { "speaker": "Bram", "text": "A Forge Master. We've been waiting for one. Ironhaven is still standing, but only just. Talk to the people here — see what we're working with." }
+      {
+        "speaker": "Bram",
+        "text": "You made it. That matters more than it used to."
+      },
+      {
+        "speaker": "Bram",
+        "text": "Mechara is still scarred by the Collapse."
+      },
+      {
+        "speaker": "Bram",
+        "text": "Every settlement left standing survives"
+      },
+      {
+        "speaker": "Bram",
+        "text": "because someone keeps growing stronger than what waits outside the walls."
+      },
+      {
+        "speaker": "Bram",
+        "text": "Ironhaven does not need another drifter."
+      },
+      {
+        "speaker": "Bram",
+        "text": "It needs someone who can learn the frontier, sharpen a crew, and stand between this town"
+      },
+      {
+        "speaker": "Bram",
+        "text": "and whatever comes for it next."
+      },
+      {
+        "speaker": "Bram",
+        "text": "Start by speaking with the people here."
+      },
+      {
+        "speaker": "Bram",
+        "text": "See what Ironhaven is holding together, and what it will ask of you."
+      }
     ],
     "setQuestId": "ironhaven_arrival",
     "setQuestStep": "survey_town"
@@ -18,7 +53,22 @@
     "requiredQuestId": "ironhaven_arrival",
     "requiredQuestState": "survey_town",
     "lines": [
-      { "speaker": "Bram", "text": "How does it look to you? We've held on through bad odds. What this place needs now is a crew willing to push the frontier back." }
+      {
+        "speaker": "Bram",
+        "text": "You've seen enough now to understand the shape of it."
+      },
+      {
+        "speaker": "Bram",
+        "text": "We have held on through bad odds, failing machines, and years of making do with less than we needed."
+      },
+      {
+        "speaker": "Bram",
+        "text": "What Ironhaven needs next is a crew willing to push the frontier back instead of waiting for it to come"
+      },
+      {
+        "speaker": "Bram",
+        "text": "to us."
+      }
     ],
     "setQuestId": "ironhaven_arrival",
     "setQuestStep": "return_bram",
@@ -31,7 +81,26 @@
     "requiredQuestId": "ironhaven_arrival",
     "requiredQuestState": "return_bram",
     "lines": [
-      { "speaker": "Bram", "text": "Good. You know the shape of things now. Speak with Mira — she has an eye for crews that can actually hold their ground out there." }
+      {
+        "speaker": "Bram",
+        "text": "Good. Now you know what this place is trying to protect."
+      },
+      {
+        "speaker": "Bram",
+        "text": "Speak with Mira next."
+      },
+      {
+        "speaker": "Bram",
+        "text": "She knows the frontier better than anyone here,"
+      },
+      {
+        "speaker": "Bram",
+        "text": "and she does not waste time on crews that cannot hold their ground."
+      },
+      {
+        "speaker": "Bram",
+        "text": "Earn her trust, and the real work begins."
+      }
     ],
     "completeQuestId": "ironhaven_arrival",
     "setQuestId": "first_steps",
@@ -44,7 +113,30 @@
     "requiredQuestId": "first_steps",
     "requiredQuestState": "speak_mira_intro",
     "lines": [
-      { "speaker": "Mira", "text": "Bram sent you. Verdant Fields isn't far, but it has teeth. Take your crew out there and show me they can hold a line. Come back standing and we'll talk about what comes next." }
+      {
+        "speaker": "Mira",
+        "text": "So Bram finally sent you my way."
+      },
+      {
+        "speaker": "Mira",
+        "text": "Good. Then listen carefully: the frontier does not care what potential you have."
+      },
+      {
+        "speaker": "Mira",
+        "text": "It only cares whether you and your crew can survive what it puts in front of you."
+      },
+      {
+        "speaker": "Mira",
+        "text": "Verdant Fields is the first stretch out from Ironhaven."
+      },
+      {
+        "speaker": "Mira",
+        "text": "Go out through the east gate and you'll hit the live frontier fast."
+      },
+      {
+        "speaker": "Mira",
+        "text": "Take your crew out there. Hold the line. Come back standing, and then we can talk about what comes next."
+      }
     ],
     "setQuestId": "first_steps",
     "setQuestStep": "verdant_patrol"
@@ -55,11 +147,34 @@
     "priority": 185,
     "requiredQuestId": "first_steps",
     "requiredQuestState": "verdant_patrol",
+    "requiredWorldFlag": "arrival.first_battle_won",
     "lines": [
-      { "speaker": "Mira", "text": "Back in one piece. Good. There's something we need from Shadow Caves — a cave system further out. Take this Workshop Pass. It will get you in." }
+      {
+        "speaker": "Mira",
+        "text": "Back in one piece. Good."
+      },
+      {
+        "speaker": "Mira",
+        "text": "That means you listened, and your crew did not fold the moment the frontier pushed back."
+      },
+      {
+        "speaker": "Mira",
+        "text": "Now we move from survival to purpose."
+      },
+      {
+        "speaker": "Mira",
+        "text": "There is something we need in Shadow Caves, an old cave system further out from here."
+      },
+      {
+        "speaker": "Mira",
+        "text": "Take this Workshop Pass. It will get you through the gate."
+      },
+      {
+        "speaker": "Mira",
+        "text": "Bring back what we need, and Ironhaven will open to you in ways it hasn't yet."
+      }
     ],
     "setQuestStep": "return_mira_intro",
-    "setWorldFlag": "arrival.first_battle_won",
     "completeQuestId": "first_steps"
   },
   {
@@ -70,7 +185,22 @@
     "requiredQuestState": "NOT_STARTED",
     "requiredWorldFlag": "arrival.first_battle_won",
     "lines": [
-      { "speaker": "Mira", "text": "Take this Workshop Pass and search Shadow Caves for the Luminous Shard. Bring it back and I'll stabilize the lift to Dragon Peak." }
+      {
+        "speaker": "Mira",
+        "text": "You've proven you can survive a first push."
+      },
+      {
+        "speaker": "Mira",
+        "text": "Now I need you to do something that matters."
+      },
+      {
+        "speaker": "Mira",
+        "text": "Take this Workshop Pass, get into Shadow Caves, and find the Luminous Shard."
+      },
+      {
+        "speaker": "Mira",
+        "text": "Bring it back to me, and I'll stabilize the lift to Dragon Peak."
+      }
     ],
     "addKeyItem": "workshop_pass",
     "setQuestId": "shard_hunt",
@@ -84,7 +214,18 @@
     "requiredQuestId": "shard_hunt",
     "requiredQuestState": "return_shard",
     "lines": [
-      { "speaker": "Mira", "text": "You found it. With this shard tuned, the peak lift will answer your sigil. Take these supplies and keep climbing." }
+      {
+        "speaker": "Mira",
+        "text": "There it is. Clean resonance, stable core, no fracture bloom."
+      },
+      {
+        "speaker": "Mira",
+        "text": "Once I tune this shard, the peak lift will answer your sigil."
+      },
+      {
+        "speaker": "Mira",
+        "text": "Take these supplies and keep climbing. Dragon Peak is ready for you now."
+      }
     ],
     "rewardGold": 120,
     "rewardExperience": 90,
@@ -100,7 +241,14 @@
     "requiredQuestId": "shard_hunt",
     "requiredQuestState": "search_shard",
     "lines": [
-      { "speaker": "Mira", "text": "The cave gate will open for the Workshop Pass. Find the Luminous Shard and watch for old scout caches." }
+      {
+        "speaker": "Mira",
+        "text": "The pass will get you through the cave gate."
+      },
+      {
+        "speaker": "Mira",
+        "text": "Find the Luminous Shard, and keep an eye out for old scout caches while you're in there."
+      }
     ]
   },
   {
@@ -110,7 +258,14 @@
     "requiredQuestId": "shard_hunt",
     "requiredQuestCompleted": true,
     "lines": [
-      { "speaker": "Mira", "text": "Your bots are carrying real momentum now. The lift to Dragon Peak should answer the sigil I tuned for you." }
+      {
+        "speaker": "Mira",
+        "text": "Your crew is moving like it understands the work now."
+      },
+      {
+        "speaker": "Mira",
+        "text": "The lift to Dragon Peak should answer the sigil I tuned for you."
+      }
     ]
   },
   {
@@ -120,7 +275,14 @@
     "requiredQuestId": "shard_hunt",
     "requiredQuestState": "search_shard",
     "lines": [
-      { "speaker": "Tor", "text": "Mira's pass should get you into the caves. Once you're inside, keep right at the broken pillars." }
+      {
+        "speaker": "Tor",
+        "text": "Mira's pass should get you into the caves."
+      },
+      {
+        "speaker": "Tor",
+        "text": "Once you're inside, keep right at the broken pillars. The left route collapses more often than it holds."
+      }
     ]
   },
   {
@@ -130,7 +292,18 @@
     "requiredQuestId": "shard_hunt",
     "requiredQuestCompleted": true,
     "lines": [
-      { "speaker": "Tor", "text": "The frontier opens in layers. Keep one eye on your party order and the other on the sky." }
+      {
+        "speaker": "Tor",
+        "text": "That's how it starts."
+      },
+      {
+        "speaker": "Tor",
+        "text": "One route opens, then another, and before you know it the whole frontier has a different shape."
+      },
+      {
+        "speaker": "Tor",
+        "text": "Keep one eye on your party order and the other on the sky."
+      }
     ]
   },
   {
@@ -140,7 +313,14 @@
     "requiredQuestId": "watchtower_links",
     "requiredQuestState": "report_tor",
     "lines": [
-      { "speaker": "Tor", "text": "Bram wants the watchtower online? Good. Take these alignment notes back to him. Once the lamps are synced, we can start seeing farther than the gate." }
+      {
+        "speaker": "Tor",
+        "text": "Bram wants the watchtower online? Good. Take these alignment notes back to him."
+      },
+      {
+        "speaker": "Tor",
+        "text": "Once the lamps are synced, we can start seeing farther than the gate."
+      }
     ],
     "setQuestId": "watchtower_links",
     "setQuestStep": "return_bram"
@@ -152,7 +332,14 @@
     "requiredWorldFlag": "settlement.watchtower_network",
     "blockedWorldFlag": "recruit.artificer_joined",
     "lines": [
-      { "speaker": "Tor", "text": "One of the watchtower crates held an intact Artificer frame. It isn't fit for the line yet, but it can travel with you if you want to bring it online." }
+      {
+        "speaker": "Tor",
+        "text": "One of the watchtower crates held an intact Artificer frame."
+      },
+      {
+        "speaker": "Tor",
+        "text": "It isn't fit for the line yet, but it can travel with you if you want to bring it online."
+      }
     ],
     "recruitEventId": "artificer_join"
   },
@@ -163,7 +350,14 @@
     "requiredQuestId": "shard_hunt",
     "requiredQuestState": "search_shard",
     "lines": [
-      { "speaker": "Edda", "text": "Mira won't let anyone near the lift until the cave shard is secured." }
+      {
+        "speaker": "Edda",
+        "text": "Mira is right to hold the lift."
+      },
+      {
+        "speaker": "Edda",
+        "text": "Until the cave shard is secured, Dragon Peak stays closed."
+      }
     ]
   },
   {
@@ -173,7 +367,14 @@
     "requiredQuestId": "shard_hunt",
     "requiredQuestCompleted": true,
     "lines": [
-      { "speaker": "Edda", "text": "The mountain lift is humming again. When you're ready, Dragon Peak is waiting." }
+      {
+        "speaker": "Edda",
+        "text": "The mountain lift is humming again."
+      },
+      {
+        "speaker": "Edda",
+        "text": "When you're ready, Dragon Peak is waiting."
+      }
     ]
   },
   {
@@ -183,7 +384,14 @@
     "requiredQuestId": "shard_hunt",
     "requiredQuestState": "search_shard",
     "lines": [
-      { "speaker": "Scout", "text": "I saw a strange cache deeper in. It was tucked beyond the central pillar where the cave forks east." }
+      {
+        "speaker": "Scout",
+        "text": "I saw a strange cache deeper in the cave."
+      },
+      {
+        "speaker": "Scout",
+        "text": "It was tucked beyond the central pillar, where the passage forks east."
+      }
     ]
   },
   {
@@ -192,7 +400,14 @@
     "priority": 60,
     "requiredKeyItem": "luminous_shard",
     "lines": [
-      { "speaker": "Scout", "text": "That glow in your pack means you found the cache. Head back before the tunnels shift." }
+      {
+        "speaker": "Scout",
+        "text": "That glow in your pack means you found the cache."
+      },
+      {
+        "speaker": "Scout",
+        "text": "Head back before the tunnels decide to shift on you."
+      }
     ]
   },
   {
@@ -203,7 +418,18 @@
     "requiredQuestCompleted": true,
     "requiredQuestState": "NOT_STARTED",
     "lines": [
-      { "speaker": "Edda", "text": "Dragon Peak's reactors are starving. Search the ridge for a Sun Core and we'll relight the old warding pylons." }
+      {
+        "speaker": "Edda",
+        "text": "Dragon Peak is running on fumes."
+      },
+      {
+        "speaker": "Edda",
+        "text": "Search the ridge for a Sun Core,"
+      },
+      {
+        "speaker": "Edda",
+        "text": "and we'll relight the old warding pylons before the mountain goes dark for good."
+      }
     ],
     "setQuestId": "core_ascent",
     "setQuestStep": "search_core"
@@ -215,7 +441,18 @@
     "requiredQuestId": "core_ascent",
     "requiredQuestState": "return_core",
     "lines": [
-      { "speaker": "Edda", "text": "Perfect. The Sun Core is stable. Take this reward and keep pushing outward. The whole frontier is starting to wake up." }
+      {
+        "speaker": "Edda",
+        "text": "Perfect. The Sun Core is stable."
+      },
+      {
+        "speaker": "Edda",
+        "text": "Take this reward and keep pushing outward."
+      },
+      {
+        "speaker": "Edda",
+        "text": "The whole frontier is starting to wake up."
+      }
     ],
     "rewardGold": 220,
     "rewardExperience": 140,
@@ -230,7 +467,14 @@
     "requiredQuestId": "core_ascent",
     "requiredQuestState": "search_core",
     "lines": [
-      { "speaker": "Edda", "text": "The Sun Core should be stashed past the wind-broken ridge on the eastern path." }
+      {
+        "speaker": "Edda",
+        "text": "The Sun Core should be stashed past the wind-broken ridge."
+      },
+      {
+        "speaker": "Edda",
+        "text": "Take the eastern path once the trail starts narrowing."
+      }
     ]
   },
   {
@@ -240,7 +484,14 @@
     "requiredQuestId": "core_ascent",
     "requiredQuestCompleted": true,
     "lines": [
-      { "speaker": "Edda", "text": "You've done more than reopen the lift. The frontier feels alive again." }
+      {
+        "speaker": "Edda",
+        "text": "You've done more than reopen a lift."
+      },
+      {
+        "speaker": "Edda",
+        "text": "The frontier feels alive again."
+      }
     ]
   },
   {
@@ -251,7 +502,18 @@
     "requiredQuestCompleted": true,
     "blockedWorldFlag": "settlement.workshop_tools",
     "lines": [
-      { "speaker": "Toma", "text": "That shard stabilized the old forge rails. With a little calibration, I can reopen the workshop line for advanced components." }
+      {
+        "speaker": "Toma",
+        "text": "That shard did it."
+      },
+      {
+        "speaker": "Toma",
+        "text": "The old forge rails are stable again."
+      },
+      {
+        "speaker": "Toma",
+        "text": "Give me a little calibration time, and I can reopen the workshop line for advanced components."
+      }
     ],
     "setQuestId": "workshop_tools",
     "setQuestStep": "upgrade_workshop",
@@ -266,7 +528,18 @@
     "requiredQuestId": "survey_drones",
     "requiredQuestState": "speak_toma",
     "lines": [
-      { "speaker": "Toma", "text": "Survey cradle's half buried, but not dead. Give me a minute and I'll kick it back online. Tell Nia the drones are hers again." }
+      {
+        "speaker": "Toma",
+        "text": "Survey cradle's half buried, but not dead."
+      },
+      {
+        "speaker": "Toma",
+        "text": "Give me a minute and I'll kick it back online."
+      },
+      {
+        "speaker": "Toma",
+        "text": "Tell Nia the drones are hers again."
+      }
     ],
     "setQuestId": "survey_drones",
     "setQuestStep": "return_nia"
@@ -276,7 +549,14 @@
     "npcId": "toma",
     "priority": 50,
     "lines": [
-      { "speaker": "Toma", "text": "If you find old parts in the wild, bring them here and I can rebuild them." }
+      {
+        "speaker": "Toma",
+        "text": "If you find old parts in the wild, bring them here."
+      },
+      {
+        "speaker": "Toma",
+        "text": "I can usually make something useful out of them."
+      }
     ]
   },
   {
@@ -286,7 +566,18 @@
     "requiredQuestId": "vault_rumor",
     "requiredQuestState": "NOT_STARTED",
     "lines": [
-      { "speaker": "Nia", "text": "Travelers leave rumors behind. One says there is a buried vault east of town. Start with the herbalist's walls." }
+      {
+        "speaker": "Nia",
+        "text": "Travelers leave rumors behind."
+      },
+      {
+        "speaker": "Nia",
+        "text": "One of them says there's a buried vault east of town."
+      },
+      {
+        "speaker": "Nia",
+        "text": "Start with the herbalist's walls."
+      }
     ],
     "setQuestId": "vault_rumor",
     "setQuestStep": "find_stash"
@@ -298,7 +589,14 @@
     "requiredQuestId": "vault_rumor",
     "requiredQuestCompleted": true,
     "lines": [
-      { "speaker": "Nia", "text": "So the rumor was true. Good crews always test the hidden seams of a place." }
+      {
+        "speaker": "Nia",
+        "text": "So the rumor was true."
+      },
+      {
+        "speaker": "Nia",
+        "text": "Good crews always test the hidden seams of a place."
+      }
     ]
   },
   {
@@ -310,7 +608,14 @@
     "requiredWorldFlag": "frontier.warding_pylons_online",
     "zoneId": "town",
     "lines": [
-      { "speaker": "Nia", "text": "Now that the peak relays are live again, I can chart farther routes. Toma just needs someone to kick the old survey drone cradle back awake." }
+      {
+        "speaker": "Nia",
+        "text": "Now that the peak relays are live again, I can chart farther routes."
+      },
+      {
+        "speaker": "Nia",
+        "text": "Toma just needs someone to kick the old survey drone cradle back awake."
+      }
     ],
     "setQuestId": "survey_drones",
     "setQuestStep": "speak_toma"
@@ -322,7 +627,18 @@
     "requiredQuestId": "survey_drones",
     "requiredQuestState": "return_nia",
     "lines": [
-      { "speaker": "Nia", "text": "Perfect. The survey drones are airborne again, which means safer routes, better supply calls, and one less blind frontier." }
+      {
+        "speaker": "Nia",
+        "text": "Perfect."
+      },
+      {
+        "speaker": "Nia",
+        "text": "The survey drones are airborne again."
+      },
+      {
+        "speaker": "Nia",
+        "text": "That means safer routes, cleaner supply calls, and one less blind frontier."
+      }
     ],
     "completeQuestId": "survey_drones",
     "setWorldFlag": "settlement.survey_drones",
@@ -335,7 +651,14 @@
     "npcId": "nia",
     "priority": 50,
     "lines": [
-      { "speaker": "Nia", "text": "Travelers leave rumors behind. Keep listening." }
+      {
+        "speaker": "Nia",
+        "text": "Travelers leave rumors behind."
+      },
+      {
+        "speaker": "Nia",
+        "text": "Keep listening."
+      }
     ]
   },
   {
@@ -343,7 +666,14 @@
     "npcId": "bram",
     "priority": 50,
     "lines": [
-      { "speaker": "Bram", "text": "Rest when you can. Even machines need a rhythm." }
+      {
+        "speaker": "Bram",
+        "text": "Rest when you can."
+      },
+      {
+        "speaker": "Bram",
+        "text": "Even machines need a rhythm."
+      }
     ]
   },
   {
@@ -354,7 +684,14 @@
     "requiredQuestState": "NOT_STARTED",
     "requiredWorldFlag": "frontier.peak_lift_unlocked",
     "lines": [
-      { "speaker": "Bram", "text": "With the lift alive again, we can finally power the old watchtower. Tor still has the alignment notes if you're willing to carry them over." }
+      {
+        "speaker": "Bram",
+        "text": "With the lift alive again, we can finally power the old watchtower."
+      },
+      {
+        "speaker": "Bram",
+        "text": "Tor still has the alignment notes if you're willing to carry them over."
+      }
     ],
     "setQuestId": "watchtower_links",
     "setQuestStep": "report_tor"
@@ -366,7 +703,14 @@
     "requiredQuestId": "watchtower_links",
     "requiredQuestState": "return_bram",
     "lines": [
-      { "speaker": "Bram", "text": "That's the last of it. The watchtower lamps are online again, and Ironhaven won't feel quite so small tonight." }
+      {
+        "speaker": "Bram",
+        "text": "That's the last of it."
+      },
+      {
+        "speaker": "Bram",
+        "text": "The watchtower lamps are online again, and Ironhaven won't feel quite so small tonight."
+      }
     ],
     "completeQuestId": "watchtower_links",
     "setWorldFlag": "settlement.watchtower_network",
@@ -382,7 +726,18 @@
     "requiredQuestState": "NOT_STARTED",
     "requiredWorldFlag": "access.workshop_pass",
     "lines": [
-      { "speaker": "Iris", "text": "Hidden chests react to careful eyes. Walk close and watch the outline flicker. And if you find an intact medic frame, I'll patch it into your crew." }
+      {
+        "speaker": "Iris",
+        "text": "Hidden chests react to careful eyes."
+      },
+      {
+        "speaker": "Iris",
+        "text": "Walk close and watch the outline flicker."
+      },
+      {
+        "speaker": "Iris",
+        "text": "And if you find an intact medic frame, I'll patch it into your crew."
+      }
     ],
     "setQuestId": "field_medic",
     "setQuestStep": "recruit_medic"
@@ -394,7 +749,14 @@
     "requiredWorldFlag": "recruit.medic_frame_found",
     "blockedWorldFlag": "recruit.medic_joined",
     "lines": [
-      { "speaker": "Iris", "text": "There. The support frame is stable again. It will follow your commands from here on out." }
+      {
+        "speaker": "Iris",
+        "text": "There. The support frame is stable again."
+      },
+      {
+        "speaker": "Iris",
+        "text": "It will follow your commands from here on out."
+      }
     ],
     "setQuestId": "field_medic",
     "setQuestStep": "recruit_medic",
@@ -408,7 +770,10 @@
     "npcId": "iris",
     "priority": 50,
     "lines": [
-      { "speaker": "Iris", "text": "Hidden chests react to careful eyes. Walk close and watch the outline flicker." }
+      {
+        "speaker": "Iris",
+        "text": "Hidden chests react to careful eyes. Walk close and watch the outline flicker."
+      }
     ]
   },
   {
@@ -418,7 +783,14 @@
     "requiredQuestId": "forest_glade",
     "requiredQuestState": "NOT_STARTED",
     "lines": [
-      { "speaker": "Ranger Pell", "text": "The roots around the Moonlit Glade shift every dusk. If you can map the pattern with a scan frame, we might finally reclaim the clearing." }
+      {
+        "speaker": "Ranger Pell",
+        "text": "The roots around the Moonlit Glade shift every dusk."
+      },
+      {
+        "speaker": "Ranger Pell",
+        "text": "If you can map the pattern with a scan frame, we might finally reclaim the clearing."
+      }
     ],
     "setQuestId": "forest_glade",
     "setQuestStep": "open_glade"
@@ -430,7 +802,14 @@
     "requiredQuestId": "forest_glade",
     "requiredQuestState": "open_glade",
     "lines": [
-      { "speaker": "Ranger Pell", "text": "Follow the roots that hum back at your scanner. The glade should open if the pattern is traced cleanly." }
+      {
+        "speaker": "Ranger Pell",
+        "text": "Follow the roots that hum back at your scanner."
+      },
+      {
+        "speaker": "Ranger Pell",
+        "text": "The glade should open if the pattern is traced cleanly."
+      }
     ]
   },
   {
@@ -440,7 +819,14 @@
     "requiredQuestId": "forest_glade",
     "requiredQuestState": "return_pell",
     "lines": [
-      { "speaker": "Ranger Pell", "text": "So the glade was real after all. Good. One less forgotten place sealed off by fear and old growth." }
+      {
+        "speaker": "Ranger Pell",
+        "text": "So the glade was real after all."
+      },
+      {
+        "speaker": "Ranger Pell",
+        "text": "Good. One less forgotten place sealed off by fear and old growth."
+      }
     ],
     "completeQuestId": "forest_glade",
     "rewardExperience": 60,
@@ -451,7 +837,10 @@
     "npcId": "forest_ranger",
     "priority": 50,
     "lines": [
-      { "speaker": "Ranger Pell", "text": "Whispering Forest keeps its paths for crews that pay attention." }
+      {
+        "speaker": "Ranger Pell",
+        "text": "Whispering Forest keeps its paths for crews that pay attention."
+      }
     ]
   },
   {
@@ -461,7 +850,14 @@
     "requiredQuestId": "quarry_sluice",
     "requiredQuestState": "NOT_STARTED",
     "lines": [
-      { "speaker": "Jora", "text": "The quarry's jammed sluice is blocking a maintenance lane full of salvage. If your heavy frame can wrench it loose, the whole lift route gets easier to trust." }
+      {
+        "speaker": "Jora",
+        "text": "The quarry's jammed sluice is blocking a maintenance lane full of salvage."
+      },
+      {
+        "speaker": "Jora",
+        "text": "If your heavy frame can wrench it loose, the whole lift route gets easier to trust."
+      }
     ],
     "setQuestId": "quarry_sluice",
     "setQuestStep": "force_sluice"
@@ -473,7 +869,14 @@
     "requiredQuestId": "quarry_sluice",
     "requiredQuestState": "force_sluice",
     "lines": [
-      { "speaker": "Jora", "text": "The sluice sits just past the crusher line. You'll need a real vanguard shove to break it free." }
+      {
+        "speaker": "Jora",
+        "text": "The sluice sits just past the crusher line."
+      },
+      {
+        "speaker": "Jora",
+        "text": "You'll need a real vanguard shove to break it free."
+      }
     ]
   },
   {
@@ -483,7 +886,14 @@
     "requiredQuestId": "quarry_sluice",
     "requiredQuestState": "return_jora",
     "lines": [
-      { "speaker": "Jora", "text": "There it is. Air moving through the lane again. That's what progress sounds like in a quarry." }
+      {
+        "speaker": "Jora",
+        "text": "There it is."
+      },
+      {
+        "speaker": "Jora",
+        "text": "Air moving through the lane again. That's what progress sounds like in a quarry."
+      }
     ],
     "completeQuestId": "quarry_sluice",
     "rewardExperience": 70,
@@ -494,7 +904,10 @@
     "npcId": "foreman_jora",
     "priority": 50,
     "lines": [
-      { "speaker": "Jora", "text": "Every cleared machine lane becomes a road for the people after us." }
+      {
+        "speaker": "Jora",
+        "text": "Every cleared machine lane becomes a road for the people after us."
+      }
     ]
   },
   {
@@ -505,7 +918,18 @@
     "requiredQuestCompleted": true,
     "requiredQuestState": "NOT_STARTED",
     "lines": [
-      { "speaker": "Captain Maren", "text": "The drowned archive below still carries intact charts. Bring me whatever route key survived down there and I can point you toward the old command skies." }
+      {
+        "speaker": "Captain Maren",
+        "text": "The drowned archive below still carries intact charts."
+      },
+      {
+        "speaker": "Captain Maren",
+        "text": "Bring me whatever route key survived down there,"
+      },
+      {
+        "speaker": "Captain Maren",
+        "text": "and I can point you toward the old command skies."
+      }
     ],
     "setQuestId": "abyss_archive",
     "setQuestStep": "recover_archive"
@@ -517,7 +941,14 @@
     "requiredQuestId": "abyss_archive",
     "requiredQuestState": "recover_archive",
     "lines": [
-      { "speaker": "Captain Maren", "text": "Search the Archive Hull. The chart capsule should be sealed against pressure and corrosion." }
+      {
+        "speaker": "Captain Maren",
+        "text": "Search the Archive Hull."
+      },
+      {
+        "speaker": "Captain Maren",
+        "text": "The chart capsule should still be sealed against pressure and corrosion."
+      }
     ]
   },
   {
@@ -527,7 +958,18 @@
     "requiredQuestId": "abyss_archive",
     "requiredQuestState": "return_maren",
     "lines": [
-      { "speaker": "Captain Maren", "text": "Perfect. This Archive Chart points to an air route the old world used to reach the fortress above the clouds. Take it. The sky path is yours now." }
+      {
+        "speaker": "Captain Maren",
+        "text": "Perfect."
+      },
+      {
+        "speaker": "Captain Maren",
+        "text": "This Archive Chart marks an air route the old world used to reach the fortress above the clouds."
+      },
+      {
+        "speaker": "Captain Maren",
+        "text": "Take it. The sky path is yours now."
+      }
     ],
     "addKeyItem": "sky_route_chart",
     "completeQuestId": "abyss_archive",
@@ -539,7 +981,10 @@
     "npcId": "captain_maren",
     "priority": 50,
     "lines": [
-      { "speaker": "Captain Maren", "text": "The sea keeps memories longer than the frontier does." }
+      {
+        "speaker": "Captain Maren",
+        "text": "The sea keeps memories longer than the frontier does."
+      }
     ]
   },
   {
@@ -550,7 +995,18 @@
     "requiredQuestCompleted": true,
     "requiredQuestState": "NOT_STARTED",
     "lines": [
-      { "speaker": "Commander Rex", "text": "The fortress rails still answer a proper command token. If the sanctum below the clouds still holds one, recover it and we'll reopen the deepest routes." }
+      {
+        "speaker": "Commander Rex",
+        "text": "The fortress rails still answer a proper command token."
+      },
+      {
+        "speaker": "Commander Rex",
+        "text": "If the sanctum below the clouds still holds one,"
+      },
+      {
+        "speaker": "Commander Rex",
+        "text": "recover it and we'll reopen the deepest routes."
+      }
     ],
     "setQuestId": "fortress_command",
     "setQuestStep": "recover_sigil"
@@ -562,7 +1018,14 @@
     "requiredQuestId": "fortress_command",
     "requiredQuestState": "recover_sigil",
     "lines": [
-      { "speaker": "Commander Rex", "text": "Clockwork Sanctum should still be preserving command hardware. Search the resonance vaults." }
+      {
+        "speaker": "Commander Rex",
+        "text": "Clockwork Sanctum should still be preserving command hardware."
+      },
+      {
+        "speaker": "Commander Rex",
+        "text": "Search the resonance vaults."
+      }
     ]
   },
   {
@@ -572,7 +1035,18 @@
     "requiredQuestId": "fortress_command",
     "requiredQuestState": "return_rex",
     "lines": [
-      { "speaker": "Commander Rex", "text": "That's it. With the Command Sigil back online, the fortress no longer feels like a dead shell. The final rails are opening." }
+      {
+        "speaker": "Commander Rex",
+        "text": "That's it."
+      },
+      {
+        "speaker": "Commander Rex",
+        "text": "With the Command Sigil back online, the fortress no longer feels like a dead shell."
+      },
+      {
+        "speaker": "Commander Rex",
+        "text": "The final rails are opening."
+      }
     ],
     "completeQuestId": "fortress_command",
     "rewardExperience": 140,
@@ -583,7 +1057,14 @@
     "npcId": "commander_rex_field",
     "priority": 50,
     "lines": [
-      { "speaker": "Commander Rex", "text": "The old command lattice was built for war, but we'll use it to rebuild routes instead." }
+      {
+        "speaker": "Commander Rex",
+        "text": "The old command lattice was built for war."
+      },
+      {
+        "speaker": "Commander Rex",
+        "text": "We'll use it to rebuild routes instead."
+      }
     ]
   },
   {
@@ -594,7 +1075,18 @@
     "requiredQuestCompleted": true,
     "requiredQuestState": "NOT_STARTED",
     "lines": [
-      { "speaker": "Clockmaker Echo", "text": "A final key remains outside the machine's own logic. Search the Abyssal Rift. Only the Void Key can separate memory from collapse." }
+      {
+        "speaker": "Clockmaker Echo",
+        "text": "A final key remains outside the machine's own logic."
+      },
+      {
+        "speaker": "Clockmaker Echo",
+        "text": "Search the Abyssal Rift."
+      },
+      {
+        "speaker": "Clockmaker Echo",
+        "text": "Only the Void Key can separate memory from collapse."
+      }
     ],
     "setQuestId": "void_key",
     "setQuestStep": "recover_void_key"
@@ -606,7 +1098,14 @@
     "requiredQuestId": "void_key",
     "requiredQuestState": "recover_void_key",
     "lines": [
-      { "speaker": "Clockmaker Echo", "text": "At the edge of the rift, the world forgets its own shape. That is where the key was hidden." }
+      {
+        "speaker": "Clockmaker Echo",
+        "text": "At the edge of the rift, the world forgets its own shape."
+      },
+      {
+        "speaker": "Clockmaker Echo",
+        "text": "That is where the key was hidden."
+      }
     ]
   },
   {
@@ -616,7 +1115,14 @@
     "requiredQuestId": "void_key",
     "requiredQuestState": "return_clockmaker",
     "lines": [
-      { "speaker": "Clockmaker Echo", "text": "The Void Key has returned to the world of form. The final conduit is stable enough for a Forge Master to pass." }
+      {
+        "speaker": "Clockmaker Echo",
+        "text": "The Void Key has returned to the world of form."
+      },
+      {
+        "speaker": "Clockmaker Echo",
+        "text": "The final conduit is stable enough for a Forge Master to pass."
+      }
     ],
     "completeQuestId": "void_key",
     "rewardExperience": 160,
@@ -627,7 +1133,10 @@
     "npcId": "clockmaker_echo",
     "priority": 50,
     "lines": [
-      { "speaker": "Clockmaker Echo", "text": "Time is only another machine until it breaks." }
+      {
+        "speaker": "Clockmaker Echo",
+        "text": "Time is only another machine until it breaks."
+      }
     ]
   },
   {
@@ -638,7 +1147,18 @@
     "requiredQuestCompleted": true,
     "requiredQuestState": "NOT_STARTED",
     "lines": [
-      { "speaker": "The Watcher", "text": "You have the key, the route, and the will. Step into the final silence. Memory Lane waits, and beyond it, Origin." }
+      {
+        "speaker": "The Watcher",
+        "text": "You have the key, the route, and the will."
+      },
+      {
+        "speaker": "The Watcher",
+        "text": "Step into the final silence."
+      },
+      {
+        "speaker": "The Watcher",
+        "text": "Memory Lane waits, and beyond it, Origin."
+      }
     ],
     "setQuestId": "origin_descent",
     "setQuestStep": "enter_void"
@@ -648,7 +1168,10 @@
     "npcId": "the_watcher",
     "priority": 60,
     "lines": [
-      { "speaker": "The Watcher", "text": "Every repaired road ends where memory begins." }
+      {
+        "speaker": "The Watcher",
+        "text": "Every repaired road ends where memory begins."
+      }
     ]
   },
   {
@@ -659,7 +1182,14 @@
     "requiredQuestState": "NOT_STARTED",
     "requiredWorldFlag": "access.workshop_pass",
     "lines": [
-      { "speaker": "Nia", "text": "The herbalist swears there's a sealed cache behind those resin-thorns east of town. Burn through them cleanly and we'll see what the old frontier hid there." }
+      {
+        "speaker": "Nia",
+        "text": "The herbalist swears there's a sealed cache behind those resin-thorns east of town."
+      },
+      {
+        "speaker": "Nia",
+        "text": "Burn through them cleanly and we'll see what the old frontier hid there."
+      }
     ],
     "setQuestId": "thorn_cache",
     "setQuestStep": "burn_thorns"
@@ -671,7 +1201,14 @@
     "requiredQuestId": "thorn_cache",
     "requiredQuestState": "burn_thorns",
     "lines": [
-      { "speaker": "Nia", "text": "Don't hack at the brambles. Heat the resin, let it peel back, and the cache should sit just beyond the wall." }
+      {
+        "speaker": "Nia",
+        "text": "Don't hack at the brambles."
+      },
+      {
+        "speaker": "Nia",
+        "text": "Heat the resin, let it peel back, and the cache should sit just beyond the wall."
+      }
     ]
   },
   {
@@ -681,7 +1218,10 @@
     "requiredQuestId": "thorn_cache",
     "requiredQuestState": "return_nia",
     "lines": [
-      { "speaker": "Nia", "text": "Perfect. The old cache was real, and now we've got one more secret route back under our control." }
+      {
+        "speaker": "Nia",
+        "text": "Perfect. The old cache was real, and now we've got one more secret route back under our control."
+      }
     ],
     "completeQuestId": "thorn_cache",
     "rewardGold": 65,
@@ -696,7 +1236,14 @@
     "requiredQuestState": "NOT_STARTED",
     "requiredWorldFlag": "access.workshop_pass",
     "lines": [
-      { "speaker": "Tor", "text": "There's an old trailhead past the southern hedge, but a collapsed boulder sealed it months ago. If one of your heavy frames can shift it, we get another safe line out of Ironhaven." }
+      {
+        "speaker": "Tor",
+        "text": "There's an old trailhead past the southern hedge, but a collapsed boulder sealed it months ago."
+      },
+      {
+        "speaker": "Tor",
+        "text": "If one of your heavy frames can shift it, we get another safe line out of Ironhaven."
+      }
     ],
     "setQuestId": "collapsed_trail",
     "setQuestStep": "clear_boulder"
@@ -708,7 +1255,10 @@
     "requiredQuestId": "collapsed_trail",
     "requiredQuestState": "clear_boulder",
     "lines": [
-      { "speaker": "Tor", "text": "The boulder is packed into the trail deeper than it looks. Hit it with pure leverage, not finesse." }
+      {
+        "speaker": "Tor",
+        "text": "The boulder is packed into the trail deeper than it looks. Hit it with pure leverage, not finesse."
+      }
     ]
   },
   {
@@ -718,7 +1268,14 @@
     "requiredQuestId": "collapsed_trail",
     "requiredQuestState": "return_tor",
     "lines": [
-      { "speaker": "Tor", "text": "That does it. One more route open, one less blind corner around town. That's how a frontier starts feeling like a home again." }
+      {
+        "speaker": "Tor",
+        "text": "That does it. One more route open, one less blind corner around town."
+      },
+      {
+        "speaker": "Tor",
+        "text": "That's how a frontier starts feeling like a home again."
+      }
     ],
     "completeQuestId": "collapsed_trail",
     "rewardGold": 70,
@@ -732,7 +1289,18 @@
     "requiredQuestState": "NOT_STARTED",
     "requiredWorldFlag": "access.workshop_pass",
     "lines": [
-      { "speaker": "Rhea", "text": "There's a shimmer wall deeper in the cave that answers every scanner pulse differently. Trace the seam for me and we may finally map the hollow behind it." }
+      {
+        "speaker": "Rhea",
+        "text": "There's a shimmer wall deeper in the cave."
+      },
+      {
+        "speaker": "Rhea",
+        "text": "It answers every scanner pulse differently."
+      },
+      {
+        "speaker": "Rhea",
+        "text": "Trace the seam for me and we may finally map the hollow behind it."
+      }
     ],
     "setQuestId": "cave_echoes",
     "setQuestStep": "trace_echo_wall"
@@ -744,7 +1312,14 @@
     "requiredQuestId": "cave_echoes",
     "requiredQuestState": "trace_echo_wall",
     "lines": [
-      { "speaker": "Rhea", "text": "Watch for the wall to flicker back in rhythm with your scan lattice. That's where the seam opens." }
+      {
+        "speaker": "Rhea",
+        "text": "Watch for the wall to flicker back in rhythm with your scan lattice."
+      },
+      {
+        "speaker": "Rhea",
+        "text": "That's where the seam opens."
+      }
     ]
   },
   {
@@ -754,7 +1329,14 @@
     "requiredQuestId": "cave_echoes",
     "requiredQuestState": "return_scout",
     "lines": [
-      { "speaker": "Rhea", "text": "A hidden passage and a clean scan trace. That's the kind of map work that keeps crews alive down here." }
+      {
+        "speaker": "Rhea",
+        "text": "A hidden passage and a clean scan trace."
+      },
+      {
+        "speaker": "Rhea",
+        "text": "That's the kind of map work that keeps crews alive down here."
+      }
     ],
     "completeQuestId": "cave_echoes",
     "rewardGold": 75,
@@ -769,7 +1351,18 @@
     "requiredQuestState": "NOT_STARTED",
     "requiredWorldFlag": "access.workshop_pass",
     "lines": [
-      { "speaker": "Reno", "text": "The shallows are lying to me. There's a hidden current threading between the rocks, but I need a scan frame to chart it without losing a whole salvage skiff." }
+      {
+        "speaker": "Reno",
+        "text": "The shallows are lying to me."
+      },
+      {
+        "speaker": "Reno",
+        "text": "There's a hidden current threading between the rocks."
+      },
+      {
+        "speaker": "Reno",
+        "text": "I need a scan frame to chart it without losing a whole salvage skiff."
+      }
     ],
     "setQuestId": "tidepool_signal",
     "setQuestStep": "map_tidepool"
@@ -781,7 +1374,14 @@
     "requiredQuestId": "tidepool_signal",
     "requiredQuestState": "map_tidepool",
     "lines": [
-      { "speaker": "Reno", "text": "Follow the drift where the foam cuts sideways. If the scanner holds, the tidepool should open on the far shelf." }
+      {
+        "speaker": "Reno",
+        "text": "Follow the drift where the foam cuts sideways."
+      },
+      {
+        "speaker": "Reno",
+        "text": "If the scanner holds, the tidepool should open on the far shelf."
+      }
     ]
   },
   {
@@ -791,7 +1391,14 @@
     "requiredQuestId": "tidepool_signal",
     "requiredQuestState": "return_reno",
     "lines": [
-      { "speaker": "Reno", "text": "That's the line. With that tidepool route mapped, we can pull salvage without feeding another barge to the surf." }
+      {
+        "speaker": "Reno",
+        "text": "That's the line."
+      },
+      {
+        "speaker": "Reno",
+        "text": "With that tidepool route mapped, we can pull salvage without feeding another barge to the surf."
+      }
     ],
     "completeQuestId": "tidepool_signal",
     "rewardGold": 95,
@@ -805,7 +1412,18 @@
     "requiredQuestState": "NOT_STARTED",
     "requiredWorldFlag": "frontier.peak_lift_unlocked",
     "lines": [
-      { "speaker": "Professor Lio", "text": "These crystal harmonics are close to Dragon Peak's warding frequencies, but not close enough. Take my notes to Edda and ask how the pylons stayed stable at altitude." }
+      {
+        "speaker": "Professor Lio",
+        "text": "These crystal harmonics are close to Dragon Peak's warding frequencies,"
+      },
+      {
+        "speaker": "Professor Lio",
+        "text": "but not close enough."
+      },
+      {
+        "speaker": "Professor Lio",
+        "text": "Take my notes to Edda and ask how the pylons stayed stable at altitude."
+      }
     ],
     "setQuestId": "resonance_notes",
     "setQuestStep": "consult_edda"
@@ -817,7 +1435,14 @@
     "requiredQuestId": "resonance_notes",
     "requiredQuestState": "consult_edda",
     "lines": [
-      { "speaker": "Professor Lio", "text": "Edda will know which harmonics to trim. The mountain learned stability the hard way." }
+      {
+        "speaker": "Professor Lio",
+        "text": "Edda will know which harmonics to trim."
+      },
+      {
+        "speaker": "Professor Lio",
+        "text": "The mountain learned stability the hard way."
+      }
     ]
   },
   {
@@ -827,7 +1452,18 @@
     "requiredQuestId": "resonance_notes",
     "requiredQuestState": "consult_edda",
     "lines": [
-      { "speaker": "Edda", "text": "Lio's close. Tell him to damp the third harmonic, then bias the core toward the colder crystal lines. That should keep the vault from singing itself apart." }
+      {
+        "speaker": "Edda",
+        "text": "Lio's close."
+      },
+      {
+        "speaker": "Edda",
+        "text": "Tell him to damp the third harmonic, then bias the core toward the colder crystal lines."
+      },
+      {
+        "speaker": "Edda",
+        "text": "That should keep the vault from singing itself apart."
+      }
     ],
     "setQuestId": "resonance_notes",
     "setQuestStep": "return_lio"
@@ -839,7 +1475,18 @@
     "requiredQuestId": "resonance_notes",
     "requiredQuestState": "return_lio",
     "lines": [
-      { "speaker": "Professor Lio", "text": "Of course. Edda trimmed the instability exactly where I feared it. With this, the depths become a laboratory again instead of a warning." }
+      {
+        "speaker": "Professor Lio",
+        "text": "Of course."
+      },
+      {
+        "speaker": "Professor Lio",
+        "text": "Edda trimmed the instability exactly where I feared it."
+      },
+      {
+        "speaker": "Professor Lio",
+        "text": "With this, the depths become a laboratory again instead of a warning."
+      }
     ],
     "completeQuestId": "resonance_notes",
     "rewardGold": 105,
@@ -853,7 +1500,18 @@
     "requiredQuestState": "NOT_STARTED",
     "requiredWorldFlag": "frontier.warding_pylons_online",
     "lines": [
-      { "speaker": "Sister Vale", "text": "The cloister's prayer circuit was really a machine lattice. If the Clockmaker Echo still remembers its pattern, we may be able to wake the vale without breaking it." }
+      {
+        "speaker": "Sister Vale",
+        "text": "The cloister's prayer circuit was really a machine lattice."
+      },
+      {
+        "speaker": "Sister Vale",
+        "text": "If the Clockmaker Echo still remembers its pattern,"
+      },
+      {
+        "speaker": "Sister Vale",
+        "text": "we may be able to wake the vale without breaking it."
+      }
     ],
     "setQuestId": "pilgrims_circuit",
     "setQuestStep": "consult_clockmaker"
@@ -865,7 +1523,18 @@
     "requiredQuestId": "pilgrims_circuit",
     "requiredQuestState": "consult_clockmaker",
     "lines": [
-      { "speaker": "Clockmaker Echo", "text": "The cloister ran on a closed winter loop. Tell the pilgrim to restart it slowly, one ring at a time, and let the frost keep the timing honest." }
+      {
+        "speaker": "Clockmaker Echo",
+        "text": "The cloister ran on a closed winter loop."
+      },
+      {
+        "speaker": "Clockmaker Echo",
+        "text": "Tell the pilgrim to restart it slowly, one ring at a time."
+      },
+      {
+        "speaker": "Clockmaker Echo",
+        "text": "Let the frost keep the timing honest."
+      }
     ],
     "setQuestId": "pilgrims_circuit",
     "setQuestStep": "return_vale"
@@ -877,7 +1546,18 @@
     "requiredQuestId": "pilgrims_circuit",
     "requiredQuestState": "return_vale",
     "lines": [
-      { "speaker": "Sister Vale", "text": "Then the old circuit still has purpose. Good. Even frozen places deserve a pulse strong enough to answer winter." }
+      {
+        "speaker": "Sister Vale",
+        "text": "Then the old circuit still has purpose."
+      },
+      {
+        "speaker": "Sister Vale",
+        "text": "Good."
+      },
+      {
+        "speaker": "Sister Vale",
+        "text": "Even frozen places deserve a pulse strong enough to answer winter."
+      }
     ],
     "completeQuestId": "pilgrims_circuit",
     "rewardGold": 115,
@@ -892,7 +1572,22 @@
     "requiredQuestState": "NOT_STARTED",
     "requiredWorldFlag": "frontier.warding_pylons_online",
     "lines": [
-      { "speaker": "Toma", "text": "Scorched Plateau can teach us a lot, but Volcanic Core can melt a machine that learns the lesson wrong. Take my heat-tolerance specs to Kira and bring back something we can actually build around." }
+      {
+        "speaker": "Toma",
+        "text": "Scorched Plateau teaches fast."
+      },
+      {
+        "speaker": "Toma",
+        "text": "Volcanic Core teaches once."
+      },
+      {
+        "speaker": "Toma",
+        "text": "Take my heat-tolerance specs to Kira."
+      },
+      {
+        "speaker": "Toma",
+        "text": "I need something we can actually build around before I send our people into that furnace."
+      }
     ],
     "setQuestId": "forgefire_accord",
     "setQuestStep": "consult_kira"
@@ -904,7 +1599,22 @@
     "requiredQuestId": "forgefire_accord",
     "requiredQuestState": "consult_kira",
     "lines": [
-      { "speaker": "Forgehand Kira", "text": "Tell Toma the plateau alloys are overhard. Temper them twice, quench them in slagwater, and they'll survive the core without shattering." }
+      {
+        "speaker": "Forgehand Kira",
+        "text": "Toma is forcing the plateau alloy too hard."
+      },
+      {
+        "speaker": "Forgehand Kira",
+        "text": "Tell him to temper the plates twice."
+      },
+      {
+        "speaker": "Forgehand Kira",
+        "text": "Then quench them in slagwater, not ash."
+      },
+      {
+        "speaker": "Forgehand Kira",
+        "text": "Do that, and the frames will bend before they shatter."
+      }
     ],
     "setQuestId": "forgefire_accord",
     "setQuestStep": "return_toma"
@@ -916,7 +1626,22 @@
     "requiredQuestId": "forgefire_accord",
     "requiredQuestState": "return_toma",
     "lines": [
-      { "speaker": "Toma", "text": "That's the accord, then. Plateau grit, core heat, and a process that won't kill the crew trying it. That's real progress." }
+      {
+        "speaker": "Toma",
+        "text": "So that's the accord."
+      },
+      {
+        "speaker": "Toma",
+        "text": "Plateau grit. Core heat. A process that won't kill the crew using it."
+      },
+      {
+        "speaker": "Toma",
+        "text": "That's not theory anymore."
+      },
+      {
+        "speaker": "Toma",
+        "text": "That's Ironhaven getting stronger."
+      }
     ],
     "completeQuestId": "forgefire_accord",
     "rewardGold": 135,
@@ -930,7 +1655,26 @@
     "requiredQuestState": "NOT_STARTED",
     "requiredWorldFlag": "frontier.command_rails_online",
     "lines": [
-      { "speaker": "Commander Rex", "text": "The command rails are awake, but they still carry ghost traffic from the old war lattice. Ask the Clockmaker Echo how to quiet the echoes before they fry another control hub." }
+      {
+        "speaker": "Commander Rex",
+        "text": "The command rails are awake again."
+      },
+      {
+        "speaker": "Commander Rex",
+        "text": "Problem is, they're still carrying ghost traffic from the old war lattice."
+      },
+      {
+        "speaker": "Commander Rex",
+        "text": "One bad pulse and we lose another control hub."
+      },
+      {
+        "speaker": "Commander Rex",
+        "text": "Find the Clockmaker Echo."
+      },
+      {
+        "speaker": "Commander Rex",
+        "text": "If anyone knows how to silence dead signals, it's that machine."
+      }
     ],
     "setQuestId": "command_echoes",
     "setQuestStep": "consult_clockmaker"
@@ -942,7 +1686,22 @@
     "requiredQuestId": "command_echoes",
     "requiredQuestState": "consult_clockmaker",
     "lines": [
-      { "speaker": "Clockmaker Echo", "text": "Tell Rex to pulse the rails in threes, then cut the fourth beat short. The old command ghosts will chase the missing rhythm and collapse." }
+      {
+        "speaker": "Clockmaker Echo",
+        "text": "The rails are still listening for a conductor who died centuries ago."
+      },
+      {
+        "speaker": "Clockmaker Echo",
+        "text": "Tell Rex to pulse them in threes."
+      },
+      {
+        "speaker": "Clockmaker Echo",
+        "text": "Then cut the fourth beat short."
+      },
+      {
+        "speaker": "Clockmaker Echo",
+        "text": "The old command ghosts will chase the missing rhythm and collapse into silence."
+      }
     ],
     "setQuestId": "command_echoes",
     "setQuestStep": "return_rex"
@@ -954,7 +1713,26 @@
     "requiredQuestId": "command_echoes",
     "requiredQuestState": "return_rex",
     "lines": [
-      { "speaker": "Commander Rex", "text": "Good. That's the rail lattice settled without tearing half the fortress apart. We can finally use these lines like builders instead of grave robbers." }
+      {
+        "speaker": "Commander Rex",
+        "text": "Good."
+      },
+      {
+        "speaker": "Commander Rex",
+        "text": "The rail lattice is stable, and the fortress is still standing."
+      },
+      {
+        "speaker": "Commander Rex",
+        "text": "That's a better outcome than most pre-collapse repairs give us."
+      },
+      {
+        "speaker": "Commander Rex",
+        "text": "Now we can use these lines like builders."
+      },
+      {
+        "speaker": "Commander Rex",
+        "text": "Not grave robbers."
+      }
     ],
     "completeQuestId": "command_echoes",
     "rewardGold": 150,
@@ -968,7 +1746,18 @@
     "requiredQuestState": "NOT_STARTED",
     "requiredWorldFlag": "frontier.warding_pylons_online",
     "lines": [
-      { "speaker": "Bram", "text": "The pylons are back online. That means the routes beyond Dragon Peak are no longer completely blind. Push out into the midlands and tell me what's actually out there." }
+      {
+        "speaker": "Bram",
+        "text": "The pylons are back online."
+      },
+      {
+        "speaker": "Bram",
+        "text": "That means the routes beyond Dragon Peak are no longer completely blind."
+      },
+      {
+        "speaker": "Bram",
+        "text": "Push out into the midlands and tell me what's actually out there."
+      }
     ],
     "setQuestId": "frontier_push",
     "setQuestStep": "chart_midlands"
@@ -980,7 +1769,22 @@
     "requiredQuestId": "frontier_push",
     "requiredQuestState": "return_bram_expand",
     "lines": [
-      { "speaker": "Bram", "text": "So the midlands are alive — and hostile in ways we didn't expect. Good to know before we send supply runs through. Nia's been picking up something strange from the deep water zones. You should hear it from her directly." }
+      {
+        "speaker": "Bram",
+        "text": "So the midlands are alive \u2014 and hostile in ways we didn't expect."
+      },
+      {
+        "speaker": "Bram",
+        "text": "Good to know before we send supply runs through."
+      },
+      {
+        "speaker": "Bram",
+        "text": "Nia's been picking up something strange from the deep water zones."
+      },
+      {
+        "speaker": "Bram",
+        "text": "You should hear it from her directly."
+      }
     ],
     "completeQuestId": "frontier_push",
     "setWorldFlag": "frontier.midlands_charted",
@@ -994,7 +1798,22 @@
     "requiredQuestId": "deep_signal",
     "requiredQuestState": "speak_nia_signal",
     "lines": [
-      { "speaker": "Nia", "text": "The survey drones caught a pulse from the deep water zones — rhythmic, not natural. Something down there is still running. Head to the Coastal Shallows and trace it closer to the source." }
+      {
+        "speaker": "Nia",
+        "text": "The survey drones caught a pulse from the deep water zones."
+      },
+      {
+        "speaker": "Nia",
+        "text": "Rhythmic. Stable. Not natural."
+      },
+      {
+        "speaker": "Nia",
+        "text": "Something down there is still running."
+      },
+      {
+        "speaker": "Nia",
+        "text": "Head to the Coastal Shallows and trace it closer to the source."
+      }
     ],
     "setQuestId": "deep_signal",
     "setQuestStep": "investigate_shallows"
@@ -1006,7 +1825,22 @@
     "requiredQuestId": "deep_signal",
     "requiredQuestState": "investigate_shallows",
     "lines": [
-      { "speaker": "Nia", "text": "The pulse originates somewhere below the shallows. Your scanner should pick up the signal variance once you're in range of the deep shelf." }
+      {
+        "speaker": "Nia",
+        "text": "The pulse is definitely below the shallows."
+      },
+      {
+        "speaker": "Nia",
+        "text": "Once you reach the deep shelf, your scanner should start separating the signal from the current."
+      },
+      {
+        "speaker": "Nia",
+        "text": "When it does, follow the strongest variance."
+      },
+      {
+        "speaker": "Nia",
+        "text": "Whatever's down there is still transmitting on purpose."
+      }
     ]
   },
   {
@@ -1016,7 +1850,22 @@
     "requiredQuestId": "deep_signal",
     "requiredQuestState": "speak_maren_intro",
     "lines": [
-      { "speaker": "Captain Maren", "text": "A pulse from the deep shelf? I know what that is. There's a drowned archive below — I mapped the approach once, years ago. The signal means it's still intact. We need what's inside." }
+      {
+        "speaker": "Captain Maren",
+        "text": "A pulse from the deep shelf?"
+      },
+      {
+        "speaker": "Captain Maren",
+        "text": "I know what that is."
+      },
+      {
+        "speaker": "Captain Maren",
+        "text": "There's a drowned archive below. I mapped the approach once, years ago."
+      },
+      {
+        "speaker": "Captain Maren",
+        "text": "If that signal is still live, then the archive is still intact. We need what's inside."
+      }
     ],
     "completeQuestId": "deep_signal",
     "setWorldFlag": "frontier.abyss_signal_found",
@@ -1029,16 +1878,45 @@
     "priority": 100,
     "zoneId": "infinite_dungeon",
     "lines": [
-      { "speaker": "Bolt Simulation", "text": "Welcome back, challenger. Every ten floors, the dungeon will answer with a stronger test. Every return trip is a new proof of mastery." }
+      {
+        "speaker": "Bolt Simulation",
+        "text": "Welcome back, challenger."
+      },
+      {
+        "speaker": "Bolt Simulation",
+        "text": "Every ten floors, the dungeon answers with a harsher test."
+      },
+      {
+        "speaker": "Bolt Simulation",
+        "text": "Every return trip is another proof."
+      },
+      {
+        "speaker": "Bolt Simulation",
+        "text": "Show me what mastery looks like."
+      }
     ]
   },
-
   {
     "id": "silas_idle",
     "npcId": "master_silas",
     "priority": 50,
     "lines": [
-      { "speaker": "Master Silas", "text": "The forge speaks through its failures as much as its successes. Bring me salvage and I'll show you what I mean." }
+      {
+        "speaker": "Master Silas",
+        "text": "A forge tells the truth faster than people do."
+      },
+      {
+        "speaker": "Master Silas",
+        "text": "It sings when the metal is right."
+      },
+      {
+        "speaker": "Master Silas",
+        "text": "It screams when the work is sloppy."
+      },
+      {
+        "speaker": "Master Silas",
+        "text": "Bring me salvage and I'll show you the difference."
+      }
     ]
   },
   {
@@ -1048,7 +1926,26 @@
     "requiredWorldFlag": "settlement.workshop_tools",
     "blockedWorldFlag": "settlement.advanced_alloys",
     "lines": [
-      { "speaker": "Master Silas", "text": "The basic rails are humming again. With a little more investment, I can retool the alloy chambers for advanced component work." }
+      {
+        "speaker": "Master Silas",
+        "text": "The basic rails are humming again."
+      },
+      {
+        "speaker": "Master Silas",
+        "text": "That's enough for repairs."
+      },
+      {
+        "speaker": "Master Silas",
+        "text": "Not enough for the kind of parts your crew will need next."
+      },
+      {
+        "speaker": "Master Silas",
+        "text": "Give me the backing to retool the alloy chambers."
+      },
+      {
+        "speaker": "Master Silas",
+        "text": "Then we'll start building for the frontier, not just surviving it."
+      }
     ],
     "settlementUpgradeId": "advanced_alloys",
     "setWorldFlag": "settlement.advanced_alloys"
@@ -1060,7 +1957,26 @@
     "requiredWorldFlag": "settlement.advanced_alloys",
     "blockedWorldFlag": "settlement.fusion_forge",
     "lines": [
-      { "speaker": "Master Silas", "text": "The alloy work gave me an idea. That old fusion cradle in the back — it can be restored. Fusion work is art, not just engineering." }
+      {
+        "speaker": "Master Silas",
+        "text": "The alloy work proved something."
+      },
+      {
+        "speaker": "Master Silas",
+        "text": "That old fusion cradle in the back can be restored."
+      },
+      {
+        "speaker": "Master Silas",
+        "text": "Most people think fusion is brute force."
+      },
+      {
+        "speaker": "Master Silas",
+        "text": "It isn't."
+      },
+      {
+        "speaker": "Master Silas",
+        "text": "It's craft."
+      }
     ],
     "settlementUpgradeId": "fusion_forge",
     "setWorldFlag": "settlement.fusion_forge"
@@ -1071,16 +1987,41 @@
     "priority": 70,
     "requiredWorldFlag": "settlement.fusion_forge",
     "lines": [
-      { "speaker": "Master Silas", "text": "The fusion cradle is running. Bring two compatible frames to the forge and let the machine decide what they become together." }
+      {
+        "speaker": "Master Silas",
+        "text": "The fusion cradle is running."
+      },
+      {
+        "speaker": "Master Silas",
+        "text": "Bring me two compatible frames."
+      },
+      {
+        "speaker": "Master Silas",
+        "text": "The machine will decide what survives the joining."
+      },
+      {
+        "speaker": "Master Silas",
+        "text": "Our job is to be wise enough to choose what goes in."
+      }
     ]
   },
-
   {
     "id": "elena_idle",
     "npcId": "elena_apothecary",
     "priority": 50,
     "lines": [
-      { "speaker": "Elena", "text": "A repaired machine still needs care between battles. Stop by when your team looks worn." }
+      {
+        "speaker": "Elena",
+        "text": "Patching armor is easy."
+      },
+      {
+        "speaker": "Elena",
+        "text": "Keeping a team battle-ready is harder."
+      },
+      {
+        "speaker": "Elena",
+        "text": "If your crew looks worn, bring them to me before the next sortie."
+      }
     ]
   },
   {
@@ -1090,7 +2031,22 @@
     "requiredWorldFlag": "settlement.apothecary_stock",
     "blockedWorldFlag": "settlement.field_kit_supply",
     "lines": [
-      { "speaker": "Elena", "text": "With the base stock restocked, I can start building proper field kits. More potions, better recovery. Your team will feel the difference mid-battle." }
+      {
+        "speaker": "Elena",
+        "text": "The shelves are full enough for more than emergency care now."
+      },
+      {
+        "speaker": "Elena",
+        "text": "Let me build proper field kits."
+      },
+      {
+        "speaker": "Elena",
+        "text": "Better potions. Better recovery. Fewer retreats that end in panic."
+      },
+      {
+        "speaker": "Elena",
+        "text": "Your team will feel the difference out in the field."
+      }
     ],
     "settlementUpgradeId": "field_kit_supply",
     "setWorldFlag": "settlement.field_kit_supply"
@@ -1102,7 +2058,22 @@
     "requiredWorldFlag": "settlement.field_kit_supply",
     "blockedWorldFlag": "settlement.experimental_compounds",
     "lines": [
-      { "speaker": "Elena", "text": "The frontier zones carry materials I've never been able to study before. Let me run experiments. The compounds could change how your team fights entirely." }
+      {
+        "speaker": "Elena",
+        "text": "The frontier is bringing back materials I've never had the chance to study."
+      },
+      {
+        "speaker": "Elena",
+        "text": "If I can isolate them safely, I can do more than heal damage."
+      },
+      {
+        "speaker": "Elena",
+        "text": "I can change how your team fights."
+      },
+      {
+        "speaker": "Elena",
+        "text": "Give me the lab space and I'll prove it."
+      }
     ],
     "settlementUpgradeId": "experimental_compounds",
     "setWorldFlag": "settlement.experimental_compounds"
@@ -1113,16 +2084,41 @@
     "priority": 70,
     "requiredWorldFlag": "settlement.experimental_compounds",
     "lines": [
-      { "speaker": "Elena", "text": "The compound lab is stable. Some of these formulas are older than Ironhaven — I'm still learning what they were designed to cure." }
+      {
+        "speaker": "Elena",
+        "text": "The compound lab is stable."
+      },
+      {
+        "speaker": "Elena",
+        "text": "Some of these formulas are older than Ironhaven itself."
+      },
+      {
+        "speaker": "Elena",
+        "text": "I'm still learning what they were made to cure."
+      },
+      {
+        "speaker": "Elena",
+        "text": "And what they were made to become."
+      }
     ]
   },
-
   {
     "id": "rex_town_idle",
     "npcId": "commander_rex",
     "priority": 50,
     "lines": [
-      { "speaker": "Commander Rex", "text": "Ironhaven's walls hold because people chose to stay and fight for them. Don't let that count for nothing out there." }
+      {
+        "speaker": "Commander Rex",
+        "text": "Ironhaven's walls don't hold because they're tall."
+      },
+      {
+        "speaker": "Commander Rex",
+        "text": "They hold because people chose to stay and fight for them."
+      },
+      {
+        "speaker": "Commander Rex",
+        "text": "Don't let that choice count for nothing out there."
+      }
     ]
   },
   {
@@ -1132,7 +2128,22 @@
     "requiredWorldFlag": "settlement.watchtower_network",
     "blockedWorldFlag": "settlement.relay_expansion",
     "lines": [
-      { "speaker": "Commander Rex", "text": "The watchtower sees farther now, but the relay range still ends at the ridgeline. Let me route the expansion and we'll have eyes on every major approach." }
+      {
+        "speaker": "Commander Rex",
+        "text": "The watchtower sees farther now."
+      },
+      {
+        "speaker": "Commander Rex",
+        "text": "But relay coverage still dies at the ridgeline."
+      },
+      {
+        "speaker": "Commander Rex",
+        "text": "Give me the resources to extend it."
+      },
+      {
+        "speaker": "Commander Rex",
+        "text": "Then we'll have eyes on every major approach to Ironhaven."
+      }
     ],
     "settlementUpgradeId": "relay_expansion",
     "setWorldFlag": "settlement.relay_expansion"
@@ -1144,7 +2155,22 @@
     "requiredWorldFlag": "settlement.relay_expansion",
     "blockedWorldFlag": "settlement.command_hub",
     "lines": [
-      { "speaker": "Commander Rex", "text": "With relay coverage in place, we're ready for a proper command hub. Coordination, rapid response, tactical routing — Ironhaven becomes more than a waypoint." }
+      {
+        "speaker": "Commander Rex",
+        "text": "Relay coverage gives us reach."
+      },
+      {
+        "speaker": "Commander Rex",
+        "text": "A command hub gives us control."
+      },
+      {
+        "speaker": "Commander Rex",
+        "text": "Coordination. Rapid response. Tactical routing."
+      },
+      {
+        "speaker": "Commander Rex",
+        "text": "Ironhaven stops being a waypoint and becomes a real stronghold."
+      }
     ],
     "settlementUpgradeId": "command_hub",
     "setWorldFlag": "settlement.command_hub"
@@ -1155,16 +2181,41 @@
     "priority": 70,
     "requiredWorldFlag": "settlement.command_hub",
     "lines": [
-      { "speaker": "Commander Rex", "text": "The hub is operational. Every field unit we send out now has a real command structure behind it. That changes what's possible." }
+      {
+        "speaker": "Commander Rex",
+        "text": "The hub is operational."
+      },
+      {
+        "speaker": "Commander Rex",
+        "text": "Every field unit we send out now has a real command structure behind it."
+      },
+      {
+        "speaker": "Commander Rex",
+        "text": "That changes what Ironhaven is capable of."
+      }
     ]
   },
-
   {
     "id": "cogs_idle",
     "npcId": "professor_cogs",
     "priority": 50,
     "lines": [
-      { "speaker": "Professor Cogs", "text": "Every battle logged is data. Every rout survived is a dissertation. Keep fighting and I'll keep learning." }
+      {
+        "speaker": "Professor Cogs",
+        "text": "Every battle logged is data."
+      },
+      {
+        "speaker": "Professor Cogs",
+        "text": "Every disaster survived is a dissertation."
+      },
+      {
+        "speaker": "Professor Cogs",
+        "text": "Keep fighting."
+      },
+      {
+        "speaker": "Professor Cogs",
+        "text": "I'll keep learning."
+      }
     ]
   },
   {
@@ -1174,7 +2225,26 @@
     "requiredWorldFlag": "settlement.survey_drones",
     "blockedWorldFlag": "settlement.data_vaults",
     "lines": [
-      { "speaker": "Professor Cogs", "text": "The drones are feeding us raw survey data, but without proper vaults to index it we're drowning in noise. Fund the data vaults and I'll turn noise into knowledge." }
+      {
+        "speaker": "Professor Cogs",
+        "text": "The survey drones are doing their job too well."
+      },
+      {
+        "speaker": "Professor Cogs",
+        "text": "They're feeding us more raw data than we can sort."
+      },
+      {
+        "speaker": "Professor Cogs",
+        "text": "Without proper vaults, we're drowning in noise."
+      },
+      {
+        "speaker": "Professor Cogs",
+        "text": "Fund the data vaults."
+      },
+      {
+        "speaker": "Professor Cogs",
+        "text": "I'll turn the noise into knowledge."
+      }
     ],
     "settlementUpgradeId": "data_vaults",
     "setWorldFlag": "settlement.data_vaults"
@@ -1186,7 +2256,22 @@
     "requiredWorldFlag": "settlement.data_vaults",
     "blockedWorldFlag": "settlement.prototype_lab",
     "lines": [
-      { "speaker": "Professor Cogs", "text": "The vaults gave me the patterns I needed. There is a design space in the data that no standard forging method reaches. Give me a prototype lab and I'll show you what the frontier was actually trying to build." }
+      {
+        "speaker": "Professor Cogs",
+        "text": "The vaults gave me the patterns I needed."
+      },
+      {
+        "speaker": "Professor Cogs",
+        "text": "And those patterns point to a design space standard forging never reaches."
+      },
+      {
+        "speaker": "Professor Cogs",
+        "text": "Give me a prototype lab."
+      },
+      {
+        "speaker": "Professor Cogs",
+        "text": "I'll show you what the frontier was really trying to build before it fell."
+      }
     ],
     "settlementUpgradeId": "prototype_lab",
     "setWorldFlag": "settlement.prototype_lab"
@@ -1197,16 +2282,37 @@
     "priority": 70,
     "requiredWorldFlag": "settlement.prototype_lab",
     "lines": [
-      { "speaker": "Professor Cogs", "text": "The prototype lab is running. What I'm seeing in the foundry data could rewrite everything we thought we knew about pre-collapse engineering." }
+      {
+        "speaker": "Professor Cogs",
+        "text": "The prototype lab is running."
+      },
+      {
+        "speaker": "Professor Cogs",
+        "text": "And what I'm seeing in the foundry data could rewrite everything we thought we knew about pre-collapse engineering."
+      },
+      {
+        "speaker": "Professor Cogs",
+        "text": "That is either thrilling or deeply alarming."
+      }
     ]
   },
-
   {
     "id": "bolt_town_idle",
     "npcId": "bolt_town",
     "priority": 50,
     "lines": [
-      { "speaker": "Bolt", "text": "A Forge Master with your record? I've been waiting for you to swing by. The dungeon's calling if you're ready for a real test." }
+      {
+        "speaker": "Bolt",
+        "text": "A Forge Master with your record?"
+      },
+      {
+        "speaker": "Bolt",
+        "text": "Yeah, I've been waiting for you."
+      },
+      {
+        "speaker": "Bolt",
+        "text": "The dungeon's calling if you're ready for a real test."
+      }
     ]
   },
   {
@@ -1215,16 +2321,41 @@
     "priority": 70,
     "requiredWorldFlag": "settlement.command_hub",
     "lines": [
-      { "speaker": "Bolt", "text": "Now that the command hub is online, I can track your dungeon runs properly. Every ten floors, expect the parameters to shift. I'll be watching." }
+      {
+        "speaker": "Bolt",
+        "text": "Now that the command hub is online, I can track your runs properly."
+      },
+      {
+        "speaker": "Bolt",
+        "text": "Every ten floors, expect the parameters to shift."
+      },
+      {
+        "speaker": "Bolt",
+        "text": "Don't worry."
+      },
+      {
+        "speaker": "Bolt",
+        "text": "I'll be watching."
+      }
     ]
   },
-
   {
     "id": "jax_idle",
     "npcId": "jax_trader",
     "priority": 50,
     "lines": [
-      { "speaker": "Jax", "text": "If it's broken, lost, or forgotten, I probably know where it ended up. And if I don't, I'll find out for the right price." }
+      {
+        "speaker": "Jax",
+        "text": "If it's broken, lost, or forgotten, I can usually smell where it ended up."
+      },
+      {
+        "speaker": "Jax",
+        "text": "And if I can't?"
+      },
+      {
+        "speaker": "Jax",
+        "text": "Give me a day and a decent offer."
+      }
     ]
   },
   {
@@ -1235,7 +2366,22 @@
     "requiredQuestState": "NOT_STARTED",
     "requiredWorldFlag": "frontier.quarry_lane_restored",
     "lines": [
-      { "speaker": "Jax", "text": "There's a sealed supply cache in the quarry's lower lane — old enough that even Jora doesn't know what's in it. Help me crack it open and we split whatever's inside." }
+      {
+        "speaker": "Jax",
+        "text": "There's a sealed supply cache in the quarry's lower lane."
+      },
+      {
+        "speaker": "Jax",
+        "text": "Old enough that even Jora doesn't know what's inside."
+      },
+      {
+        "speaker": "Jax",
+        "text": "Help me crack it open."
+      },
+      {
+        "speaker": "Jax",
+        "text": "We split whatever survives the seal."
+      }
     ],
     "setQuestId": "scavenge_run",
     "setQuestStep": "find_cache"
@@ -1247,7 +2393,18 @@
     "requiredQuestId": "scavenge_run",
     "requiredQuestState": "find_cache",
     "lines": [
-      { "speaker": "Jax", "text": "Quarry lower lane, past the sluice. The cache has a triple-lock seal — your scanner can read the combination off the corrosion pattern." }
+      {
+        "speaker": "Jax",
+        "text": "Quarry lower lane, past the sluice."
+      },
+      {
+        "speaker": "Jax",
+        "text": "The cache uses a triple-lock seal."
+      },
+      {
+        "speaker": "Jax",
+        "text": "Your scanner should be able to read the combination from the corrosion pattern."
+      }
     ]
   },
   {
@@ -1257,20 +2414,45 @@
     "requiredQuestId": "scavenge_run",
     "requiredQuestState": "return_jax",
     "lines": [
-      { "speaker": "Jax", "text": "Pre-collapse salvage, barely touched by the weather. That's a solid find, partner. Consider this the start of something good." }
+      {
+        "speaker": "Jax",
+        "text": "Pre-collapse salvage."
+      },
+      {
+        "speaker": "Jax",
+        "text": "Barely touched by the weather, too."
+      },
+      {
+        "speaker": "Jax",
+        "text": "That's a good pull, partner."
+      },
+      {
+        "speaker": "Jax",
+        "text": "Let's call this the start of a profitable friendship."
+      }
     ],
     "completeQuestId": "scavenge_run",
     "rewardGold": 80,
     "rewardExperience": 65,
     "rewardPotions": 1
   },
-
   {
     "id": "kira_town_idle",
     "npcId": "kira_smith",
     "priority": 50,
     "lines": [
-      { "speaker": "Kira", "text": "The forge doesn't care about rank. It only cares about heat and patience. I've got plenty of both." }
+      {
+        "speaker": "Kira",
+        "text": "The forge doesn't care about rank."
+      },
+      {
+        "speaker": "Kira",
+        "text": "Only heat. Patience. And whether your hands shake when the metal starts to glow."
+      },
+      {
+        "speaker": "Kira",
+        "text": "Mine don't."
+      }
     ]
   },
   {
@@ -1280,7 +2462,18 @@
     "requiredQuestId": "forgefire_accord",
     "requiredQuestCompleted": true,
     "lines": [
-      { "speaker": "Kira", "text": "After the plateau accord, I finally had enough material to set up a proper Ironhaven smithy. If Master Silas needs heat work done right, he knows where I am." }
+      {
+        "speaker": "Kira",
+        "text": "After the plateau accord, I finally had enough good material to build a proper Ironhaven smithy."
+      },
+      {
+        "speaker": "Kira",
+        "text": "If Silas wants heat work done right, he knows where to find me."
+      },
+      {
+        "speaker": "Kira",
+        "text": "And if he doesn't ask nicely, I'll remind him."
+      }
     ]
   }
 ]

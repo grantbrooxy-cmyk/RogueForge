@@ -508,7 +508,7 @@
   <object id="31" name="verdant_fields_gate" x="360" y="248" width="72" height="72">
    <properties>
     <property name="label" value="Ironhaven Route" />
-    <property name="targetZone" value="verdant_fields" />
+    <property name="targetZone" value="town" />
     <property name="targetSpawn" value="from_dungeon" />
     <property name="lockMessage" value="A return route anchors the dungeon to the frontier for repeated challenge runs." />
    </properties>

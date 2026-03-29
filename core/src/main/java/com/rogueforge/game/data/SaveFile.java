@@ -21,20 +21,26 @@ public class SaveFile {
     private float playerY;
     private String currentZoneId;
     private long currencyBalance;
+    private long worldSeed;
     private int healingPotions;
     private int playerLevel;
     private int playerExperience;
+    private long unbankedCurrencyBalance;
     private Map<String, String> playerEquipment;
     private List<String> ownedEquipmentIds;
-    private Map<String, Boolean> questFlags;
     private Map<String, String> questStates;
     private Map<String, Integer> bestiaryScanLevels;
     private List<String> keyItems;
     private Map<String, Boolean> worldStateFlags;
     private Map<String, SettlementState> settlementUpgrades;
     private Map<String, Integer> forgeComponents;
+    private Map<String, Integer> unbankedForgeComponents;
     private Map<String, Integer> shardInventory;
+    private Map<String, Integer> unbankedShardInventory;
     private List<String> defeatedBossIds;
+    private List<String> harvestedFrontierFeatureIds;
+    private List<String> claimedFrontierBaseSiteIds;
+    private List<BaseStateData> baseStates;
 
     // Robot data: robotId -> Map of equipped items (slotType -> equipmentId)
     private Map<String, Map<String, String>> robotEquipment;
@@ -75,7 +81,6 @@ public class SaveFile {
         this.robotEquipment = new HashMap<>();
         this.playerEquipment = new HashMap<>();
         this.ownedEquipmentIds = new ArrayList<>();
-        this.questFlags = new HashMap<>();
         this.questStates = new HashMap<>();
         this.bestiaryScanLevels = new HashMap<>();
         this.keyItems = new ArrayList<>();
@@ -83,8 +88,13 @@ public class SaveFile {
         this.settlementUpgrades = new HashMap<>();
         this.robotProgressionStates = new HashMap<>();
         this.forgeComponents = new HashMap<>();
+        this.unbankedForgeComponents = new HashMap<>();
         this.shardInventory = new HashMap<>();
+        this.unbankedShardInventory = new HashMap<>();
         this.defeatedBossIds = new ArrayList<>();
+        this.harvestedFrontierFeatureIds = new ArrayList<>();
+        this.claimedFrontierBaseSiteIds = new ArrayList<>();
+        this.baseStates = new ArrayList<>();
     }
 
     public SaveFile(String playerName, int playerHp, int playerMaxHp, float playerX, float playerY,
@@ -103,7 +113,6 @@ public class SaveFile {
         this.robotEquipment = new HashMap<>();
         this.playerEquipment = new HashMap<>();
         this.ownedEquipmentIds = new ArrayList<>();
-        this.questFlags = new HashMap<>();
         this.questStates = new HashMap<>();
         this.bestiaryScanLevels = new HashMap<>();
         this.keyItems = new ArrayList<>();
@@ -111,8 +120,13 @@ public class SaveFile {
         this.settlementUpgrades = new HashMap<>();
         this.robotProgressionStates = new HashMap<>();
         this.forgeComponents = new HashMap<>();
+        this.unbankedForgeComponents = new HashMap<>();
         this.shardInventory = new HashMap<>();
+        this.unbankedShardInventory = new HashMap<>();
         this.defeatedBossIds = new ArrayList<>();
+        this.harvestedFrontierFeatureIds = new ArrayList<>();
+        this.claimedFrontierBaseSiteIds = new ArrayList<>();
+        this.baseStates = new ArrayList<>();
     }
 
     // Getters
@@ -148,6 +162,10 @@ public class SaveFile {
         return currencyBalance;
     }
 
+    public long getWorldSeed() {
+        return worldSeed;
+    }
+
     public int getHealingPotions() {
         return healingPotions;
     }
@@ -160,16 +178,16 @@ public class SaveFile {
         return playerExperience;
     }
 
+    public long getUnbankedCurrencyBalance() {
+        return Math.max(0L, unbankedCurrencyBalance);
+    }
+
     public Map<String, String> getPlayerEquipment() {
         return playerEquipment;
     }
 
     public List<String> getOwnedEquipmentIds() {
         return ownedEquipmentIds;
-    }
-
-    public Map<String, Boolean> getQuestFlags() {
-        return questFlags;
     }
 
     public Map<String, String> getQuestStates() {
@@ -211,11 +229,25 @@ public class SaveFile {
         return forgeComponents;
     }
 
+    public Map<String, Integer> getUnbankedForgeComponents() {
+        if (unbankedForgeComponents == null) {
+            unbankedForgeComponents = new HashMap<>();
+        }
+        return unbankedForgeComponents;
+    }
+
     public Map<String, Integer> getShardInventory() {
         if (shardInventory == null) {
             shardInventory = new HashMap<>();
         }
         return shardInventory;
+    }
+
+    public Map<String, Integer> getUnbankedShardInventory() {
+        if (unbankedShardInventory == null) {
+            unbankedShardInventory = new HashMap<>();
+        }
+        return unbankedShardInventory;
     }
 
     public List<String> getDefeatedBossIds() {
@@ -227,6 +259,27 @@ public class SaveFile {
 
     public Map<String, Map<String, String>> getRobotEquipment() {
         return robotEquipment;
+    }
+
+    public List<String> getHarvestedFrontierFeatureIds() {
+        if (harvestedFrontierFeatureIds == null) {
+            harvestedFrontierFeatureIds = new ArrayList<>();
+        }
+        return harvestedFrontierFeatureIds;
+    }
+
+    public List<String> getClaimedFrontierBaseSiteIds() {
+        if (claimedFrontierBaseSiteIds == null) {
+            claimedFrontierBaseSiteIds = new ArrayList<>();
+        }
+        return claimedFrontierBaseSiteIds;
+    }
+
+    public List<BaseStateData> getBaseStates() {
+        if (baseStates == null) {
+            baseStates = new ArrayList<>();
+        }
+        return baseStates;
     }
 
     public List<String> getCollectedRobotIds() {
@@ -329,6 +382,10 @@ public class SaveFile {
         this.currencyBalance = currencyBalance;
     }
 
+    public void setWorldSeed(long worldSeed) {
+        this.worldSeed = worldSeed;
+    }
+
     public void setHealingPotions(int healingPotions) {
         this.healingPotions = healingPotions;
     }
@@ -341,16 +398,16 @@ public class SaveFile {
         this.playerExperience = playerExperience;
     }
 
+    public void setUnbankedCurrencyBalance(long unbankedCurrencyBalance) {
+        this.unbankedCurrencyBalance = Math.max(0L, unbankedCurrencyBalance);
+    }
+
     public void setPlayerEquipment(Map<String, String> playerEquipment) {
         this.playerEquipment = playerEquipment;
     }
 
     public void setOwnedEquipmentIds(List<String> ownedEquipmentIds) {
         this.ownedEquipmentIds = ownedEquipmentIds;
-    }
-
-    public void setQuestFlags(Map<String, Boolean> questFlags) {
-        this.questFlags = questFlags;
     }
 
     public void setQuestStates(Map<String, String> questStates) {
@@ -377,12 +434,32 @@ public class SaveFile {
         this.forgeComponents = forgeComponents != null ? forgeComponents : new HashMap<>();
     }
 
+    public void setUnbankedForgeComponents(Map<String, Integer> unbankedForgeComponents) {
+        this.unbankedForgeComponents = unbankedForgeComponents != null ? unbankedForgeComponents : new HashMap<>();
+    }
+
     public void setShardInventory(Map<String, Integer> shardInventory) {
         this.shardInventory = shardInventory != null ? shardInventory : new HashMap<>();
     }
 
+    public void setUnbankedShardInventory(Map<String, Integer> unbankedShardInventory) {
+        this.unbankedShardInventory = unbankedShardInventory != null ? unbankedShardInventory : new HashMap<>();
+    }
+
     public void setDefeatedBossIds(List<String> defeatedBossIds) {
         this.defeatedBossIds = defeatedBossIds != null ? defeatedBossIds : new ArrayList<>();
+    }
+
+    public void setHarvestedFrontierFeatureIds(List<String> harvestedFrontierFeatureIds) {
+        this.harvestedFrontierFeatureIds = harvestedFrontierFeatureIds != null ? harvestedFrontierFeatureIds : new ArrayList<>();
+    }
+
+    public void setClaimedFrontierBaseSiteIds(List<String> claimedFrontierBaseSiteIds) {
+        this.claimedFrontierBaseSiteIds = claimedFrontierBaseSiteIds != null ? claimedFrontierBaseSiteIds : new ArrayList<>();
+    }
+
+    public void setBaseStates(List<BaseStateData> baseStates) {
+        this.baseStates = baseStates != null ? baseStates : new ArrayList<>();
     }
 
     public void setRobotEquipment(Map<String, Map<String, String>> robotEquipment) {
@@ -517,6 +594,7 @@ public class SaveFile {
         private float patrolTargetX;
         private float patrolTargetY;
         private int dungeonFloor;
+        private boolean raidSpawned;
 
         public EnemyState() {
         }
@@ -680,6 +758,14 @@ public class SaveFile {
         public void setDungeonFloor(int dungeonFloor) {
             this.dungeonFloor = Math.max(0, dungeonFloor);
         }
+
+        public boolean isRaidSpawned() {
+            return raidSpawned;
+        }
+
+        public void setRaidSpawned(boolean raidSpawned) {
+            this.raidSpawned = raidSpawned;
+        }
     }
 
     /**
@@ -724,6 +810,232 @@ public class SaveFile {
 
         public void setOpened(boolean opened) {
             this.opened = opened;
+        }
+    }
+
+    public static class BaseStateData {
+        private String zoneId;
+        private List<String> claimedSiteIds;
+        private List<PlacedStructureData> placedStructures;
+        private List<DefenderAssignmentData> defenderAssignments;
+        private Map<String, Float> defenderHealthByRobotId;
+        private boolean raidActive;
+        private float raidThreatLevel;
+        private float raidCooldownSeconds;
+        private int raidWaveIndex;
+
+        public BaseStateData() {
+            this.claimedSiteIds = new ArrayList<>();
+            this.placedStructures = new ArrayList<>();
+            this.defenderAssignments = new ArrayList<>();
+            this.defenderHealthByRobotId = new HashMap<>();
+        }
+
+        public String getZoneId() {
+            return zoneId;
+        }
+
+        public void setZoneId(String zoneId) {
+            this.zoneId = zoneId;
+        }
+
+        public List<String> getClaimedSiteIds() {
+            if (claimedSiteIds == null) {
+                claimedSiteIds = new ArrayList<>();
+            }
+            return claimedSiteIds;
+        }
+
+        public void setClaimedSiteIds(List<String> claimedSiteIds) {
+            this.claimedSiteIds = claimedSiteIds != null ? claimedSiteIds : new ArrayList<>();
+        }
+
+        public List<PlacedStructureData> getPlacedStructures() {
+            if (placedStructures == null) {
+                placedStructures = new ArrayList<>();
+            }
+            return placedStructures;
+        }
+
+        public void setPlacedStructures(List<PlacedStructureData> placedStructures) {
+            this.placedStructures = placedStructures != null ? placedStructures : new ArrayList<>();
+        }
+
+        public List<DefenderAssignmentData> getDefenderAssignments() {
+            if (defenderAssignments == null) {
+                defenderAssignments = new ArrayList<>();
+            }
+            return defenderAssignments;
+        }
+
+        public void setDefenderAssignments(List<DefenderAssignmentData> defenderAssignments) {
+            this.defenderAssignments = defenderAssignments != null ? defenderAssignments : new ArrayList<>();
+        }
+
+        public Map<String, Float> getDefenderHealthByRobotId() {
+            if (defenderHealthByRobotId == null) {
+                defenderHealthByRobotId = new HashMap<>();
+            }
+            return defenderHealthByRobotId;
+        }
+
+        public void setDefenderHealthByRobotId(Map<String, Float> defenderHealthByRobotId) {
+            this.defenderHealthByRobotId = defenderHealthByRobotId != null ? defenderHealthByRobotId : new HashMap<>();
+        }
+
+        public boolean isRaidActive() {
+            return raidActive;
+        }
+
+        public void setRaidActive(boolean raidActive) {
+            this.raidActive = raidActive;
+        }
+
+        public float getRaidThreatLevel() {
+            return raidThreatLevel;
+        }
+
+        public void setRaidThreatLevel(float raidThreatLevel) {
+            this.raidThreatLevel = raidThreatLevel;
+        }
+
+        public float getRaidCooldownSeconds() {
+            return raidCooldownSeconds;
+        }
+
+        public void setRaidCooldownSeconds(float raidCooldownSeconds) {
+            this.raidCooldownSeconds = raidCooldownSeconds;
+        }
+
+        public int getRaidWaveIndex() {
+            return raidWaveIndex;
+        }
+
+        public void setRaidWaveIndex(int raidWaveIndex) {
+            this.raidWaveIndex = raidWaveIndex;
+        }
+    }
+
+    public static class PlacedStructureData {
+        private String instanceId;
+        private String structureDefinitionId;
+        private String zoneId;
+        private String claimedSiteId;
+        private float x;
+        private float y;
+        private float width;
+        private float height;
+        private int currentHitPoints;
+        private boolean active = true;
+
+        public String getInstanceId() {
+            return instanceId;
+        }
+
+        public void setInstanceId(String instanceId) {
+            this.instanceId = instanceId;
+        }
+
+        public String getStructureDefinitionId() {
+            return structureDefinitionId;
+        }
+
+        public void setStructureDefinitionId(String structureDefinitionId) {
+            this.structureDefinitionId = structureDefinitionId;
+        }
+
+        public String getZoneId() {
+            return zoneId;
+        }
+
+        public void setZoneId(String zoneId) {
+            this.zoneId = zoneId;
+        }
+
+        public String getClaimedSiteId() {
+            return claimedSiteId;
+        }
+
+        public void setClaimedSiteId(String claimedSiteId) {
+            this.claimedSiteId = claimedSiteId;
+        }
+
+        public float getX() {
+            return x;
+        }
+
+        public void setX(float x) {
+            this.x = x;
+        }
+
+        public float getY() {
+            return y;
+        }
+
+        public void setY(float y) {
+            this.y = y;
+        }
+
+        public float getWidth() {
+            return width;
+        }
+
+        public void setWidth(float width) {
+            this.width = width;
+        }
+
+        public float getHeight() {
+            return height;
+        }
+
+        public void setHeight(float height) {
+            this.height = height;
+        }
+
+        public int getCurrentHitPoints() {
+            return currentHitPoints;
+        }
+
+        public void setCurrentHitPoints(int currentHitPoints) {
+            this.currentHitPoints = currentHitPoints;
+        }
+
+        public boolean isActive() {
+            return active;
+        }
+
+        public void setActive(boolean active) {
+            this.active = active;
+        }
+    }
+
+    public static class DefenderAssignmentData {
+        private String structureInstanceId;
+        private String robotId;
+        private String role;
+
+        public String getStructureInstanceId() {
+            return structureInstanceId;
+        }
+
+        public void setStructureInstanceId(String structureInstanceId) {
+            this.structureInstanceId = structureInstanceId;
+        }
+
+        public String getRobotId() {
+            return robotId;
+        }
+
+        public void setRobotId(String robotId) {
+            this.robotId = robotId;
+        }
+
+        public String getRole() {
+            return role;
+        }
+
+        public void setRole(String role) {
+            this.role = role;
         }
     }
 }

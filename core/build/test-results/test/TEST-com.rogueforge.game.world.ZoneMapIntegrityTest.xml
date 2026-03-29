@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.rogueforge.game.world.ZoneMapIntegrityTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-03-27T16:25:11" hostname="Grants-MacBook-Pro.local" time="0.06">
+<testsuite name="com.rogueforge.game.world.ZoneMapIntegrityTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-03-29T18:15:05" hostname="Grants-MacBook-Pro.local" time="0.055">
   <properties/>
-  <testcase name="everyZoneHasALoadableMapAndValidDoorTargets()" classname="com.rogueforge.game.world.ZoneMapIntegrityTest" time="0.06"/>
+  <testcase name="everyZoneHasALoadableMapAndValidDoorTargets()" classname="com.rogueforge.game.world.ZoneMapIntegrityTest" time="0.055"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

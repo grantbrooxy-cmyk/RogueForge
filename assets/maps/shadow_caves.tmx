@@ -521,7 +521,7 @@
     <property name="gold" value="45" />
     <property name="potions" value="1" />
     <property name="keyItemReward" value="luminous_shard" />
-    <property name="questFlag" value="quest_shard_found" />
+    <property name="completionWorldFlag" value="frontier.shard_cache_recovered" />
     <property name="message" value="Inside the cache, the Luminous Shard pulses with workshop energy." />
    </properties>
   </object>

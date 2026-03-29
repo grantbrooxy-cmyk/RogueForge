@@ -12,6 +12,11 @@ Use this document for:
 - robot and party design
 - system-level feature decomposition
 
+Companion document:
+
+- `docs/Run_World_Meta_Structure.md` for reset rules, extraction logic, outpost purpose, and the boundary between run progression, world persistence, and meta progression
+- `docs/State_Implementation_Guide.md` for code-facing storage rules covering save data, world flags, quest progression channels, and meta progression boundaries
+
 ## 2. System Overview
 
 RogueForge’s final design is built around six major system layers:

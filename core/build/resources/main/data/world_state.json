@@ -5,6 +5,8 @@
   { "id": "frontier.herbalist_brambles_cleared", "defaultValue": false },
   { "id": "frontier.boulder_path_cleared", "defaultValue": false },
   { "id": "frontier.cave_hidden_path_open", "defaultValue": false },
+  { "id": "frontier.shard_cache_recovered", "defaultValue": false },
+  { "id": "frontier.sun_core_recovered", "defaultValue": false },
   { "id": "recruit.medic_frame_found", "defaultValue": false },
   { "id": "recruit.medic_joined", "defaultValue": false },
   { "id": "recruit.artificer_joined", "defaultValue": false },

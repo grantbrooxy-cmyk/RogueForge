@@ -4,6 +4,7 @@ import com.rogueforge.game.core.GameState;
 import com.rogueforge.game.support.GdxTestSupport;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -37,9 +38,8 @@ class WorldSystemsIntegrationTest {
         QuestManager quests = new QuestManager();
         WorldStateManager world = new WorldStateManager();
 
-        state.setQuestFlag("quest_shard_started", true);
-        quests.initialize(state);
-        assertEquals("search_shard", quests.getQuestState(state, "shard_hunt"));
+        quests.startQuest(state, "shard_hunt");
+        assertEquals("talk_mira", quests.getQuestState(state, "shard_hunt"));
 
         quests.startQuest(state, "field_medic");
         assertEquals("speak_iris", quests.getQuestState(state, "field_medic"));
@@ -54,27 +54,76 @@ class WorldSystemsIntegrationTest {
     }
 
     @Test
+    void ironhavenArrivalSurveyCompletesAfterTalkingToTownNpcs() {
+        GameState state = new GameState("Tester");
+        QuestManager quests = new QuestManager();
+        WorldStateManager world = new WorldStateManager();
+
+        quests.initialize(state);
+        quests.setQuestStep(state, "ironhaven_arrival", "survey_town");
+
+        quests.recordNpcConversation(state, world, "verdant_fields", "mira");
+        quests.syncProgress(state, world);
+        assertEquals("survey_town", quests.getQuestState(state, "ironhaven_arrival"));
+
+        quests.recordNpcConversation(state, world, "verdant_fields", "tor");
+        quests.syncProgress(state, world);
+        assertEquals("survey_town", quests.getQuestState(state, "ironhaven_arrival"));
+
+        quests.recordNpcConversation(state, world, "verdant_fields", "edda_town");
+        quests.syncProgress(state, world);
+
+        assertTrue(world.isFlagActive(state, "arrival.town_surveyed"));
+        assertEquals("return_bram", quests.getQuestState(state, "ironhaven_arrival"));
+    }
+
+    @Test
     void dialogueSystemResolvesStatefulNpcDialogueFromRealData() {
         GameState state = new GameState("Tester");
         QuestManager quests = new QuestManager();
         WorldStateManager world = new WorldStateManager();
         DialogueSystem dialogue = new DialogueSystem();
+        world.setFlag(state, "arrival.first_battle_won", true);
 
         DialogueSystem.DialogueResult start = dialogue.resolve("mira", "verdant_fields", state, quests, world);
         assertNotNull(start);
-        assertTrue(start.text.contains("Workshop Pass"));
+        assertEquals("workshop_pass", start.addKeyItem);
+        String startPages = start.pages.stream().map(page -> page.text).collect(Collectors.joining(" "));
+        assertTrue(startPages.contains("Workshop Pass"));
 
         quests.startQuest(state, "shard_hunt");
         state.setQuestState("shard_hunt", "search_shard");
         DialogueSystem.DialogueResult mid = dialogue.resolve("mira", "verdant_fields", state, quests, world);
         assertNotNull(mid);
-        assertTrue(mid.text.contains("cave gate"));
+        String midPages = mid.pages.stream().map(page -> page.text).collect(Collectors.joining(" "));
+        assertTrue(midPages.contains("cave gate"));
 
         state.setQuestState("shard_hunt", "return_shard");
         DialogueSystem.DialogueResult turnIn = dialogue.resolve("mira", "verdant_fields", state, quests, world);
         assertEquals("peak_sigil", turnIn.addKeyItem);
         assertEquals("shard_hunt", turnIn.completeQuestId);
         assertEquals("frontier.peak_lift_unlocked", turnIn.setWorldFlag);
+    }
+
+    @Test
+    void miraFirstStepsReturnDoesNotResolveBeforeFrontierBattle() {
+        GameState state = new GameState("Tester");
+        QuestManager quests = new QuestManager();
+        WorldStateManager world = new WorldStateManager();
+        DialogueSystem dialogue = new DialogueSystem();
+
+        quests.startQuest(state, "first_steps");
+        quests.setQuestStep(state, "first_steps", "verdant_patrol");
+
+        DialogueSystem.DialogueResult beforeBattle = dialogue.resolve("mira", "verdant_fields", state, quests, world);
+        if (beforeBattle != null) {
+            assertFalse(beforeBattle.text.contains("Back in one piece"));
+        }
+
+        world.setFlag(state, "arrival.first_battle_won", true);
+        DialogueSystem.DialogueResult afterBattle = dialogue.resolve("mira", "verdant_fields", state, quests, world);
+        assertNotNull(afterBattle);
+        assertTrue(afterBattle.text.contains("Back in one piece"));
     }
 
     @Test

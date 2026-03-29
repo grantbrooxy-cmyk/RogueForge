@@ -1,5 +1,5 @@
 {
-    "activeFile": "verdant_fields_v2.tmx",
+    "activeFile": "coastal_shallows.tmx",
     "expandedProjectPaths": [
         "."
     ],
@@ -85,58 +85,58 @@
         },
         "abyssal_rift.tmx": {
             "scale": 0.7052430555555556,
-            "selectedLayer": 0,
+            "selectedLayer": 7,
             "viewCenter": {
-                "x": 1008.1630643493675,
-                "y": 720.3190389444144
+                "x": 830.9192063413914,
+                "y": 591.2855103146079
             }
         },
         "clockwork_sanctum.tmx": {
             "scale": 0.7052430555555556,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 1008.1630643493675,
-                "y": 720.3190389444144
+                "x": 733.0805967209886,
+                "y": 618.2265767318203
             }
         },
         "coastal_shallows.tmx": {
             "scale": 0.7556175595238095,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 959.4800846831765,
-                "y": 672.2977696814535
+                "x": 702.7364482300231,
+                "y": 577.0114716163655
             }
         },
         "crystal_depths.tmx": {
             "scale": 0.7052430555555556,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 1008.1630643493675,
-                "y": 720.3190389444144
+                "x": 733.0805967209886,
+                "y": 618.2265767318203
             }
         },
         "dragon_peak.tmx": {
             "scale": 0.7052430555555556,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 1008.1630643493675,
-                "y": 720.3190389444144
+                "x": 733.0805967209886,
+                "y": 618.2265767318203
             }
         },
         "frozen_vale.tmx": {
             "scale": 0.7052430555555556,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 1008.1630643493675,
-                "y": 720.3190389444144
+                "x": 733.0805967209886,
+                "y": 618.2265767318203
             }
         },
         "infinite_dungeon.tmx": {
             "scale": 0.7556175595238095,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 959.4800846831765,
-                "y": 672.2977696814535
+                "x": 702.7364482300231,
+                "y": 577.0114716163655
             }
         },
         "objects.tsx": {
@@ -147,48 +147,48 @@
             "scale": 0.7556175595238095,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 959.4800846831765,
-                "y": 672.2977696814535
+                "x": 702.7364482300231,
+                "y": 577.0114716163655
             }
         },
         "scorched_plateau.tmx": {
             "scale": 0.7052430555555556,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 1008.1630643493675,
-                "y": 720.3190389444144
+                "x": 733.0805967209886,
+                "y": 618.2265767318203
             }
         },
         "shadow_caves.tmx": {
             "scale": 0.7556175595238095,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 959.4800846831765,
-                "y": 672.2977696814535
+                "x": 702.7364482300231,
+                "y": 577.0114716163655
             }
         },
         "sky_fortress.tmx": {
             "scale": 0.7052430555555556,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 1008.1630643493675,
-                "y": 720.3190389444144
+                "x": 733.0805967209886,
+                "y": 618.2265767318203
             }
         },
         "sunken_abyss.tmx": {
             "scale": 0.7556175595238095,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 959.4800846831765,
-                "y": 672.2977696814535
+                "x": 702.7364482300231,
+                "y": 577.0114716163655
             }
         },
         "the_void.tmx": {
             "scale": 0.7052430555555556,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 1008.1630643493675,
-                "y": 720.3190389444144
+                "x": 733.0805967209886,
+                "y": 618.2265767318203
             }
         },
         "tileset.tsx": {
@@ -200,8 +200,8 @@
             "scale": 0.72,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 1075,
-                "y": 672.2222222222222
+                "x": 805.5555555555555,
+                "y": 572.2222222222222
             }
         },
         "verdant_fields_v2.tmx": {
@@ -211,19 +211,27 @@
             "scale": 2,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 469,
-                "y": 396
+                "x": 372,
+                "y": 360
             }
         },
         "verdant_fields_v2.tmx#Objects": {
             "scaleInDock": 1
         },
+        "volcanic_core.tmx": {
+            "scale": 0.7052430555555556,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 733.0805967209886,
+                "y": 618.2265767318203
+            }
+        },
         "whispering_forest.tmx": {
             "scale": 0.72,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 960.4166666666666,
-                "y": 672.2222222222222
+                "x": 690.2777777777777,
+                "y": 572.2222222222222
             }
         }
     },
@@ -235,38 +243,25 @@
     "map.tileWidth": 16,
     "map.width": 120,
     "openFiles": [
-        "verdant_fields_v2.tmx",
-        "tileset.tsx",
-        "/Users/grantbrooks/Documents/GitHub/RogueForge/assets/5Tiled_files/Dungeon Tileset.tmx",
         "abyssal_rift.tmx",
-        "clockwork_sanctum.tmx",
-        "coastal_shallows.tmx",
         "crystal_depths.tmx",
-        "dragon_peak.tmx",
-        "frozen_vale.tmx",
-        "infinite_dungeon.tmx",
-        "rusty_quarry.tmx",
-        "scorched_plateau.tmx",
-        "shadow_caves.tmx",
-        "sky_fortress.tmx",
-        "sunken_abyss.tmx",
-        "the_void.tmx"
+        "coastal_shallows.tmx"
     ],
     "project": "untitled.tiled-project",
     "property.type": "float",
     "recentFiles": [
-        "/Users/grantbrooks/Documents/GitHub/RogueForge/assets/5Tiled_files/Dungeon Tileset.tmx",
-        "tileset.tsx",
-        "verdant_fields_v2.tmx",
+        "abyssal_rift.tmx",
+        "crystal_depths.tmx",
+        "coastal_shallows.tmx",
+        "whispering_forest.tmx",
+        "volcanic_core.tmx",
+        "verdant_fields.tmx",
         "the_void.tmx",
         "sunken_abyss.tmx",
         "sky_fortress.tmx",
         "shadow_caves.tmx",
         "scorched_plateau.tmx",
-        "rusty_quarry.tmx",
-        "infinite_dungeon.tmx",
-        "frozen_vale.tmx",
-        "dragon_peak.tmx"
+        "rusty_quarry.tmx"
     ],
     "tileset.lastUsedFilter": "Tiled tileset files (*.tsx *.xml)",
     "tileset.lastUsedFormat": "tsx",

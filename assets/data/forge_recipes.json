@@ -1,9 +1,9 @@
 [
   {
     "id": "hunter_blade_recipe",
-    "name": "Hunter Blade",
-    "category": "Player Weapon",
-    "description": "A forged sword built from frontier salvage. Reliable and fast enough for the player or any sword unit.",
+    "name": "Huntsman's Saber",
+    "category": "Frontier Weapon",
+    "description": "A forged saber built from frontier salvage. Reliable, balanced, and made for a hunter on the move.",
     "resultEquipmentId": "hunter_blade",
     "goldCost": 120,
     "shardGrade": "G",
@@ -106,9 +106,9 @@
   },
   {
     "id": "drakescale_frame_recipe",
-    "name": "Drakescale Frame",
-    "category": "Elite Parts",
-    "description": "An advanced frame lined with draconic heat shielding.",
+    "name": "Dragonscale Mail",
+    "category": "Frontier Armor",
+    "description": "A battle coat lined with draconic scales, built to turn aside heat and heavy blows.",
     "resultEquipmentId": "drakescale_frame",
     "goldCost": 320,
     "shardGrade": "D",
