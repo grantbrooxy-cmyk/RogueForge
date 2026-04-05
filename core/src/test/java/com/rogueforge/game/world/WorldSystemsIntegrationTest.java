@@ -1,7 +1,10 @@
 package com.rogueforge.game.world;
 
 import com.rogueforge.game.core.GameState;
+import com.rogueforge.game.data.StoryEventDefinition;
 import com.rogueforge.game.support.GdxTestSupport;
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.utils.Json;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -84,12 +87,21 @@ class WorldSystemsIntegrationTest {
         WorldStateManager world = new WorldStateManager();
         DialogueSystem dialogue = new DialogueSystem();
         world.setFlag(state, "arrival.first_battle_won", true);
+        world.setFlag(state, "tutorial.frontier_outpost_claimed", true);
+        world.setFlag(state, "tutorial.frontier_storage_built", true);
+        world.setFlag(state, "tutorial.frontier_outpost_banked", true);
+        quests.startQuest(state, "frontier_foothold");
+        quests.syncProgress(state, world);
+        quests.syncProgress(state, world);
+        quests.syncProgress(state, world);
 
         DialogueSystem.DialogueResult start = dialogue.resolve("mira", "verdant_fields", state, quests, world);
         assertNotNull(start);
         assertEquals("workshop_pass", start.addKeyItem);
         String startPages = start.pages.stream().map(page -> page.text).collect(Collectors.joining(" "));
         assertTrue(startPages.contains("Workshop Pass"));
+        assertTrue(startPages.contains("Shadow Caves"));
+        world.setFlag(state, "access.workshop_pass", true);
 
         quests.startQuest(state, "shard_hunt");
         state.setQuestState("shard_hunt", "search_shard");
@@ -127,6 +139,77 @@ class WorldSystemsIntegrationTest {
     }
 
     @Test
+    void bramFrontierAnnexDebriefResolvesAfterShadowCavesSettlementExpansion() {
+        GameState state = new GameState("Tester");
+        QuestManager quests = new QuestManager();
+        WorldStateManager world = new WorldStateManager();
+        DialogueSystem dialogue = new DialogueSystem();
+
+        world.setFlag(state, "settlement.frontier_annex", true);
+
+        DialogueSystem.DialogueResult result = dialogue.resolve("bram", "town", state, quests, world);
+        assertNotNull(result);
+        String pages = result.pages.stream().map(page -> page.text).collect(Collectors.joining(" "));
+        assertTrue(pages.contains("east gate road"));
+        assertEquals("event.bram_frontier_annex_briefed", result.setWorldFlag);
+    }
+
+    @Test
+    void annexResupplyQuestAdvancesWhenDepotResupplyFlagIsSet() {
+        GameState state = new GameState("Tester");
+        QuestManager quests = new QuestManager();
+        WorldStateManager world = new WorldStateManager();
+
+        quests.startQuest(state, "annex_resupply");
+        quests.setQuestStep(state, "annex_resupply", "bank_supply");
+        world.setFlag(state, "event.frontier_annex_resupplied", true);
+        quests.syncProgress(state, world);
+
+        assertEquals("return_hale", quests.getQuestState(state, "annex_resupply"));
+    }
+
+    @Test
+    void forgeCoreRisingDialogueChainHandsOffAcrossActTwoTownSpecialists() {
+        GameState state = new GameState("Tester");
+        QuestManager quests = new QuestManager();
+        WorldStateManager world = new WorldStateManager();
+        DialogueSystem dialogue = new DialogueSystem();
+
+        world.setFlag(state, "event.forge_core_lv2_online", true);
+
+        DialogueSystem.DialogueResult bramStart = dialogue.resolve("bram", "town", state, quests, world);
+        assertNotNull(bramStart);
+        assertEquals("forge_core_rising", bramStart.setQuestId);
+        assertEquals("meet_silas", bramStart.setQuestStep);
+        assertEquals("event.act2_core_briefed", bramStart.setWorldFlag);
+
+        quests.startQuest(state, bramStart.setQuestId);
+        quests.setQuestStep(state, bramStart.setQuestId, bramStart.setQuestStep);
+        world.setFlag(state, bramStart.setWorldFlag, true);
+
+        DialogueSystem.DialogueResult silas = dialogue.resolve("master_silas", "town", state, quests, world);
+        assertNotNull(silas);
+        assertEquals("meet_rex", silas.setQuestStep);
+        assertEquals("event.act2_met_silas", silas.setWorldFlag);
+
+        quests.setQuestStep(state, "forge_core_rising", silas.setQuestStep);
+        world.setFlag(state, silas.setWorldFlag, true);
+
+        DialogueSystem.DialogueResult rex = dialogue.resolve("commander_rex", "town", state, quests, world);
+        assertNotNull(rex);
+        assertEquals("meet_cogs", rex.setQuestStep);
+        assertEquals("event.act2_met_rex", rex.setWorldFlag);
+
+        quests.setQuestStep(state, "forge_core_rising", rex.setQuestStep);
+        world.setFlag(state, rex.setWorldFlag, true);
+
+        DialogueSystem.DialogueResult cogs = dialogue.resolve("professor_cogs", "town", state, quests, world);
+        assertNotNull(cogs);
+        assertEquals("return_bram", cogs.setQuestStep);
+        assertEquals("event.act2_met_cogs", cogs.setWorldFlag);
+    }
+
+    @Test
     void recruitmentAndSettlementManagersLoadAndApplyRealDefinitions() {
         RobotRecruitmentManager recruitment = new RobotRecruitmentManager();
         SettlementManager settlements = new SettlementManager();
@@ -148,6 +231,54 @@ class WorldSystemsIntegrationTest {
         assertEquals(3, active.size());
 
         assertNotNull(settlements.get("workshop_tools"));
+        assertNotNull(settlements.get("frontier_annex"));
         assertTrue(settlements.getAll().size() >= 4);
+        assertEquals("settlement_plan", settlements.get("data_vaults").getRequiredBlueprintFragmentId());
+        assertEquals(3, settlements.get("data_vaults").getRequiredBlueprintFragmentCount());
+        assertEquals("forge_schema", settlements.get("prototype_lab").getRequiredBlueprintFragmentId());
+        assertEquals(4, settlements.get("prototype_lab").getRequiredBlueprintFragmentCount());
+    }
+
+    @Test
+    void mk2RecruitmentConsumesBlueprintFragmentsWhenAppliedToLiveState() {
+        RobotRecruitmentManager recruitment = new RobotRecruitmentManager();
+        GameState state = new GameState("Tester");
+        List<String> collected = new ArrayList<>(List.of("rust_mk1", "ivy_mk1"));
+        List<String> active = new ArrayList<>(List.of("rust_mk1", "ivy_mk1", "bolt_mk1"));
+
+        RobotRecruitmentManager.RecruitmentResult blocked = recruitment.apply("scout_mk2_join", collected, active, state);
+        assertNotNull(blocked);
+        assertTrue(blocked.blocked);
+        assertEquals("bot_chassis_schema", blocked.requiredBlueprintFragmentId);
+        assertEquals(2, blocked.requiredBlueprintFragmentCount);
+
+        state.addBlueprintFragment("bot_chassis_schema", 2);
+        RobotRecruitmentManager.RecruitmentResult success = recruitment.apply("scout_mk2_join", collected, active, state);
+        assertNotNull(success);
+        assertFalse(success.blocked);
+        assertTrue(collected.contains("scout_mk2"));
+        assertEquals(0, state.getBlueprintFragmentCount("bot_chassis_schema"));
+    }
+
+    @Test
+    void shadowCavesBossStoryEventUnlocksFrontierAnnex() {
+        StoryEventDefinition[] events = new Json().fromJson(
+            StoryEventDefinition[].class,
+            Gdx.files.internal("data/story_events.json").readString()
+        );
+
+        assertNotNull(events);
+        StoryEventDefinition match = null;
+        for (StoryEventDefinition event : events) {
+            if (event != null && "rusted_sovereign_c".equals(event.getTriggerId())) {
+                match = event;
+                break;
+            }
+        }
+
+        assertNotNull(match);
+        assertEquals("BOSS_DEFEAT", match.getTriggerType());
+        assertEquals("frontier_annex", match.getSettlementUpgradeId());
+        assertEquals("frontier.shadow_caves_secured", match.getOnceFlag());
     }
 }

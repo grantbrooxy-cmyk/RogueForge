@@ -1,5 +1,16 @@
 [
   {
+    "id": "frontier_annex",
+    "name": "Frontier Annex",
+    "facility": "frontier",
+    "tier": 1,
+    "type": "infrastructure",
+    "description": "Open a proper east-gate annex so salvage crews, route clerks, and depot stock can support deeper frontier pushes.",
+    "rewardEquipmentId": "",
+    "rewardPotions": 2,
+    "rewardGold": 120
+  },
+  {
     "id": "workshop_tools",
     "name": "Workshop Tools",
     "facility": "workshop",
@@ -122,6 +133,8 @@
     "tier": 2,
     "type": "research",
     "requiredUpgradeId": "survey_drones",
+    "requiredBlueprintFragmentId": "settlement_plan",
+    "requiredBlueprintFragmentCount": 3,
     "description": "Build indexed data vaults to convert drone survey noise into usable intelligence.",
     "rewardEquipmentId": "oracle_prism",
     "rewardPotions": 0,
@@ -134,6 +147,8 @@
     "tier": 3,
     "type": "research",
     "requiredUpgradeId": "data_vaults",
+    "requiredBlueprintFragmentId": "forge_schema",
+    "requiredBlueprintFragmentCount": 4,
     "description": "Open a prototype lab to reach the design space hidden in pre-collapse foundry data.",
     "rewardEquipmentId": "vanguard_frame",
     "rewardPotions": 0,

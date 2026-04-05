@@ -60,6 +60,7 @@ class FrontierZoneGeneratorTest {
 
         boolean foundResourceNode = false;
         boolean foundBaseSite = false;
+        boolean foundLandmarkPrefab = false;
         com.badlogic.gdx.math.Rectangle starterCorridor = new com.badlogic.gdx.math.Rectangle(
             generated.safeCenter.x + generated.safeRadius - generated.tileWidth,
             generated.safeCenter.y - generated.tileHeight * 3.5f,
@@ -102,10 +103,24 @@ class FrontierZoneGeneratorTest {
                     "Base claim sites should avoid hostile or waterlogged terrain."
                 );
             }
+            if ("landmark_prefab".equals(feature.kind)) {
+                foundLandmarkPrefab = true;
+                assertNotNull(feature.prefabId);
+                assertNotNull(feature.prefabCategory);
+                assertNotNull(feature.biomeId);
+                assertNotNull(feature.biomeObjectAssetFolder);
+                Vector2 center = new Vector2(feature.bounds.x + feature.bounds.width * 0.5f, feature.bounds.y + feature.bounds.height * 0.5f);
+                assertFalse(generated.isSafeAt(center), "Prefab landmarks should stay outside the starter safe zone.");
+                assertFalse(feature.bounds.overlaps(starterCorridor), "Starter east corridor should stay clear of large injected landmarks.");
+                FrontierTerrainSampler.TerrainType terrainType = terrainSampler.sampleWorld(center.x, center.y, generated.tileWidth, generated.tileHeight).type;
+                assertEquals(terrainType.name(), feature.terrainType);
+                assertEquals(biomeCatalog.resolve(terrainType).getId(), feature.biomeId);
+            }
         }
 
         assertTrue(foundResourceNode, "Expected procedural resource nodes in the frontier.");
         assertTrue(foundBaseSite, "Expected future base claim sites in the frontier.");
+        assertTrue(foundLandmarkPrefab, "Expected seeded landmark prefabs in the frontier.");
     }
 
     @Test

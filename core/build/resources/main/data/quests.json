@@ -2,7 +2,7 @@
   {
     "id": "ironhaven_arrival",
     "title": "Ironhaven",
-    "act": 1,
+    "act": 0,
     "mainQuest": true,
     "autoStart": true,
     "startStepId": "meet_bram",
@@ -15,7 +15,7 @@
   {
     "id": "first_steps",
     "title": "First Steps",
-    "act": 1,
+    "act": 0,
     "mainQuest": true,
     "autoStart": false,
     "startStepId": "speak_mira_intro",
@@ -36,6 +36,20 @@
       { "id": "talk_mira", "objective": "Speak with Mira in Verdant Fields." },
       { "id": "search_shard", "objective": "Search Shadow Caves for the Luminous Shard.", "completionKeyItem": "luminous_shard" },
       { "id": "return_shard", "objective": "Return the Luminous Shard to Mira." }
+    ]
+  },
+  {
+    "id": "frontier_foothold",
+    "title": "Frontier Foothold",
+    "act": 1,
+    "category": "frontier",
+    "mainQuest": false,
+    "autoStart": false,
+    "startStepId": "claim_site",
+    "steps": [
+      { "id": "claim_site", "objective": "Claim an outpost site in Verdant Fields.", "completionWorldFlag": "tutorial.frontier_outpost_claimed" },
+      { "id": "build_storage", "objective": "Build a storage crate at your claimed outpost.", "completionWorldFlag": "tutorial.frontier_storage_built" },
+      { "id": "bank_at_outpost", "objective": "Bank frontier haul at your outpost storage.", "completionWorldFlag": "tutorial.frontier_outpost_banked" }
     ]
   },
   {
@@ -62,6 +76,22 @@
       { "id": "speak_bram_expand", "objective": "Speak with Bram about expanding beyond the mountain now that the warding pylons are online." },
       { "id": "chart_midlands", "objective": "Reach and survive one of the mid-frontier zones beyond Dragon Peak.", "completionWorldFlag": "frontier.midlands_charted" },
       { "id": "return_bram_expand", "objective": "Return to Bram with news of the frontier beyond the mountain." }
+    ]
+  },
+  {
+    "id": "forge_core_rising",
+    "title": "Forge Core Rising",
+    "act": 2,
+    "category": "settlement",
+    "mainQuest": false,
+    "autoStart": false,
+    "startStepId": "speak_bram",
+    "steps": [
+      { "id": "speak_bram", "objective": "Speak with Bram after Forge Core Lv2 comes online." },
+      { "id": "meet_silas", "objective": "Meet Master Silas at the workshop yard.", "completionWorldFlag": "event.act2_met_silas" },
+      { "id": "meet_rex", "objective": "Meet Commander Rex at the new training ground.", "completionWorldFlag": "event.act2_met_rex" },
+      { "id": "meet_cogs", "objective": "Meet Professor Cogs at the archive desk.", "completionWorldFlag": "event.act2_met_cogs" },
+      { "id": "return_bram", "objective": "Return to Bram once Ironhaven's new command staff are in place." }
     ]
   },
   {
@@ -156,12 +186,13 @@
     "id": "workshop_tools",
     "title": "Workshop Tools",
     "category": "settlement",
+    "act": 0,
     "mainQuest": false,
     "autoStart": false,
     "startStepId": "speak_toma",
     "steps": [
-      { "id": "speak_toma", "objective": "Help Toma restore the workshop line after the shard is returned." },
-      { "id": "upgrade_workshop", "objective": "Secure the workshop tool upgrade.", "completionWorldFlag": "settlement.workshop_tools" }
+      { "id": "speak_toma", "objective": "Bring your first banked salvage to Toma at the workshop." },
+      { "id": "upgrade_workshop", "objective": "Open the restored tool crate beside the workshop.", "completionWorldFlag": "settlement.workshop_tools" }
     ]
   },
   {
@@ -175,6 +206,20 @@
       { "id": "speak_bram", "objective": "Speak with Bram about relighting the town watchtower." },
       { "id": "report_tor", "objective": "Carry Bram's repair notes to Tor." },
       { "id": "return_bram", "objective": "Return to Bram so the watchtower can come online.", "completionWorldFlag": "settlement.watchtower_network" }
+    ]
+  },
+  {
+    "id": "annex_resupply",
+    "title": "Annex Resupply",
+    "category": "settlement",
+    "act": 1,
+    "mainQuest": false,
+    "autoStart": false,
+    "startStepId": "speak_hale",
+    "steps": [
+      { "id": "speak_hale", "objective": "Speak with Hale at the new Frontier Depot." },
+      { "id": "bank_supply", "objective": "Bring back a live frontier haul and bank it through Ironhaven's frontier annex.", "completionWorldFlag": "event.frontier_annex_resupplied" },
+      { "id": "return_hale", "objective": "Report back to Hale once the depot has handled a fresh frontier resupply." }
     ]
   },
   {
@@ -247,7 +292,7 @@
     "startStepId": "speak_cogs_vaults",
     "steps": [
       { "id": "speak_cogs_vaults", "objective": "Ask Professor Cogs about indexing the drone survey data." },
-      { "id": "build_vaults", "objective": "Fund the data vault construction.", "completionWorldFlag": "settlement.data_vaults" }
+      { "id": "build_vaults", "objective": "Deliver 3 Settlement Plan Fragments to open the data vault construction.", "completionWorldFlag": "settlement.data_vaults" }
     ]
   },
   {
@@ -259,7 +304,7 @@
     "startStepId": "speak_cogs_lab",
     "steps": [
       { "id": "speak_cogs_lab", "objective": "Ask Professor Cogs about opening a frontier prototype lab." },
-      { "id": "build_lab", "objective": "Fund the prototype lab.", "completionWorldFlag": "settlement.prototype_lab" }
+      { "id": "build_lab", "objective": "Deliver 4 Forge Schema Fragments to open the prototype lab.", "completionWorldFlag": "settlement.prototype_lab" }
     ]
   },
   {

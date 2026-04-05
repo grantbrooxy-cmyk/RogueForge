@@ -1,8 +1,11 @@
 package com.rogueforge.game.engine.base;
 
 import com.badlogic.gdx.math.Rectangle;
+import com.rogueforge.game.engine.social.OwnershipRecord;
+import com.rogueforge.game.engine.social.OwnershipScope;
 import com.rogueforge.game.engine.world.FrontierTerrainSampler;
 import com.rogueforge.game.engine.world.TmxWorldLoader;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -156,6 +159,34 @@ class BaseBuildingEngineTest {
         StructureDefinition definition = engine.getStructureRegistry().get("sentry_post");
         assertEquals(40, engine.repairStructure(post, definition, 40));
         assertEquals(180, post.getCurrentHitPoints());
+    }
+
+    @Test
+    void claimedSiteAndStructureOwnershipPersistInsideBaseState() {
+        BaseBuildingEngine engine = new BaseBuildingEngine();
+        BaseState baseState = new BaseState("verdant_fields");
+        OwnershipRecord owner = new OwnershipRecord(OwnershipScope.PERSONAL, "Grant", "", "", false, Set.of());
+        baseState.claimSite("site_alpha", owner);
+        TmxWorldLoader.LoadedZone zone = buildZone();
+        FrontierTerrainSampler sampler = new FrontierTerrainSampler(424242L);
+
+        float[] buildSpot = findValidPlacement(engine, "supply_crate", baseState, zone, sampler, SITE_BOUNDS);
+        assertNotNull(buildSpot);
+
+        PlacedStructure crate = engine.placeStructure(
+            "supply_crate",
+            baseState,
+            zone,
+            sampler,
+            "site_alpha",
+            buildSpot[0],
+            buildSpot[1]
+        );
+
+        assertNotNull(crate);
+        baseState.setStructureOwnership(crate.getInstanceId(), owner);
+        assertEquals("Grant", baseState.getClaimedSiteOwnership("site_alpha").getOwnerPlayerId());
+        assertEquals("Grant", baseState.getStructureOwnership(crate.getInstanceId()).getOwnerPlayerId());
     }
 
     private TmxWorldLoader.LoadedZone buildZone() {

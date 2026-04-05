@@ -60,9 +60,11 @@ public class GameState {
     private final Map<String, RobotProgressionState> robotProgressionStates = new HashMap<>();
     private final Map<String, Integer> forgeComponents = new HashMap<>();
     private final Map<String, Integer> shardInventory = new HashMap<>();
+    private final Map<String, Integer> blueprintFragments = new HashMap<>();
     private long unbankedGold = 0;
     private final Map<String, Integer> unbankedForgeComponents = new HashMap<>();
     private final Map<String, Integer> unbankedShards = new HashMap<>();
+    private final Map<String, Integer> unbankedBlueprintFragments = new HashMap<>();
 
     // Forge Core level (1 = base, 2/3/4 unlocked by boss milestones)
     // Gates robot evolution tiers: Tier 2 requires Lv2, Tier 3 requires Lv3.
@@ -472,6 +474,81 @@ public class GameState {
             return false;
         }
         addShard(grade, -amount);
+        return true;
+    }
+
+    public Map<String, Integer> getBlueprintFragments() {
+        return new HashMap<>(blueprintFragments);
+    }
+
+    public void setBlueprintFragments(Map<String, Integer> fragments) {
+        blueprintFragments.clear();
+        if (fragments == null) {
+            return;
+        }
+        for (Map.Entry<String, Integer> entry : fragments.entrySet()) {
+            if (entry.getKey() != null && !entry.getKey().isEmpty() && entry.getValue() != null && entry.getValue() > 0) {
+                blueprintFragments.put(entry.getKey(), entry.getValue());
+            }
+        }
+    }
+
+    public int getBlueprintFragmentCount(String fragmentId) {
+        return blueprintFragments.getOrDefault(fragmentId, 0);
+    }
+
+    public void addBlueprintFragment(String fragmentId, int amount) {
+        if (fragmentId == null || fragmentId.isEmpty() || amount == 0) {
+            return;
+        }
+        blueprintFragments.put(fragmentId, Math.max(0, blueprintFragments.getOrDefault(fragmentId, 0) + amount));
+        if (blueprintFragments.get(fragmentId) <= 0) {
+            blueprintFragments.remove(fragmentId);
+        }
+    }
+
+    public Map<String, Integer> getUnbankedBlueprintFragments() {
+        return new HashMap<>(unbankedBlueprintFragments);
+    }
+
+    public void setUnbankedBlueprintFragments(Map<String, Integer> fragments) {
+        unbankedBlueprintFragments.clear();
+        if (fragments == null) {
+            return;
+        }
+        for (Map.Entry<String, Integer> entry : fragments.entrySet()) {
+            if (entry.getKey() != null && !entry.getKey().isEmpty() && entry.getValue() != null && entry.getValue() > 0) {
+                unbankedBlueprintFragments.put(entry.getKey(), entry.getValue());
+            }
+        }
+    }
+
+    public int getUnbankedBlueprintFragmentCount(String fragmentId) {
+        return unbankedBlueprintFragments.getOrDefault(fragmentId, 0);
+    }
+
+    public void addUnbankedBlueprintFragment(String fragmentId, int amount) {
+        if (fragmentId == null || fragmentId.isEmpty() || amount == 0) {
+            return;
+        }
+        unbankedBlueprintFragments.put(fragmentId, Math.max(0, unbankedBlueprintFragments.getOrDefault(fragmentId, 0) + amount));
+        if (unbankedBlueprintFragments.get(fragmentId) <= 0) {
+            unbankedBlueprintFragments.remove(fragmentId);
+        }
+    }
+
+    public void clearUnbankedBlueprintFragments() {
+        unbankedBlueprintFragments.clear();
+    }
+
+    public boolean consumeBlueprintFragments(String fragmentId, int amount) {
+        if (amount <= 0) {
+            return true;
+        }
+        if (getBlueprintFragmentCount(fragmentId) < amount) {
+            return false;
+        }
+        addBlueprintFragment(fragmentId, -amount);
         return true;
     }
 

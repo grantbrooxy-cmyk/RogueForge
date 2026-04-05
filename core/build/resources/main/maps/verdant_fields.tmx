@@ -557,7 +557,8 @@
     <property name="targetZone" value="shadow_caves" />
     <property name="targetSpawn" value="cave_entry" />
     <property name="keyItem" value="workshop_pass" />
-    <property name="lockMessage" value="Mira's workshop pass should unlock the cave gate." />
+    <property name="requiredWorldFlag" value="tutorial.frontier_outpost_banked" />
+    <property name="lockMessage" value="Mira's pass will open the cave gate, but first you need to learn how to hold the frontier. Claim an outpost and bank one haul there before you push into Shadow Caves." />
    </properties>
   </object>
   <object id="26" name="dragon_peak_lift" x="1208" y="358" width="72" height="72">

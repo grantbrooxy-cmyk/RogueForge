@@ -141,6 +141,12 @@ class GameStateTest {
         assertEquals(1, gameState.getShardCount("C"));
         assertFalse(gameState.consumeShards("C", 2));
         assertEquals(1, gameState.getShardCount("C"));
+
+        gameState.setBlueprintFragments(Map.of("forge_schema", 4));
+        assertTrue(gameState.consumeBlueprintFragments("forge_schema", 3));
+        assertEquals(1, gameState.getBlueprintFragmentCount("forge_schema"));
+        assertFalse(gameState.consumeBlueprintFragments("forge_schema", 2));
+        assertEquals(1, gameState.getBlueprintFragmentCount("forge_schema"));
     }
 
     @Test
@@ -212,9 +218,11 @@ class GameStateTest {
         gameState.addGold(120);
         gameState.addForgeComponent("bone_fiber", 3);
         gameState.addShard("C", 1);
+        gameState.addBlueprintFragment("forge_schema", 2);
         gameState.addUnbankedGold(45);
         gameState.addUnbankedForgeComponent("bone_fiber", 2);
         gameState.addUnbankedShard("B", 1);
+        gameState.addUnbankedBlueprintFragment("bot_chassis_schema", 1);
 
         assertEquals(120, gameState.getTotalGold());
         assertEquals(45, gameState.getUnbankedGold());
@@ -222,13 +230,17 @@ class GameStateTest {
         assertEquals(2, gameState.getUnbankedForgeComponentCount("bone_fiber"));
         assertEquals(1, gameState.getShardCount("C"));
         assertEquals(1, gameState.getUnbankedShardCount("B"));
+        assertEquals(2, gameState.getBlueprintFragmentCount("forge_schema"));
+        assertEquals(1, gameState.getUnbankedBlueprintFragmentCount("bot_chassis_schema"));
 
         gameState.setUnbankedGold(0);
         gameState.clearUnbankedForgeComponents();
         gameState.clearUnbankedShards();
+        gameState.clearUnbankedBlueprintFragments();
 
         assertEquals(0, gameState.getUnbankedGold());
         assertTrue(gameState.getUnbankedForgeComponents().isEmpty());
         assertTrue(gameState.getUnbankedShards().isEmpty());
+        assertTrue(gameState.getUnbankedBlueprintFragments().isEmpty());
     }
 }

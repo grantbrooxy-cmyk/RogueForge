@@ -159,53 +159,258 @@
       },
       {
         "speaker": "Mira",
-        "text": "Now we move from survival to purpose."
+        "text": "Now we move from survival to footholds."
       },
       {
         "speaker": "Mira",
-        "text": "There is something we need in Shadow Caves, an old cave system further out from here."
+        "text": "Claim a patch of the frontier, put down storage, and learn how to bank supplies away from town."
       },
       {
         "speaker": "Mira",
-        "text": "Take this Workshop Pass. It will get you through the gate."
+        "text": "If you can do that, you can hold ground instead of just borrowing it."
       },
       {
         "speaker": "Mira",
-        "text": "Bring back what we need, and Ironhaven will open to you in ways it hasn't yet."
+        "text": "Once you've done it, come back to me. Then we'll talk about Shadow Caves."
       }
     ],
-    "setQuestStep": "return_mira_intro",
+    "setQuestId": "frontier_foothold",
+    "setQuestStep": "claim_site",
     "completeQuestId": "first_steps"
   },
   {
     "id": "mira_start",
     "npcId": "mira",
     "priority": 100,
-    "requiredQuestId": "shard_hunt",
-    "requiredQuestState": "NOT_STARTED",
-    "requiredWorldFlag": "arrival.first_battle_won",
+    "requiredQuestId": "frontier_foothold",
+    "requiredQuestCompleted": true,
+    "blockedWorldFlag": "access.workshop_pass",
     "lines": [
       {
         "speaker": "Mira",
-        "text": "You've proven you can survive a first push."
+        "text": "Good. Now you've done more than survive."
       },
       {
         "speaker": "Mira",
-        "text": "Now I need you to do something that matters."
+        "text": "You claimed ground, built a foothold, and proved you can bring frontier haul home through your own line."
       },
       {
         "speaker": "Mira",
-        "text": "Take this Workshop Pass, get into Shadow Caves, and find the Luminous Shard."
+        "text": "Shadow Caves is next. That is where a foothold turns into leverage."
       },
       {
         "speaker": "Mira",
-        "text": "Bring it back to me, and I'll stabilize the lift to Dragon Peak."
+        "text": "Take this Workshop Pass, get into the caves, and find the Luminous Shard."
+      },
+      {
+        "speaker": "Mira",
+        "text": "Bring it back to me, and I'll stabilize the lift to Dragon Peak. Bring back proof that Ironhaven can push farther than the fields."
       }
     ],
     "addKeyItem": "workshop_pass",
     "setQuestId": "shard_hunt",
     "setQuestStep": "search_shard",
     "setWorldFlag": "access.workshop_pass"
+  },
+  {
+    "id": "bram_frontier_annex",
+    "npcId": "bram",
+    "priority": 98,
+    "requiredWorldFlag": "settlement.frontier_annex",
+    "blockedWorldFlag": "event.bram_frontier_annex_briefed",
+    "lines": [
+      {
+        "speaker": "Bram",
+        "text": "You felt it out there. We felt it here."
+      },
+      {
+        "speaker": "Bram",
+        "text": "The moment Shadow Caves opened, Ironhaven stopped acting like a town staring at the frontier and started acting like one that could answer it."
+      },
+      {
+        "speaker": "Bram",
+        "text": "Hale has the depot running. Vesa is keeping claims and salvage moving through the annex. That whole east gate road exists because you held the line long enough for us to build behind you."
+      },
+      {
+        "speaker": "Bram",
+        "text": "Keep doing that, and this settlement will become something the old world would recognize."
+      },
+      {
+        "speaker": "Bram",
+        "text": "If you want to see what the annex needs next, speak with Hale at the depot counter. He'll tell you how to keep this new line fed."
+      }
+    ],
+    "setQuestId": "annex_resupply",
+    "setQuestStep": "speak_hale",
+    "setWorldFlag": "event.bram_frontier_annex_briefed",
+    "rewardGold": 90,
+    "rewardExperience": 65
+  },
+  {
+    "id": "hale_frontier_annex_start",
+    "npcId": "hale",
+    "priority": 90,
+    "requiredQuestId": "annex_resupply",
+    "requiredQuestState": "speak_hale",
+    "lines": [
+      {
+        "speaker": "Hale",
+        "text": "A new annex is easy to cheer for. Harder to keep fed."
+      },
+      {
+        "speaker": "Hale",
+        "text": "Bring back one more real haul from the frontier and bank it here. I want the crew to feel the route, the sorting, and the turnaround while it's still small enough to learn."
+      },
+      {
+        "speaker": "Hale",
+        "text": "Once the depot has handled a live resupply, come find me again."
+      }
+    ],
+    "setQuestId": "annex_resupply",
+    "setQuestStep": "bank_supply"
+  },
+  {
+    "id": "hale_frontier_annex_finish",
+    "npcId": "hale",
+    "priority": 89,
+    "requiredQuestId": "annex_resupply",
+    "requiredQuestState": "return_hale",
+    "lines": [
+      {
+        "speaker": "Hale",
+        "text": "That did it. The annex crew has a rhythm now instead of a pile."
+      },
+      {
+        "speaker": "Hale",
+        "text": "Fresh haul in, sorted stock out, claims logged, repairs moving. That's how Ironhaven stops reacting to the frontier and starts shaping it."
+      },
+      {
+        "speaker": "Hale",
+        "text": "Keep feeding the line and we'll make this gate road feel like the center of a real campaign."
+      }
+    ],
+    "completeQuestId": "annex_resupply",
+    "rewardGold": 70,
+    "rewardExperience": 50
+  },
+  {
+    "id": "bram_act2_core_start",
+    "npcId": "bram",
+    "priority": 100,
+    "requiredWorldFlag": "event.forge_core_lv2_online",
+    "blockedWorldFlag": "event.act2_core_briefed",
+    "lines": [
+      {
+        "speaker": "Bram",
+        "text": "The Forge Core finally has enough charge to do more than keep Ironhaven breathing."
+      },
+      {
+        "speaker": "Bram",
+        "text": "Now we turn survival into capability."
+      },
+      {
+        "speaker": "Bram",
+        "text": "Silas is taking over the alloy work, Rex is drilling proper response lines, and Professor Cogs is building an archive out of everything we've dragged home from the frontier."
+      },
+      {
+        "speaker": "Bram",
+        "text": "Meet each of them. Act 2 begins when Ironhaven learns how to use what you've won."
+      }
+    ],
+    "setQuestId": "forge_core_rising",
+    "setQuestStep": "meet_silas",
+    "setWorldFlag": "event.act2_core_briefed"
+  },
+  {
+    "id": "silas_act2_intro",
+    "npcId": "master_silas",
+    "priority": 110,
+    "requiredQuestId": "forge_core_rising",
+    "requiredQuestState": "meet_silas",
+    "lines": [
+      {
+        "speaker": "Master Silas",
+        "text": "Lv2 power means real foundry work."
+      },
+      {
+        "speaker": "Master Silas",
+        "text": "Not patch jobs. Not survival scrap."
+      },
+      {
+        "speaker": "Master Silas",
+        "text": "Bring me better alloy stock and design fragments and I'll turn your crew into something the frontier has to respect."
+      }
+    ],
+    "setQuestStep": "meet_rex",
+    "setWorldFlag": "event.act2_met_silas"
+  },
+  {
+    "id": "rex_act2_intro",
+    "npcId": "commander_rex",
+    "priority": 110,
+    "requiredQuestId": "forge_core_rising",
+    "requiredQuestState": "meet_rex",
+    "lines": [
+      {
+        "speaker": "Commander Rex",
+        "text": "A bigger roster means nothing if it fights like a panic line."
+      },
+      {
+        "speaker": "Commander Rex",
+        "text": "The training ground and command rail are what turn survivors into a force."
+      },
+      {
+        "speaker": "Commander Rex",
+        "text": "Get stronger. Get coordinated. Then push where the old walls were never enough."
+      }
+    ],
+    "setQuestStep": "meet_cogs",
+    "setWorldFlag": "event.act2_met_rex"
+  },
+  {
+    "id": "cogs_act2_intro",
+    "npcId": "professor_cogs",
+    "priority": 110,
+    "requiredQuestId": "forge_core_rising",
+    "requiredQuestState": "meet_cogs",
+    "lines": [
+      {
+        "speaker": "Professor Cogs",
+        "text": "At last, somewhere to put all this frontier noise."
+      },
+      {
+        "speaker": "Professor Cogs",
+        "text": "Scans, route drift, ruin harmonics, recovered design fragments."
+      },
+      {
+        "speaker": "Professor Cogs",
+        "text": "Bring me more, and the archive will stop being a ledger and start becoming an advantage."
+      }
+    ],
+    "setQuestStep": "return_bram",
+    "setWorldFlag": "event.act2_met_cogs"
+  },
+  {
+    "id": "bram_act2_core_finish",
+    "npcId": "bram",
+    "priority": 105,
+    "requiredQuestId": "forge_core_rising",
+    "requiredQuestState": "return_bram",
+    "lines": [
+      {
+        "speaker": "Bram",
+        "text": "Good. Ironhaven finally has the shape of a real command town."
+      },
+      {
+        "speaker": "Bram",
+        "text": "Craft harder. Recruit smarter. Build a team the next frontier line can't break."
+      },
+      {
+        "speaker": "Bram",
+        "text": "That is how we survive what comes after the mountain."
+      }
+    ],
+    "completeQuestId": "forge_core_rising"
   },
   {
     "id": "mira_return",
@@ -498,28 +703,26 @@
     "id": "toma_upgrade",
     "npcId": "toma",
     "priority": 100,
-    "requiredQuestId": "shard_hunt",
-    "requiredQuestCompleted": true,
+    "requiredQuestId": "workshop_tools",
+    "requiredQuestState": "speak_toma",
+    "requiredWorldFlag": "tutorial.first_haul_banked",
     "blockedWorldFlag": "settlement.workshop_tools",
     "lines": [
       {
         "speaker": "Toma",
-        "text": "That shard did it."
+        "text": "This is the kind of salvage I needed to see."
       },
       {
         "speaker": "Toma",
-        "text": "The old forge rails are stable again."
+        "text": "You brought it back instead of burning through it in the field. That's how Ironhaven keeps anything running."
       },
       {
         "speaker": "Toma",
-        "text": "Give me a little calibration time, and I can reopen the workshop line for advanced components."
+        "text": "I already pulled a restored tool crate out by the workshop wall. Crack it open and I can bring the line back online."
       }
     ],
     "setQuestId": "workshop_tools",
-    "setQuestStep": "upgrade_workshop",
-    "completeQuestId": "workshop_tools",
-    "setWorldFlag": "settlement.workshop_tools",
-    "settlementUpgradeId": "workshop_tools"
+    "setQuestStep": "upgrade_workshop"
   },
   {
     "id": "toma_survey_mid",
@@ -2239,7 +2442,7 @@
       },
       {
         "speaker": "Professor Cogs",
-        "text": "Fund the data vaults."
+        "text": "Bring me 3 Settlement Plan Fragments."
       },
       {
         "speaker": "Professor Cogs",
@@ -2266,7 +2469,7 @@
       },
       {
         "speaker": "Professor Cogs",
-        "text": "Give me a prototype lab."
+        "text": "Bring me 4 Forge Schema Fragments."
       },
       {
         "speaker": "Professor Cogs",
@@ -2473,6 +2676,46 @@
       {
         "speaker": "Kira",
         "text": "And if he doesn't ask nicely, I'll remind him."
+      }
+    ]
+  },
+  {
+    "id": "hale_frontier_annex",
+    "npcId": "hale",
+    "priority": 80,
+    "requiredWorldFlag": "settlement.frontier_annex",
+    "lines": [
+      {
+        "speaker": "Hale",
+        "text": "Shadow Caves cracked the east line wide open."
+      },
+      {
+        "speaker": "Hale",
+        "text": "Bram wanted the salvage to stop piling up in the square, so now the annex takes it first, sorts it fast, and sends it where Ironhaven needs it."
+      },
+      {
+        "speaker": "Hale",
+        "text": "Bring back enough field haul and this whole gate road will turn into a real frontier quarter."
+      }
+    ]
+  },
+  {
+    "id": "vesa_frontier_annex",
+    "npcId": "vesa",
+    "priority": 80,
+    "requiredWorldFlag": "settlement.frontier_annex",
+    "lines": [
+      {
+        "speaker": "Vesa",
+        "text": "Every outpost report used to die in a loose stack on Bram's table."
+      },
+      {
+        "speaker": "Vesa",
+        "text": "Now we have route ledgers, salvage tallies, and proper claim records moving through the annex."
+      },
+      {
+        "speaker": "Vesa",
+        "text": "Hold more ground out there and Ironhaven gets sharper in here. That's the deal."
       }
     ]
   }

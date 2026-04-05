@@ -273,6 +273,8 @@ public class TmxWorldLoader {
         public String biomeId;
         public String biomeGroundAssetFolder;
         public String biomeObjectAssetFolder;
+        public String prefabId;
+        public String prefabCategory;
     }
 
     public static class ChestData {

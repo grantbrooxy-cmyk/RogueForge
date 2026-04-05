@@ -41,6 +41,10 @@ class RobotEvolutionManagerTest {
         assertEquals(Map.of("bone_fiber", 3), RobotEvolutionManager.evolutionMaterialCost(2));
         assertEquals(Map.of("drake_heart", 2), RobotEvolutionManager.evolutionMaterialCost(3));
         assertEquals(Map.of(), RobotEvolutionManager.evolutionMaterialCost(1));
+        assertEquals("bot_chassis_schema", RobotEvolutionManager.evolutionBlueprintFragmentId(2));
+        assertEquals(2, RobotEvolutionManager.evolutionBlueprintFragmentCost(2));
+        assertEquals("", RobotEvolutionManager.evolutionBlueprintFragmentId(3));
+        assertEquals(0, RobotEvolutionManager.evolutionBlueprintFragmentCost(3));
         assertEquals("rust_mk3", RobotEvolutionManager.getEvolvedRobotId("rust_mk1", 3));
         assertEquals("rust_mk2", RobotEvolutionManager.getEvolvedRobotId("rust", 2));
     }

@@ -16,6 +16,9 @@ Companion document:
 
 - `docs/Run_World_Meta_Structure.md` for reset rules, extraction logic, outpost purpose, and the boundary between run progression, world persistence, and meta progression
 - `docs/State_Implementation_Guide.md` for code-facing storage rules covering save data, world flags, quest progression channels, and meta progression boundaries
+- `docs/World_Generation_Structure_Plan.md` for the split between handcrafted hubs, seeded wilderness, and prefab landmark placement
+- `docs/Player_Created_World_Systems_Plan.md` for guild, quest-authoring, NPC-authoring, and player-governance system expansion
+- `docs/Loop_Alignment_Plan.md` for reinforcing the intended town, expedition, extraction, and return cadence in live play
 
 ## 2. System Overview
 

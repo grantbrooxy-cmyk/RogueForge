@@ -1,0 +1,20 @@
+[
+  {
+    "id": "forge_schema",
+    "name": "Forge Schema Fragment",
+    "description": "A partial foundry pattern recovered from hostile ruins and collapsed machine halls.",
+    "sourceHint": "Recovered from industrial bosses, cave ruins, and heavy combat patrols."
+  },
+  {
+    "id": "bot_chassis_schema",
+    "name": "Bot Chassis Fragment",
+    "description": "A chassis-routing fragment that helps Ironhaven refine Mk-II robot designs.",
+    "sourceHint": "Recovered from advanced frames, command units, and hard frontier encounters."
+  },
+  {
+    "id": "settlement_plan",
+    "name": "Settlement Plan Fragment",
+    "description": "A civilworks fragment carrying depot, storage, and relay expansion plans.",
+    "sourceHint": "Recovered from outpost sectors, supply bosses, and deep frontier salvage."
+  }
+]

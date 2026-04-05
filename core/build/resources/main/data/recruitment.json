@@ -18,35 +18,45 @@
     "robotId": "scout_mk2",
     "autoDeploySlot": -1,
     "message": "Scout MK-II rises from the Mushroom Grotto and joins your reserve roster.",
-    "joinedWorldFlag": "recruit.scout_mk2_joined"
+    "joinedWorldFlag": "recruit.scout_mk2_joined",
+    "requiredBlueprintFragmentId": "bot_chassis_schema",
+    "requiredBlueprintFragmentCount": 2
   },
   {
     "eventId": "guardian_mk2_join",
     "robotId": "guardian_mk2",
     "autoDeploySlot": -1,
     "message": "Guardian MK-II is excavated from the quarry maintenance locker and added to your reserve roster.",
-    "joinedWorldFlag": "recruit.guardian_mk2_joined"
+    "joinedWorldFlag": "recruit.guardian_mk2_joined",
+    "requiredBlueprintFragmentId": "bot_chassis_schema",
+    "requiredBlueprintFragmentCount": 2
   },
   {
     "eventId": "artificer_mk2_join",
     "robotId": "artificer_mk2",
     "autoDeploySlot": -1,
     "message": "Artificer MK-II reboots inside the hidden seam and joins your reserve roster.",
-    "joinedWorldFlag": "recruit.artificer_mk2_joined"
+    "joinedWorldFlag": "recruit.artificer_mk2_joined",
+    "requiredBlueprintFragmentId": "bot_chassis_schema",
+    "requiredBlueprintFragmentCount": 2
   },
   {
     "eventId": "medic_mk2_join",
     "robotId": "medic_mk2",
     "autoDeploySlot": -1,
     "message": "Medic MK-II syncs with your field systems and joins your reserve roster.",
-    "joinedWorldFlag": "recruit.medic_mk2_joined"
+    "joinedWorldFlag": "recruit.medic_mk2_joined",
+    "requiredBlueprintFragmentId": "bot_chassis_schema",
+    "requiredBlueprintFragmentCount": 2
   },
   {
     "eventId": "striker_mk2_join",
     "robotId": "striker_mk2",
     "autoDeploySlot": -1,
     "message": "Striker MK-II powers up beside the ember forge and joins your reserve roster.",
-    "joinedWorldFlag": "recruit.striker_mk2_joined"
+    "joinedWorldFlag": "recruit.striker_mk2_joined",
+    "requiredBlueprintFragmentId": "bot_chassis_schema",
+    "requiredBlueprintFragmentCount": 2
   },
   {
     "eventId": "scout_mk3_join",

@@ -39,6 +39,8 @@ public final class RobotEvolutionManager {
     public static final Map<String, Integer> TIER2_COST;
     /** Pre-built cost map for Tier 3. Safe to share (immutable contents). */
     public static final Map<String, Integer> TIER3_COST;
+    public static final String TIER2_BLUEPRINT_FRAGMENT_ID = "bot_chassis_schema";
+    public static final int TIER2_BLUEPRINT_FRAGMENT_AMOUNT = 2;
 
     static {
         Map<String, Integer> t2 = new HashMap<>();
@@ -115,6 +117,14 @@ public final class RobotEvolutionManager {
             case 3: return TIER3_COST;
             default: return Collections.emptyMap();
         }
+    }
+
+    public static String evolutionBlueprintFragmentId(int targetTier) {
+        return targetTier == 2 ? TIER2_BLUEPRINT_FRAGMENT_ID : "";
+    }
+
+    public static int evolutionBlueprintFragmentCost(int targetTier) {
+        return targetTier == 2 ? TIER2_BLUEPRINT_FRAGMENT_AMOUNT : 0;
     }
 
     // ── ID / stat helpers ──────────────────────────────────────────────────

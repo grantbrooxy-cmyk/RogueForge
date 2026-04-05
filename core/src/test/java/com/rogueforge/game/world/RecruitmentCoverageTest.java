@@ -58,6 +58,10 @@ class RecruitmentCoverageTest {
             );
             assertTrue(robotIds.contains(recruitment.getRobotId()), "Unknown robot id in recruitment data: " + recruitment.getRobotId());
             assertNotNull(recruitment.getJoinedWorldFlag(), "Recruitment should define a world flag.");
+            if (recruitment.getRobotId().endsWith("_mk2")) {
+                assertEquals("bot_chassis_schema", recruitment.getRequiredBlueprintFragmentId());
+                assertEquals(2, recruitment.getRequiredBlueprintFragmentCount());
+            }
         }
 
         for (ZoneDefinition zone : zones) {

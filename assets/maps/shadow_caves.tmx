@@ -465,6 +465,12 @@
     <property name="blocksMovement" value="true" />
    </properties>
   </object>
+  <object id="32" name="sovereign_dais" x="1548" y="282" width="164" height="96">
+   <properties>
+    <property name="kind" value="gate" />
+    <property name="label" value="Sovereign Dais" />
+   </properties>
+  </object>
  </objectgroup>
  <objectgroup id="2" name="collisions">
   <object id="5" x="0" y="0" width="220" height="1344" />

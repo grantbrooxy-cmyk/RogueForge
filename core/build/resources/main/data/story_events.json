@@ -48,6 +48,16 @@
     "text": "Challenge loop initialized. Descend, adapt, and return stronger. The dungeon does not end; it measures."
   },
   {
+    "id": "shadow_caves_boss",
+    "triggerType": "BOSS_DEFEAT",
+    "triggerId": "rusted_sovereign_c",
+    "onceFlag": "frontier.shadow_caves_secured",
+    "speaker": "Bram",
+    "text": "The Rusted Sovereign is down. Ironhaven is already moving crews to the east gate, and a proper frontier annex will be standing by the time you return.",
+    "settlementUpgradeId": "frontier_annex",
+    "rewardExperience": 90
+  },
+  {
     "id": "dragon_peak_boss",
     "triggerType": "BOSS_DEFEAT",
     "triggerId": "dragon_boss_b",

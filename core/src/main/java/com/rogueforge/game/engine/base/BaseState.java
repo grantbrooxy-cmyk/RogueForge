@@ -1,5 +1,6 @@
 package com.rogueforge.game.engine.base;
 
+import com.rogueforge.game.engine.social.OwnershipRecord;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -14,6 +15,8 @@ public class BaseState {
     private final List<PlacedStructure> placedStructures = new ArrayList<>();
     private final List<DefenderAssignment> defenderAssignments = new ArrayList<>();
     private final Map<String, Float> defenderHealthByRobotId = new HashMap<>();
+    private final Map<String, OwnershipRecord> claimedSiteOwnershipById = new HashMap<>();
+    private final Map<String, OwnershipRecord> structureOwnershipByInstanceId = new HashMap<>();
     private final BaseRaidState raidState = new BaseRaidState();
 
     public BaseState(String zoneId) {
@@ -29,10 +32,17 @@ public class BaseState {
     }
 
     public boolean claimSite(String siteId) {
+        return claimSite(siteId, null);
+    }
+
+    public boolean claimSite(String siteId, OwnershipRecord ownershipRecord) {
         if (siteId == null || siteId.isEmpty() || claimedSiteIds.contains(siteId)) {
             return false;
         }
         claimedSiteIds.add(siteId);
+        if (ownershipRecord != null) {
+            claimedSiteOwnershipById.put(siteId, ownershipRecord);
+        }
         return true;
     }
 
@@ -47,6 +57,28 @@ public class BaseState {
     public void addPlacedStructure(PlacedStructure structure) {
         if (structure != null) {
             placedStructures.add(structure);
+        }
+    }
+
+    public void setClaimedSiteOwnership(String siteId, OwnershipRecord ownershipRecord) {
+        if (siteId == null || siteId.isEmpty() || ownershipRecord == null) {
+            return;
+        }
+        claimedSiteOwnershipById.put(siteId, ownershipRecord);
+    }
+
+    public OwnershipRecord getClaimedSiteOwnership(String siteId) {
+        return siteId != null ? claimedSiteOwnershipById.get(siteId) : null;
+    }
+
+    public Map<String, OwnershipRecord> getClaimedSiteOwnershipById() {
+        return new HashMap<>(claimedSiteOwnershipById);
+    }
+
+    public void setClaimedSiteOwnershipById(Map<String, OwnershipRecord> ownershipById) {
+        claimedSiteOwnershipById.clear();
+        if (ownershipById != null) {
+            claimedSiteOwnershipById.putAll(ownershipById);
         }
     }
 
@@ -69,7 +101,30 @@ public class BaseState {
         }
         placedStructures.remove(structure);
         defenderAssignments.removeIf(assignment -> structureInstanceId.equals(assignment.getStructureInstanceId()));
+        structureOwnershipByInstanceId.remove(structureInstanceId);
         return true;
+    }
+
+    public void setStructureOwnership(String structureInstanceId, OwnershipRecord ownershipRecord) {
+        if (structureInstanceId == null || structureInstanceId.isEmpty() || ownershipRecord == null) {
+            return;
+        }
+        structureOwnershipByInstanceId.put(structureInstanceId, ownershipRecord);
+    }
+
+    public OwnershipRecord getStructureOwnership(String structureInstanceId) {
+        return structureInstanceId != null ? structureOwnershipByInstanceId.get(structureInstanceId) : null;
+    }
+
+    public Map<String, OwnershipRecord> getStructureOwnershipByInstanceId() {
+        return new HashMap<>(structureOwnershipByInstanceId);
+    }
+
+    public void setStructureOwnershipByInstanceId(Map<String, OwnershipRecord> ownershipById) {
+        structureOwnershipByInstanceId.clear();
+        if (ownershipById != null) {
+            structureOwnershipByInstanceId.putAll(ownershipById);
+        }
     }
 
     public List<DefenderAssignment> getDefenderAssignments() {

@@ -11,6 +11,8 @@ public class SettlementUpgradeDefinition {
     private String type;
     private String description;
     private String requiredUpgradeId;
+    private String requiredBlueprintFragmentId;
+    private int requiredBlueprintFragmentCount;
     private String rewardEquipmentId;
     private int rewardPotions;
     private int rewardGold;
@@ -22,6 +24,8 @@ public class SettlementUpgradeDefinition {
     public String getType() { return type != null ? type : ""; }
     public String getDescription() { return description != null ? description : ""; }
     public String getRequiredUpgradeId() { return requiredUpgradeId != null ? requiredUpgradeId : ""; }
+    public String getRequiredBlueprintFragmentId() { return requiredBlueprintFragmentId != null ? requiredBlueprintFragmentId : ""; }
+    public int getRequiredBlueprintFragmentCount() { return Math.max(0, requiredBlueprintFragmentCount); }
     public String getRewardEquipmentId() { return rewardEquipmentId != null ? rewardEquipmentId : ""; }
     public int getRewardPotions() { return rewardPotions; }
     public int getRewardGold() { return rewardGold; }

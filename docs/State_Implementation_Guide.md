@@ -11,6 +11,8 @@ Use it when adding:
 - quest logic
 - expedition state
 - meta progression data
+- ownership, guild, and settlement-governance state
+- loop-facing prep, extraction, and post-return state
 
 The goal is to stop run-state, world-state, and meta-state from drifting into each other.
 
@@ -31,6 +33,8 @@ Use this for:
 - persistent world state
 - persistent character progression
 - persistent base/outpost state
+- persistent guild definitions and memberships
+- persistent ownership records for world objects
 - persistent quest progression
 
 ### 2.2 Session Domain

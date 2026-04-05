@@ -8,19 +8,19 @@ import com.badlogic.gdx.graphics.Color;
  */
 public class UITheme {
 
-    // Base colors
-    public static final Color PRIMARY = new Color(0.2f, 0.6f, 1.0f, 1.0f);      // Bright blue
-    public static final Color SECONDARY = new Color(0.8f, 0.8f, 0.8f, 1.0f);    // Light gray
-    public static final Color ACCENT = new Color(1.0f, 0.85f, 0.0f, 1.0f);      // Gold
-    public static final Color BACKGROUND = new Color(0.1f, 0.1f, 0.1f, 1.0f);   // Dark gray
-    public static final Color TEXT = new Color(1.0f, 1.0f, 1.0f, 1.0f);         // White
-    public static final Color TEXT_DARK = new Color(0.2f, 0.2f, 0.2f, 1.0f);    // Dark text
+    // Base colors — warm pixel-art RPG palette (Stardew / Pokémon inspired)
+    public static final Color PRIMARY = new Color(0.357f, 0.549f, 0.353f, 1.0f);   // Muted sage green
+    public static final Color SECONDARY = new Color(0.741f, 0.714f, 0.667f, 1.0f); // Warm stone gray
+    public static final Color ACCENT = new Color(0.910f, 0.663f, 0.188f, 1.0f);    // Warm amber gold
+    public static final Color BACKGROUND = new Color(0.110f, 0.086f, 0.063f, 1.0f); // Warm dark brown-black
+    public static final Color TEXT = new Color(0.961f, 0.933f, 0.847f, 1.0f);      // Warm cream (not pure white)
+    public static final Color TEXT_DARK = new Color(0.165f, 0.133f, 0.102f, 1.0f); // Warm dark brown
 
-    // Status bar colors
-    public static final Color HEALTH_BAR = new Color(0.0f, 1.0f, 0.0f, 1.0f);   // Green
-    public static final Color HEALTH_BAR_CRITICAL = new Color(1.0f, 0.0f, 0.0f, 1.0f); // Red
-    public static final Color MANA_BAR = new Color(0.2f, 0.8f, 1.0f, 1.0f);     // Cyan
-    public static final Color EXPERIENCE_BAR = new Color(1.0f, 0.5f, 0.2f, 1.0f); // Orange
+    // Status bar colors — muted, natural tones
+    public static final Color HEALTH_BAR = new Color(0.322f, 0.698f, 0.337f, 1.0f);         // Warm forest green
+    public static final Color HEALTH_BAR_CRITICAL = new Color(0.839f, 0.243f, 0.196f, 1.0f); // Warm red-orange
+    public static final Color MANA_BAR = new Color(0.353f, 0.616f, 0.784f, 1.0f);            // Muted sky blue
+    public static final Color EXPERIENCE_BAR = new Color(0.910f, 0.663f, 0.188f, 1.0f);      // Amber (matches ACCENT)
 
     // Rank colors
     public static final Color RANK_G = new Color(0.6f, 0.6f, 0.6f, 1.0f);       // Gray

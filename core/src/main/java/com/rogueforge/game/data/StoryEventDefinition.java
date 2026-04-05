@@ -15,6 +15,7 @@ public class StoryEventDefinition {
     private String setQuestId;
     private String setQuestStep;
     private String completeQuestId;
+    private String settlementUpgradeId;
     private int rewardExperience;
 
     public String getId() {
@@ -59,6 +60,10 @@ public class StoryEventDefinition {
 
     public String getCompleteQuestId() {
         return completeQuestId;
+    }
+
+    public String getSettlementUpgradeId() {
+        return settlementUpgradeId;
     }
 
     public int getRewardExperience() {

@@ -16,8 +16,21 @@ This is the primary reference for keeping the roguelite layer and the persistent
 Implementation companion:
 
 - `docs/State_Implementation_Guide.md` for concrete rules on save-file fields, quest state channels, world flags, session state, and meta progression storage
+- `docs/World_Generation_Structure_Plan.md` for deciding which spaces are handcrafted, which are seeded, and which are prefab-injected landmarks
+- `docs/Player_Created_World_Systems_Plan.md` for guild ownership, player-authored quests, player-created NPCs, and creator-facing permissions layered on top of the persistent world
 
 ## 2. Core Model
+
+Core gameplay loop this structure supports:
+
+1. Prepare in Ironhaven or an owned outpost
+2. Travel to the frontier or deeper territory
+3. Explore, fight, gather, and pursue quests
+4. Decide whether to push deeper or extract
+5. Bank resources and progress
+6. Upgrade town, gear, robots, bases, and world state
+7. Unlock new zones, systems, and opportunities
+8. Repeat
 
 RogueForge should be structured as three connected progression layers:
 

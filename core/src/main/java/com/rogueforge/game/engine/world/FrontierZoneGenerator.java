@@ -16,6 +16,7 @@ public class FrontierZoneGenerator {
     private static final int DEFAULT_SAFE_RADIUS_TILES = 24;
     private static final int RESOURCE_CLUSTER_COUNT = 28;
     private static final int BASE_SITE_COUNT = 6;
+    private static final int LANDMARK_PREFAB_COUNT = 5;
     private static final float STARTER_CORRIDOR_LENGTH_TILES = 18f;
     private static final float STARTER_CORRIDOR_HALF_HEIGHT_TILES = 3.5f;
 
@@ -38,8 +39,9 @@ public class FrontierZoneGenerator {
 
         FrontierTerrainSampler terrainSampler = new FrontierTerrainSampler(worldSeed);
         FrontierBiomeCatalog biomeCatalog = new FrontierBiomeCatalog();
+        FrontierLandmarkPrefabCatalog landmarkCatalog = new FrontierLandmarkPrefabCatalog();
         populateEnemySpawns(template, definition, worldSeed, terrainSampler);
-        populateFrontierFeatures(template, definition, worldSeed, terrainSampler, biomeCatalog);
+        populateFrontierFeatures(template, definition, worldSeed, terrainSampler, biomeCatalog, landmarkCatalog);
         return template;
     }
 
@@ -80,15 +82,74 @@ public class FrontierZoneGenerator {
         ZoneDefinition definition,
         long worldSeed,
         FrontierTerrainSampler terrainSampler,
-        FrontierBiomeCatalog biomeCatalog
+        FrontierBiomeCatalog biomeCatalog,
+        FrontierLandmarkPrefabCatalog landmarkCatalog
     ) {
+        Random landmarkRandom = new Random(mixSeed(worldSeed, definition.getId().hashCode(), 17));
         Random resourceRandom = new Random(mixSeed(worldSeed, definition.getId().hashCode(), 23));
         Random siteRandom = new Random(mixSeed(worldSeed, definition.getId().hashCode(), 37));
 
+        addLandmarkPrefabs(zone, landmarkRandom, terrainSampler, biomeCatalog, landmarkCatalog);
         addResourceNodes(zone, resourceRandom, terrainSampler, biomeCatalog, "scrap_alloy", 2, "Salvage Wreck", RESOURCE_CLUSTER_COUNT / 2);
         addResourceNodes(zone, resourceRandom, terrainSampler, biomeCatalog, "slime_resin", 2, "Resin Patch", RESOURCE_CLUSTER_COUNT / 3);
         addResourceNodes(zone, resourceRandom, terrainSampler, biomeCatalog, "bone_fiber", 1, "Fiber Grove", RESOURCE_CLUSTER_COUNT / 6);
         addBaseSites(zone, siteRandom, terrainSampler, biomeCatalog);
+    }
+
+    private void addLandmarkPrefabs(
+        TmxWorldLoader.LoadedZone zone,
+        Random random,
+        FrontierTerrainSampler terrainSampler,
+        FrontierBiomeCatalog biomeCatalog,
+        FrontierLandmarkPrefabCatalog landmarkCatalog
+    ) {
+        if (landmarkCatalog == null) {
+            return;
+        }
+        int placed = 0;
+        for (FrontierLandmarkPrefabDefinition prefab : landmarkCatalog.getAll()) {
+            if (placed >= LANDMARK_PREFAB_COUNT) {
+                break;
+            }
+            Rectangle bounds = randomFrontierRect(
+                zone,
+                random,
+                terrainSampler,
+                PlacementKind.LANDMARK_PREFAB,
+                prefab.getId(),
+                prefab.getWidthTiles() * zone.tileWidth,
+                prefab.getHeightTiles() * zone.tileHeight
+            );
+            Vector2 center = new Vector2(bounds.x + bounds.width * 0.5f, bounds.y + bounds.height * 0.5f);
+            FrontierTerrainSampler.TerrainType terrainType = terrainSampler.sampleWorld(
+                center.x,
+                center.y,
+                zone.tileWidth,
+                zone.tileHeight
+            ).type;
+            if (!prefab.allows(terrainType)) {
+                continue;
+            }
+            FrontierBiomeDefinition biomeDefinition = biomeCatalog.resolve(terrainType);
+            TmxWorldLoader.Feature feature = new TmxWorldLoader.Feature();
+            feature.id = "landmark_" + prefab.getId();
+            feature.kind = "landmark_prefab";
+            feature.label = prefab.getLabel();
+            feature.bounds = bounds;
+            feature.interactionType = "inspect_landmark";
+            feature.interactionMessage = prefab.getInteractionMessage();
+            feature.blockedMessage = prefab.getInteractionMessage();
+            feature.blocksMovement = false;
+            feature.persistentStateId = feature.id;
+            feature.terrainType = terrainType.name();
+            feature.biomeId = biomeDefinition.getId();
+            feature.biomeGroundAssetFolder = biomeDefinition.getGroundAssetFolder();
+            feature.biomeObjectAssetFolder = prefab.getObjectAssetFolder();
+            feature.prefabId = prefab.getId();
+            feature.prefabCategory = prefab.getCategory();
+            zone.features.add(feature);
+            placed++;
+        }
     }
 
     private void addResourceNodes(
@@ -247,8 +308,37 @@ public class FrontierZoneGenerator {
                 return (terrainSampler.isBuildFriendly(sample.type) ? 1.35f : -0.4f)
                     + distanceScore * 0.45f
                     - Math.max(0f, sample.moisture) * 0.2f;
+            case LANDMARK_PREFAB:
+                return landmarkScore(sample, resourceId) + distanceScore * 0.35f;
             default:
                 return 0f;
+        }
+    }
+
+    private float landmarkScore(FrontierTerrainSampler.TerrainSample sample, String prefabId) {
+        if (prefabId == null || prefabId.isEmpty()) {
+            return 0f;
+        }
+        switch (prefabId) {
+            case "village_small_a":
+                return sample.type == FrontierTerrainSampler.TerrainType.MEADOW
+                    || sample.type == FrontierTerrainSampler.TerrainType.GROVE ? 1.4f : -0.6f;
+            case "ruined_village_a":
+                return sample.type == FrontierTerrainSampler.TerrainType.RUIN_FIELD
+                    || sample.type == FrontierTerrainSampler.TerrainType.STONE_FLATS ? 1.45f : -0.7f;
+            case "trader_camp_a":
+                return sample.type == FrontierTerrainSampler.TerrainType.MEADOW
+                    || sample.type == FrontierTerrainSampler.TerrainType.SCRUB
+                    || sample.type == FrontierTerrainSampler.TerrainType.STONE_FLATS ? 1.25f : -0.45f;
+            case "watchpost_a":
+                return sample.type == FrontierTerrainSampler.TerrainType.STONE_FLATS
+                    || sample.type == FrontierTerrainSampler.TerrainType.SCRUB ? 1.3f : -0.5f;
+            case "shrine_a":
+                return sample.type == FrontierTerrainSampler.TerrainType.GROVE
+                    || sample.type == FrontierTerrainSampler.TerrainType.MARSH
+                    || sample.type == FrontierTerrainSampler.TerrainType.MEADOW ? 1.2f : -0.35f;
+            default:
+                return 0.2f;
         }
     }
 
@@ -296,6 +386,7 @@ public class FrontierZoneGenerator {
     private enum PlacementKind {
         ENEMY,
         RESOURCE,
-        BASE_SITE
+        BASE_SITE,
+        LANDMARK_PREFAB
     }
 }

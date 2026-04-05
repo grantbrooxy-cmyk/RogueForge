@@ -11,6 +11,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.Texture.TextureFilter;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.utils.Align;
 import com.rogueforge.game.core.RogueForgeGame;
 import com.rogueforge.game.core.ScreenManager;
 import com.rogueforge.game.data.MetaProgressionState;
@@ -33,6 +34,7 @@ public class GameOverScreen implements Screen {
     private final ShapeRenderer shapeRenderer;
     private final BitmapFont titleFont;
     private final BitmapFont statsFont;
+    private final BitmapFont cardTitleFont;
     private final BitmapFont buttonFont;
     private final OrthographicCamera camera;
     private final GlyphLayout layout;
@@ -41,9 +43,11 @@ public class GameOverScreen implements Screen {
     private static final float BTN_W = 240f;
     private static final float BTN_H = 50f;
     private static final float BTN_GAP = 16f;
-    private static final float CARD_W = 280f;
-    private static final float CARD_H = 120f;
+    private static final float CARD_MAX_W = 280f;
+    private static final float CARD_MIN_W = 190f;
+    private static final float CARD_H = 170f;
     private static final float CARD_GAP = 18f;
+    private static final float CARD_PADDING = 16f;
 
     // Game over stats
     private int finalScore = 0;
@@ -89,6 +93,10 @@ public class GameOverScreen implements Screen {
         statsFont.getData().setScale(1.5f);
         statsFont.setColor(Color.WHITE);
 
+        cardTitleFont = new BitmapFont();
+        cardTitleFont.getData().setScale(1.2f);
+        cardTitleFont.setColor(Color.WHITE);
+
         buttonFont = new BitmapFont();
         buttonFont.getData().setScale(1.8f);
         buttonFont.setColor(Color.WHITE);
@@ -129,16 +137,14 @@ public class GameOverScreen implements Screen {
         String[] buttonLabels = getButtonLabels();
         float totalBtnHeight = buttonLabels.length * BTN_H + (buttonLabels.length - 1) * BTN_GAP;
         float startY = (h - totalBtnHeight) / 2f - 80f;
+        CardLayout cardLayout = buildCardLayout(w, startY, totalBtnHeight);
 
         // Detect hover
         hoveredButton = -1;
         hoveredChoice = -1;
-        float cardsWidth = offeredChoices.size() * CARD_W + Math.max(0, offeredChoices.size() - 1) * CARD_GAP;
-        float cardsStartX = (w - cardsWidth) / 2f;
-        float cardsY = startY + totalBtnHeight + 30f;
         for (int i = 0; i < offeredChoices.size(); i++) {
-            float cx = cardsStartX + i * (CARD_W + CARD_GAP);
-            if (mx >= cx && mx <= cx + CARD_W && my >= cardsY && my <= cardsY + CARD_H) {
+            CardSlot slot = cardLayout.slots.get(i);
+            if (mx >= slot.x && mx <= slot.x + slot.width && my >= slot.y && my <= slot.y + slot.height) {
                 hoveredChoice = i;
             }
         }
@@ -173,13 +179,13 @@ public class GameOverScreen implements Screen {
         shapeRenderer.setProjectionMatrix(camera.combined);
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
         shapeRenderer.setColor(0.04f, 0.04f, 0.07f, 0.72f);
-        shapeRenderer.rect(56f, startY - 150f, w - 112f, totalBtnHeight + 360f);
+        shapeRenderer.rect(56f, startY - 150f, w - 112f, totalBtnHeight + 220f + cardLayout.totalHeight);
         for (int i = 0; i < offeredChoices.size(); i++) {
-            float cx = cardsStartX + i * (CARD_W + CARD_GAP);
+            CardSlot slot = cardLayout.slots.get(i);
             DeathDraftChoice choice = offeredChoices.get(i);
             Color fill = getChoiceFillColor(choice, i == hoveredChoice);
             shapeRenderer.setColor(fill);
-            shapeRenderer.rect(cx, cardsY, CARD_W, CARD_H);
+            shapeRenderer.rect(slot.x, slot.y, slot.width, slot.height);
         }
         for (int i = 0; i < buttonLabels.length; i++) {
             float bx = (w - BTN_W) / 2f;
@@ -211,7 +217,7 @@ public class GameOverScreen implements Screen {
         if (!offeredChoices.isEmpty()) {
             String headline = deathDraft != null && deathDraft.getSummary() != null ? deathDraft.getSummary() : "Choose your next card";
             layout.setText(statsFont, headline);
-            statsFont.draw(batch, layout, (w - layout.width) / 2f, cardsY + CARD_H + 34f);
+            statsFont.draw(batch, layout, (w - layout.width) / 2f, cardLayout.topY + cardLayout.totalHeight + 34f);
         } else {
             layout.setText(statsFont, "No draft cards available. Start another run.");
             statsFont.draw(batch, layout, (w - layout.width) / 2f, statsY - 140f);
@@ -219,13 +225,8 @@ public class GameOverScreen implements Screen {
 
         for (int i = 0; i < offeredChoices.size(); i++) {
             DeathDraftChoice choice = offeredChoices.get(i);
-            float cx = cardsStartX + i * (CARD_W + CARD_GAP);
-            buttonFont.setColor(Color.WHITE);
-            buttonFont.draw(batch, getChoiceHeading(choice), cx + 16f, cardsY + CARD_H - 20f);
-            statsFont.setColor(new Color(0.9f, 0.95f, 1f, 1f));
-            statsFont.draw(batch, wrap(choice.getDescription(), 34), cx + 16f, cardsY + CARD_H - 58f);
-            statsFont.setColor(new Color(0.88f, 0.96f, 1f, 1f));
-            statsFont.draw(batch, getChoiceActionText(choice), cx + 16f, cardsY + 20f);
+            CardSlot slot = cardLayout.slots.get(i);
+            drawChoiceCardText(choice, slot.x, slot.y, slot.width, slot.height);
         }
 
         // Button labels
@@ -240,26 +241,6 @@ public class GameOverScreen implements Screen {
         }
 
         batch.end();
-    }
-
-    private String wrap(String text, int maxChars) {
-        if (text == null || text.length() <= maxChars) {
-            return text != null ? text : "";
-        }
-        StringBuilder builder = new StringBuilder();
-        int lineLength = 0;
-        for (String word : text.split(" ")) {
-            if (lineLength > 0 && lineLength + word.length() + 1 > maxChars) {
-                builder.append('\n');
-                lineLength = 0;
-            } else if (lineLength > 0) {
-                builder.append(' ');
-                lineLength++;
-            }
-            builder.append(word);
-            lineLength += word.length();
-        }
-        return builder.toString();
     }
 
     private void onEnhancementChosen(int index) {
@@ -320,6 +301,114 @@ public class GameOverScreen implements Screen {
         }
     }
 
+    private void drawChoiceCardText(DeathDraftChoice choice, float cardX, float cardY, float cardWidth, float cardHeight) {
+        if (choice == null) {
+            return;
+        }
+        float innerX = cardX + CARD_PADDING;
+        float innerWidth = cardWidth - CARD_PADDING * 2f;
+        float topY = cardY + cardHeight - CARD_PADDING;
+
+        GlyphLayout headingLayout = new GlyphLayout();
+        cardTitleFont.setColor(Color.WHITE);
+        headingLayout.setText(cardTitleFont, getChoiceHeading(choice), Color.WHITE, innerWidth, Align.left, true);
+        cardTitleFont.draw(batch, headingLayout, innerX, topY);
+
+        GlyphLayout actionLayout = new GlyphLayout();
+        statsFont.setColor(new Color(0.88f, 0.96f, 1f, 1f));
+        actionLayout.setText(statsFont, getChoiceActionText(choice), statsFont.getColor(), innerWidth, Align.left, true);
+        float actionTopY = cardY + CARD_PADDING + actionLayout.height;
+        statsFont.draw(batch, actionLayout, innerX, actionTopY);
+
+        float descriptionTopY = topY - headingLayout.height - 12f;
+        float availableDescriptionHeight = descriptionTopY - actionTopY - 10f;
+        String description = fitWrappedText(statsFont, choice.getDescription(), innerWidth, availableDescriptionHeight);
+
+        GlyphLayout descriptionLayout = new GlyphLayout();
+        statsFont.setColor(new Color(0.9f, 0.95f, 1f, 1f));
+        descriptionLayout.setText(statsFont, description, statsFont.getColor(), innerWidth, Align.left, true);
+        statsFont.draw(batch, descriptionLayout, innerX, descriptionTopY);
+    }
+
+    private String fitWrappedText(BitmapFont font, String text, float width, float maxHeight) {
+        if (text == null || text.isEmpty()) {
+            return "";
+        }
+        GlyphLayout measure = new GlyphLayout();
+        measure.setText(font, text, Color.WHITE, width, Align.left, true);
+        if (measure.height <= maxHeight) {
+            return text;
+        }
+
+        String[] words = text.split(" ");
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0; i < words.length; i++) {
+            String candidate = builder.length() == 0 ? words[i] : builder + " " + words[i];
+            measure.setText(font, candidate + "...", Color.WHITE, width, Align.left, true);
+            if (measure.height > maxHeight) {
+                break;
+            }
+            if (builder.length() > 0) {
+                builder.append(' ');
+            }
+            builder.append(words[i]);
+        }
+        return builder.length() == 0 ? "..." : builder + "...";
+    }
+
+    private CardLayout buildCardLayout(float screenWidth, float startY, float totalBtnHeight) {
+        CardLayout layout = new CardLayout();
+        layout.topY = startY + totalBtnHeight + 30f;
+        if (offeredChoices.isEmpty()) {
+            layout.totalHeight = 0f;
+            return layout;
+        }
+
+        float availableWidth = Math.max(CARD_MIN_W, screenWidth - 112f);
+        int maxColumns = Math.max(1, (int) Math.floor((availableWidth + CARD_GAP) / (CARD_MIN_W + CARD_GAP)));
+        int columns = Math.min(Math.max(1, offeredChoices.size()), maxColumns);
+        float cardWidth = Math.min(CARD_MAX_W, (availableWidth - (columns - 1) * CARD_GAP) / columns);
+        if (cardWidth < CARD_MIN_W && columns > 1) {
+            columns--;
+            cardWidth = Math.min(CARD_MAX_W, (availableWidth - (columns - 1) * CARD_GAP) / columns);
+        }
+        cardWidth = Math.max(CARD_MIN_W, cardWidth);
+        int rows = (int) Math.ceil(offeredChoices.size() / (float) columns);
+        layout.totalHeight = rows * CARD_H + Math.max(0, rows - 1) * CARD_GAP;
+
+        for (int index = 0; index < offeredChoices.size(); index++) {
+            int row = index / columns;
+            int column = index % columns;
+            int itemsInRow = Math.min(columns, offeredChoices.size() - row * columns);
+            float rowWidth = itemsInRow * cardWidth + Math.max(0, itemsInRow - 1) * CARD_GAP;
+            float rowStartX = (screenWidth - rowWidth) / 2f;
+            float x = rowStartX + column * (cardWidth + CARD_GAP);
+            float y = layout.topY + (rows - 1 - row) * (CARD_H + CARD_GAP);
+            layout.slots.add(new CardSlot(x, y, cardWidth, CARD_H));
+        }
+        return layout;
+    }
+
+    private static class CardLayout {
+        private final List<CardSlot> slots = new ArrayList<>();
+        private float topY;
+        private float totalHeight;
+    }
+
+    private static class CardSlot {
+        private final float x;
+        private final float y;
+        private final float width;
+        private final float height;
+
+        private CardSlot(float x, float y, float width, float height) {
+            this.x = x;
+            this.y = y;
+            this.width = width;
+            this.height = height;
+        }
+    }
+
     private void onButtonClicked(int index) {
         String[] buttonLabels = getButtonLabels();
         if (index < 0 || index >= buttonLabels.length) {
@@ -368,6 +457,7 @@ public class GameOverScreen implements Screen {
         shapeRenderer.dispose();
         titleFont.dispose();
         statsFont.dispose();
+        cardTitleFont.dispose();
         buttonFont.dispose();
         backgroundTexture.dispose();
     }

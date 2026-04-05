@@ -14,6 +14,10 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.maps.tiled.TiledMap;
+import com.badlogic.gdx.maps.tiled.TiledMapTileLayer;
+import com.badlogic.gdx.maps.tiled.TmxMapLoader;
+import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Json;
 import com.badlogic.gdx.utils.viewport.FitViewport;
@@ -39,6 +43,14 @@ import com.rogueforge.game.engine.meta.CyberneticBonuses;
 import com.rogueforge.game.engine.meta.CyberneticEnhancementEngine;
 import com.rogueforge.game.engine.meta.DeathDraftResult;
 import com.rogueforge.game.engine.meta.RunOutcomeSummary;
+import com.rogueforge.game.engine.social.GuildPermissionsEngine;
+import com.rogueforge.game.engine.social.GuildDefinition;
+import com.rogueforge.game.engine.social.GuildMembership;
+import com.rogueforge.game.engine.social.GuildRank;
+import com.rogueforge.game.engine.social.OwnershipRecord;
+import com.rogueforge.game.engine.social.OwnershipScope;
+import com.rogueforge.game.engine.social.PermissionAction;
+import com.rogueforge.game.engine.social.PermissionSet;
 import com.rogueforge.game.engine.world.FrontierTerrainSampler;
 import com.rogueforge.game.engine.world.FrontierBiomeCatalog;
 import com.rogueforge.game.engine.world.FrontierBiomeDefinition;
@@ -49,6 +61,7 @@ import com.rogueforge.game.combat.AbilityDefinition;
 import com.rogueforge.game.combat.AbilityRegistry;
 import com.rogueforge.game.combat.WeaponType;
 import com.rogueforge.game.data.EquipmentItem;
+import com.rogueforge.game.data.BlueprintFragmentDefinition;
 import com.rogueforge.game.data.ForgeComponentDefinition;
 import com.rogueforge.game.data.ForgeIngredientDefinition;
 import com.rogueforge.game.data.ForgeRecipeDefinition;
@@ -76,6 +89,7 @@ import com.rogueforge.game.world.QuestManager;
 import com.rogueforge.game.world.RobotRecruitmentManager;
 import com.rogueforge.game.world.SettlementManager;
 import com.rogueforge.game.world.SettlementState;
+import com.rogueforge.game.world.SettlementUpgradeDefinition;
 import com.rogueforge.game.world.WorldStateManager;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -110,6 +124,11 @@ public class GameScreen implements Screen {
     private final GameState gameState;
     private Texture groundTileTexture;
     private Texture wallTileTexture;
+    private Texture villageGroundTileTexture;
+    private Texture villageWallTileTexture;
+    // Tiled map renderer — used when the zone TMX has painted tile layers
+    private TiledMap currentTiledMap;
+    private OrthogonalTiledMapRenderer tiledMapRenderer;
     private Texture doorTexture;
     private Texture chestTexture;
     private Texture shadowTexture;
@@ -185,12 +204,14 @@ public class GameScreen implements Screen {
     private final Map<String, List<ShopDefinition>> shopsByZoneId = new HashMap<>();
     private final Map<String, RobotDefinition> robotDefinitions = new HashMap<>();
     private final Map<String, ForgeComponentDefinition> forgeComponentDefinitions = new HashMap<>();
+    private final Map<String, BlueprintFragmentDefinition> blueprintFragmentDefinitions = new HashMap<>();
     private final List<ForgeRecipeDefinition> forgeRecipes = new ArrayList<>();
     private final List<StoryEventDefinition> storyEvents = new ArrayList<>();
     private final GameEngineServices engineServices = new GameEngineServices();
     private final BaseBuildingEngine baseBuildingEngine = engineServices.getBaseBuildingEngine();
     private final BaseDefenseDirector baseDefenseDirector = engineServices.getBaseDefenseDirector();
     private final CyberneticEnhancementEngine cyberneticEnhancementEngine = engineServices.getCyberneticEnhancementEngine();
+    private final GuildPermissionsEngine guildPermissionsEngine = engineServices.getGuildPermissionsEngine();
     private final TmxWorldLoader worldLoader = engineServices.getWorldLoader();
     private final InfiniteDungeonLayoutGenerator infiniteDungeonLayoutGenerator = engineServices.getInfiniteDungeonLayoutGenerator();
     private final FrontierZoneGenerator frontierZoneGenerator = engineServices.getFrontierZoneGenerator();
@@ -206,6 +227,7 @@ public class GameScreen implements Screen {
     private final List<String> harvestedFrontierFeatureIds = new ArrayList<>();
     private final List<String> claimedFrontierBaseSiteIds = new ArrayList<>();
     private final Map<String, BaseState> baseStatesByZoneId = new HashMap<>();
+    private final Map<String, GuildDefinition> guildDefinitionsById = new HashMap<>();
     private final List<BaseDefenderUnit> activeBaseDefenders = new ArrayList<>();
     private final List<String> keyItems = new ArrayList<>();
     private TmxWorldLoader.LoadedZone currentZone;
@@ -238,9 +260,14 @@ public class GameScreen implements Screen {
     private String activeDialog = null;
     private String activeSpeaker = null;
     private boolean questMenuOpen = false;
+    private int questMenuTabIndex = 0;
+    private boolean guildMenuOpen = false;
+    private int guildMenuSelectionIndex = 0;
     private boolean buildModeOpen = false;
     private int selectedBuildStructureIndex = 0;
+    private String activeClaimGuildId = null;
     private static final String OPENING_HOME_INTRO_FLAG = "intro.player_home_seen";
+    private static final String[] QUEST_MENU_TABS = {"Quests", "Materials", "Shards", "Blueprints", "Items"};
     private boolean pendingOpeningCutscene = false;
     private final List<DialogueSystem.DialoguePage> activeDialogueSequence = new ArrayList<>();
     private int activeDialogueSequenceIndex = 0;
@@ -324,6 +351,7 @@ public class GameScreen implements Screen {
         loadRobotDefinitions();
         loadMonsterDefinitions();
         loadForgeComponentDefinitions();
+        loadBlueprintFragmentDefinitions();
         loadForgeRecipes();
         loadStoryEvents();
         loadShopDefinitions();
@@ -374,6 +402,8 @@ public class GameScreen implements Screen {
     private void loadVisualAssets() {
         groundTileTexture = loadTexture("2 Dungeon Tileset/1 Tiles/Tile_03.png");
         wallTileTexture = loadTexture("2 Dungeon Tileset/1 Tiles/Tile_57.png");
+        villageGroundTileTexture = loadTexture("village/grass_a.png");
+        villageWallTileTexture = loadTexture("village/grass_b.png");
         doorTexture = loadTexture("2 Dungeon Tileset/3 Animated objects/Door_S.png");
         chestTexture = loadTexture("2 Dungeon Tileset/3 Animated objects/Chest1_S.png");
         shadowTexture = loadTexture("1 Characters/Other/Shadow.png");
@@ -441,19 +471,54 @@ public class GameScreen implements Screen {
                     questMenuOpen = false;
                     return;
                 }
+                if (Gdx.input.isKeyJustPressed(Input.Keys.LEFT) || Gdx.input.isKeyJustPressed(Input.Keys.A)) {
+                    cycleQuestMenuTab(-1);
+                }
+                if (Gdx.input.isKeyJustPressed(Input.Keys.RIGHT) || Gdx.input.isKeyJustPressed(Input.Keys.D) || Gdx.input.isKeyJustPressed(Input.Keys.TAB)) {
+                    cycleQuestMenuTab(1);
+                }
+            } else if (guildMenuOpen) {
+                if (Gdx.input.isKeyJustPressed(Input.Keys.G) || Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+                    guildMenuOpen = false;
+                    return;
+                }
+                if (Gdx.input.isKeyJustPressed(Input.Keys.UP) || Gdx.input.isKeyJustPressed(Input.Keys.W)) {
+                    cycleGuildSelection(-1);
+                }
+                if (Gdx.input.isKeyJustPressed(Input.Keys.DOWN) || Gdx.input.isKeyJustPressed(Input.Keys.S)) {
+                    cycleGuildSelection(1);
+                }
+                if (Gdx.input.isKeyJustPressed(Input.Keys.C)) {
+                    createAndSelectGuild();
+                    return;
+                }
+                if (Gdx.input.isKeyJustPressed(Input.Keys.E) || Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) {
+                    selectHighlightedGuildForClaims();
+                    return;
+                }
+                if (Gdx.input.isKeyJustPressed(Input.Keys.BACKSPACE) || Gdx.input.isKeyJustPressed(Input.Keys.DEL)) {
+                    clearActiveClaimGuildSelection();
+                    return;
+                }
             } else {
                 if (Gdx.input.isKeyJustPressed(Input.Keys.Q)) {
                     questMenuOpen = true;
+                    questMenuTabIndex = 0;
+                    return;
+                }
+                if (Gdx.input.isKeyJustPressed(Input.Keys.G)) {
+                    guildMenuOpen = true;
+                    clampGuildMenuSelection();
                     return;
                 }
             }
-            if (!questMenuOpen && Gdx.input.isKeyJustPressed(Input.Keys.B)) {
+            if (!questMenuOpen && !guildMenuOpen && Gdx.input.isKeyJustPressed(Input.Keys.B)) {
                 toggleBuildMode();
                 return;
             }
         }
 
-        if (!isPaused && !battleActive && !questMenuOpen && !buildModeOpen) {
+        if (!isPaused && !battleActive && !questMenuOpen && !guildMenuOpen && !buildModeOpen) {
             if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
                 pauseGame();
                 return;
@@ -472,7 +537,7 @@ public class GameScreen implements Screen {
             handleBuildModeShortcuts();
         }
 
-        if (!isPaused && !questMenuOpen) {
+        if (!isPaused && !questMenuOpen && !guildMenuOpen) {
             gameLoop.update(delta);
             updatePlayer(delta);
             updateRobots(delta);
@@ -519,6 +584,7 @@ public class GameScreen implements Screen {
         hudOverlay.render();
         drawDialogOverlay();
         drawQuestOverlay();
+        drawGuildOverlay();
         drawBuildOverlay();
 
         robotAttackLines.clear();
@@ -720,6 +786,12 @@ public class GameScreen implements Screen {
     }
 
     private void drawGroundTiles() {
+        if (tiledMapRenderer != null && currentTiledMap != null) {
+            tiledMapRenderer.setView(gameCamera);
+            tiledMapRenderer.render();
+            return;
+        }
+
         float tileSize = currentZone != null ? currentZone.tileWidth : 48f;
         float halfW = (gameCamera.viewportWidth * gameCamera.zoom) / 2f + tileSize;
         float halfH = (gameCamera.viewportHeight * gameCamera.zoom) / 2f + tileSize;
@@ -730,11 +802,16 @@ public class GameScreen implements Screen {
         int startY = Math.max(0, (int) Math.floor((playerPos.y - halfH) / tileSize) - 1);
         int endY = Math.min((int) Math.ceil(maxHeight / tileSize), (int) Math.ceil((playerPos.y + halfH) / tileSize) + 1);
 
+        String groundStyle = currentZone != null ? currentZone.groundStyle : "";
+        boolean isVillage = "village".equals(groundStyle);
+        Texture primaryTex = isVillage ? villageGroundTileTexture : groundTileTexture;
+        Texture secondaryTex = isVillage ? villageWallTileTexture : wallTileTexture;
+
         batch.setProjectionMatrix(gameCamera.combined);
         batch.begin();
         for (int gx = startX; gx <= endX; gx++) {
             for (int gy = startY; gy <= endY; gy++) {
-                Texture tile = ((gx + gy) & 1) == 0 ? groundTileTexture : wallTileTexture;
+                Texture tile = ((gx + gy) & 1) == 0 ? primaryTex : secondaryTex;
                 applyGroundTint(gx, gy, ((gx + gy) & 1) == 0);
                 batch.draw(tile, gx * tileSize, gy * tileSize, tileSize, tileSize);
             }
@@ -753,6 +830,11 @@ public class GameScreen implements Screen {
             return;
         }
         switch (currentZone.groundStyle) {
+            // ── Town / village ───────────────────────────────────────────────
+            case "village":
+                // Ironhaven: true pixel-art colours from Serene Village sheet — no tint
+                batch.setColor(Color.WHITE);
+                break;
             // ── Early zones ──────────────────────────────────────────────────
             case "meadow":
                 // Verdant Fields: lush, slightly warm green
@@ -1480,6 +1562,7 @@ public class GameScreen implements Screen {
         House workshop = findHouseById(0);
         House lodge = findHouseById(1);
         House herbalist = findHouseById(2);
+        House playerHome = findHouseById(3);
 
         if (worldStateManager.isFlagActive(gameState, "settlement.workshop_tools") && workshop != null) {
             spriteBatch.setColor(0.85f, 0.58f, 0.22f, 1f);
@@ -1522,6 +1605,83 @@ public class GameScreen implements Screen {
             spriteBatch.draw(wallTileTexture, padX + 9f, padY + 24f, 24f, 6f);
             spriteBatch.setColor(Color.WHITE);
             font.draw(spriteBatch, "Drone Pad", padX - 8f, padY + 48f);
+        }
+
+        if (worldStateManager.isFlagActive(gameState, "settlement.frontier_annex")) {
+            float annexX = currentZone != null ? currentZone.pixelWidth - 700f : 1220f;
+            float annexY = playerHome != null ? playerHome.y + 44f : 420f;
+
+            spriteBatch.setColor(0.18f, 0.24f, 0.3f, 1f);
+            spriteBatch.draw(wallTileTexture, annexX, annexY + 180f, 260f, 22f);
+            spriteBatch.draw(wallTileTexture, annexX, annexY, 260f, 22f);
+
+            spriteBatch.setColor(0.42f, 0.3f, 0.18f, 1f);
+            spriteBatch.draw(wallTileTexture, annexX + 24f, annexY + 24f, 84f, 60f);
+            spriteBatch.draw(wallTileTexture, annexX + 122f, annexY + 24f, 92f, 60f);
+            spriteBatch.draw(wallTileTexture, annexX + 38f, annexY + 108f, 180f, 48f);
+
+            spriteBatch.setColor(0.76f, 0.62f, 0.34f, 1f);
+            spriteBatch.draw(wallTileTexture, annexX + 20f, annexY + 166f, 204f, 10f);
+            spriteBatch.draw(wallTileTexture, annexX + 102f, annexY + 28f, 8f, 128f);
+
+            spriteBatch.setColor(0.58f, 0.76f, 0.88f, 1f);
+            spriteBatch.draw(wallTileTexture, annexX + 240f, annexY + 32f, 16f, 134f);
+            spriteBatch.draw(wallTileTexture, annexX + 232f, annexY + 162f, 32f, 18f);
+
+            spriteBatch.setColor(0.68f, 0.5f, 0.22f, 1f);
+            spriteBatch.draw(wallTileTexture, annexX + 16f, annexY - 30f, 48f, 28f);
+            spriteBatch.draw(wallTileTexture, annexX + 72f, annexY - 30f, 48f, 28f);
+            spriteBatch.draw(wallTileTexture, annexX + 128f, annexY - 30f, 48f, 28f);
+
+            spriteBatch.setColor(Color.WHITE);
+            font.draw(spriteBatch, "FRONTIER ANNEX", annexX + 22f, annexY + 214f);
+            font.draw(spriteBatch, "Depot Counter", annexX + 48f, annexY + 138f);
+            font.draw(spriteBatch, "Salvage Yard", annexX + 58f, annexY - 42f);
+        }
+
+        if (worldStateManager.isFlagActive(gameState, "settlement.tavern_open")) {
+            float tavernX = 104f;
+            float tavernY = 408f;
+            spriteBatch.setColor(0.42f, 0.24f, 0.14f, 1f);
+            spriteBatch.draw(wallTileTexture, tavernX, tavernY, 112f, 58f);
+            spriteBatch.setColor(0.82f, 0.68f, 0.28f, 1f);
+            spriteBatch.draw(wallTileTexture, tavernX + 20f, tavernY + 62f, 72f, 10f);
+            spriteBatch.setColor(Color.WHITE);
+            font.draw(spriteBatch, "Tavern", tavernX + 24f, tavernY + 90f);
+        }
+
+        if (worldStateManager.isFlagActive(gameState, "settlement.hangar_open")) {
+            float hangarX = 262f;
+            float hangarY = 286f;
+            spriteBatch.setColor(0.24f, 0.3f, 0.38f, 1f);
+            spriteBatch.draw(wallTileTexture, hangarX, hangarY, 144f, 50f);
+            spriteBatch.draw(wallTileTexture, hangarX + 18f, hangarY - 20f, 32f, 18f);
+            spriteBatch.draw(wallTileTexture, hangarX + 58f, hangarY - 20f, 32f, 18f);
+            spriteBatch.draw(wallTileTexture, hangarX + 98f, hangarY - 20f, 32f, 18f);
+            spriteBatch.setColor(Color.WHITE);
+            font.draw(spriteBatch, "Hangar", hangarX + 28f, hangarY + 78f);
+        }
+
+        if (worldStateManager.isFlagActive(gameState, "settlement.archive_open")) {
+            float archiveX = 896f;
+            float archiveY = 302f;
+            spriteBatch.setColor(0.3f, 0.22f, 0.36f, 1f);
+            spriteBatch.draw(wallTileTexture, archiveX, archiveY, 108f, 48f);
+            spriteBatch.setColor(0.68f, 0.8f, 0.96f, 1f);
+            spriteBatch.draw(wallTileTexture, archiveX + 14f, archiveY + 54f, 80f, 8f);
+            spriteBatch.setColor(Color.WHITE);
+            font.draw(spriteBatch, "Archive", archiveX + 18f, archiveY + 78f);
+        }
+
+        if (worldStateManager.isFlagActive(gameState, "settlement.training_grounds_open")) {
+            float yardX = 532f;
+            float yardY = 308f;
+            spriteBatch.setColor(0.56f, 0.38f, 0.2f, 1f);
+            spriteBatch.draw(wallTileTexture, yardX, yardY, 18f, 60f);
+            spriteBatch.draw(wallTileTexture, yardX + 62f, yardY, 18f, 60f);
+            spriteBatch.draw(wallTileTexture, yardX - 6f, yardY + 58f, 92f, 8f);
+            spriteBatch.setColor(Color.WHITE);
+            font.draw(spriteBatch, "Training Ground", yardX - 26f, yardY + 92f);
         }
     }
 
@@ -1899,9 +2059,6 @@ public class GameScreen implements Screen {
             return;
         }
 
-        List<String> questLines = getQuestJournalLines();
-        List<String> wrappedObjective = wrapTextLines(getCurrentObjective(), 64);
-
         uiViewport.apply();
         float w = uiViewport.getWorldWidth();
         float h = uiViewport.getWorldHeight();
@@ -1912,16 +2069,68 @@ public class GameScreen implements Screen {
         shapeRenderer.rect(0f, 0f, w, h);
         shapeRenderer.setColor(0.09f, 0.11f, 0.16f, 0.97f);
         shapeRenderer.rect(140f, 88f, w - 280f, h - 176f);
+        drawQuestMenuTabBackgrounds(w, h);
         shapeRenderer.end();
 
         batch.setProjectionMatrix(uiCamera.combined);
         batch.begin();
         font.setColor(Color.WHITE);
-        font.draw(batch, "Quest Log", 172f, h - 126f);
+        font.draw(batch, "Field Ledger", 172f, h - 126f);
         font.setColor(Color.LIGHT_GRAY);
-        font.draw(batch, "Q or ESC to close", w - 300f, h - 126f);
+        font.draw(batch, "Q or ESC to close  |  Left/Right or Tab to switch tabs", w - 560f, h - 126f);
 
-        float y = h - 176f;
+        drawQuestMenuTabs(batch, h);
+        drawQuestMenuTabContent(batch, h);
+        batch.end();
+    }
+
+    private void drawQuestMenuTabBackgrounds(float width, float height) {
+        float startX = 172f;
+        float y = height - 164f;
+        float tabWidth = 150f;
+        for (int i = 0; i < QUEST_MENU_TABS.length; i++) {
+            boolean active = i == questMenuTabIndex;
+            shapeRenderer.setColor(active ? new Color(0.24f, 0.30f, 0.44f, 0.95f) : new Color(0.10f, 0.12f, 0.18f, 0.92f));
+            shapeRenderer.rect(startX + i * (tabWidth + 10f), y - 24f, tabWidth, 30f);
+        }
+    }
+
+    private void drawQuestMenuTabs(SpriteBatch batch, float height) {
+        float startX = 172f;
+        float y = height - 164f;
+        float tabWidth = 150f;
+        for (int i = 0; i < QUEST_MENU_TABS.length; i++) {
+            boolean active = i == questMenuTabIndex;
+            font.setColor(active ? Color.WHITE : Color.LIGHT_GRAY);
+            font.draw(batch, QUEST_MENU_TABS[i], startX + 14f + i * (tabWidth + 10f), y - 4f);
+        }
+    }
+
+    private void drawQuestMenuTabContent(SpriteBatch batch, float height) {
+        switch (questMenuTabIndex) {
+            case 1:
+                drawQuestMenuListSection(batch, height, "Forge Components", getMaterialInventoryLines(), "No forge components collected yet.");
+                break;
+            case 2:
+                drawQuestMenuListSection(batch, height, "Graded Shards", getShardInventoryLines(), "No graded shards recovered yet.");
+                break;
+            case 3:
+                drawQuestMenuListSection(batch, height, "Blueprint Fragments", getBlueprintFragmentInventoryLines(), "No blueprint fragments recovered yet.");
+                break;
+            case 4:
+                drawQuestMenuListSection(batch, height, "Items", getItemInventoryLines(), "No usable items carried.");
+                break;
+            case 0:
+            default:
+                drawQuestJournalTab(batch, height);
+                break;
+        }
+    }
+
+    private void drawQuestJournalTab(SpriteBatch batch, float height) {
+        List<String> questLines = getQuestJournalLines();
+        List<String> wrappedObjective = wrapTextLines(getCurrentObjective(), 64);
+        float y = height - 218f;
         font.setColor(new Color(0.88f, 0.9f, 0.98f, 1f));
         font.draw(batch, "Current Objective", 172f, y);
         y -= 34f;
@@ -1938,24 +2147,231 @@ public class GameScreen implements Screen {
         font.setColor(Color.WHITE);
         if (questLines.isEmpty()) {
             font.draw(batch, "No active quests. Explore the frontier and talk to the crew.", 172f, y);
-        } else {
-            int drawn = 0;
-            for (String questLine : questLines) {
-                for (String wrapped : wrapTextLines(questLine, 78)) {
-                    if (drawn >= 12) {
-                        break;
-                    }
-                    font.draw(batch, wrapped, 172f, y);
-                    y -= 24f;
-                    drawn++;
-                }
+            return;
+        }
+        int drawn = 0;
+        for (String questLine : questLines) {
+            for (String wrapped : wrapTextLines(questLine, 78)) {
                 if (drawn >= 12) {
-                    break;
+                    return;
                 }
-                y -= 10f;
+                font.draw(batch, wrapped, 172f, y);
+                y -= 24f;
+                drawn++;
             }
+            if (drawn >= 12) {
+                return;
+            }
+            y -= 10f;
+        }
+    }
+
+    private void drawQuestMenuListSection(SpriteBatch batch, float height, String heading, List<String> lines, String emptyText) {
+        float y = height - 218f;
+        font.setColor(new Color(0.88f, 0.9f, 0.98f, 1f));
+        font.draw(batch, heading, 172f, y);
+        y -= 34f;
+        font.setColor(Color.WHITE);
+        if (lines == null || lines.isEmpty()) {
+            font.draw(batch, emptyText, 172f, y);
+            return;
+        }
+        int drawn = 0;
+        for (String line : lines) {
+            for (String wrapped : wrapTextLines(line, 78)) {
+                if (drawn >= 15) {
+                    return;
+                }
+                font.draw(batch, wrapped, 172f, y);
+                y -= 24f;
+                drawn++;
+            }
+            if (drawn >= 15) {
+                return;
+            }
+            y -= 8f;
+        }
+    }
+
+    private void drawGuildOverlay() {
+        if (!guildMenuOpen) {
+            return;
+        }
+
+        uiViewport.apply();
+        float w = uiViewport.getWorldWidth();
+        float h = uiViewport.getWorldHeight();
+        List<GuildDefinition> controllableGuilds = getControllableGuilds();
+        clampGuildMenuSelection();
+
+        shapeRenderer.setProjectionMatrix(uiCamera.combined);
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        shapeRenderer.setColor(0.03f, 0.04f, 0.08f, 0.88f);
+        shapeRenderer.rect(0f, 0f, w, h);
+        shapeRenderer.setColor(0.09f, 0.11f, 0.16f, 0.97f);
+        shapeRenderer.rect(180f, 94f, w - 360f, h - 188f);
+        shapeRenderer.end();
+
+        batch.setProjectionMatrix(uiCamera.combined);
+        batch.begin();
+        font.setColor(Color.WHITE);
+        font.draw(batch, "Guild Charter", 212f, h - 128f);
+        font.setColor(Color.LIGHT_GRAY);
+        font.draw(batch, "G or ESC close  |  Up/Down select  |  Enter choose active claim guild  |  C create guild  |  Del personal mode", 212f, h - 154f);
+
+        String activeMode = activeClaimGuildId != null && !activeClaimGuildId.isEmpty()
+            ? getGuildDisplayName(activeClaimGuildId)
+            : "Personal Claims";
+        font.setColor(new Color(0.88f, 0.94f, 0.98f, 1f));
+        font.draw(batch, "Claim Ownership Mode: " + activeMode, 212f, h - 194f);
+
+        float y = h - 238f;
+        if (controllableGuilds.isEmpty()) {
+            font.setColor(Color.WHITE);
+            font.draw(batch, "No guilds available yet. Press C to create one anchored to your player profile.", 212f, y);
+            batch.end();
+            return;
+        }
+
+        for (int i = 0; i < controllableGuilds.size(); i++) {
+            GuildDefinition guild = controllableGuilds.get(i);
+            boolean selected = i == guildMenuSelectionIndex;
+            boolean active = guild.getGuildId().equals(activeClaimGuildId);
+            font.setColor(selected ? new Color(0.96f, 0.92f, 0.62f, 1f) : Color.WHITE);
+            font.draw(batch, (selected ? "> " : "  ") + guild.getDisplayName() + (active ? " [Active]" : ""), 212f, y);
+            y -= 24f;
+            font.setColor(Color.LIGHT_GRAY);
+            String hall = guild.getHallClaimedSiteId() != null && !guild.getHallClaimedSiteId().isEmpty()
+                ? guild.getHallZoneId() + " / " + guild.getHallClaimedSiteId()
+                : "No hall claimed yet";
+            font.draw(batch, "Founder: " + guild.getFounderPlayerId() + "  |  Hall: " + hall, 232f, y);
+            y -= 34f;
         }
         batch.end();
+    }
+
+    private void cycleQuestMenuTab(int direction) {
+        int tabCount = QUEST_MENU_TABS.length;
+        if (tabCount <= 0) {
+            questMenuTabIndex = 0;
+            return;
+        }
+        questMenuTabIndex = (questMenuTabIndex + direction) % tabCount;
+        if (questMenuTabIndex < 0) {
+            questMenuTabIndex += tabCount;
+        }
+    }
+
+    private void cycleGuildSelection(int delta) {
+        List<GuildDefinition> controllableGuilds = getControllableGuilds();
+        if (controllableGuilds.isEmpty()) {
+            guildMenuSelectionIndex = 0;
+            return;
+        }
+        guildMenuSelectionIndex = Math.floorMod(guildMenuSelectionIndex + delta, controllableGuilds.size());
+    }
+
+    private void clampGuildMenuSelection() {
+        List<GuildDefinition> controllableGuilds = getControllableGuilds();
+        if (controllableGuilds.isEmpty()) {
+            guildMenuSelectionIndex = 0;
+            return;
+        }
+        guildMenuSelectionIndex = Math.floorMod(guildMenuSelectionIndex, controllableGuilds.size());
+    }
+
+    private List<GuildDefinition> getControllableGuilds() {
+        List<GuildDefinition> guilds = new ArrayList<>();
+        for (GuildDefinition guild : guildDefinitionsById.values()) {
+            if (guild != null && guildPermissionsEngine.canPerform(guild, playerName, PermissionAction.CLAIM_LAND)) {
+                guilds.add(guild);
+            }
+        }
+        guilds.sort((left, right) -> left.getDisplayName().compareToIgnoreCase(right.getDisplayName()));
+        return guilds;
+    }
+
+    private void createAndSelectGuild() {
+        String guildId = buildNextGuildId();
+        String guildName = buildNextGuildName();
+        GuildDefinition guild = GuildDefinition.createWithDefaultRanks(guildId, guildName, playerName);
+        guildDefinitionsById.put(guildId, guild);
+        activeClaimGuildId = guildId;
+        clampGuildMenuSelectionToGuild(guildId);
+        autosave();
+        showStandaloneDialog("Guild Charter", guildName + " founded. New claims can now be assigned to this guild.");
+    }
+
+    private void selectHighlightedGuildForClaims() {
+        List<GuildDefinition> controllableGuilds = getControllableGuilds();
+        if (controllableGuilds.isEmpty()) {
+            showStandaloneDialog("Guild Charter", "Create a guild first.");
+            return;
+        }
+        clampGuildMenuSelection();
+        GuildDefinition guild = controllableGuilds.get(guildMenuSelectionIndex);
+        activeClaimGuildId = guild.getGuildId();
+        autosave();
+        showStandaloneDialog("Guild Charter", guild.getDisplayName() + " is now the active owner for future claims.");
+    }
+
+    private void clearActiveClaimGuildSelection() {
+        activeClaimGuildId = null;
+        autosave();
+        showStandaloneDialog("Guild Charter", "Future claims will be personal until you select a guild again.");
+    }
+
+    private void clampGuildMenuSelectionToGuild(String guildId) {
+        List<GuildDefinition> controllableGuilds = getControllableGuilds();
+        for (int i = 0; i < controllableGuilds.size(); i++) {
+            if (controllableGuilds.get(i).getGuildId().equals(guildId)) {
+                guildMenuSelectionIndex = i;
+                return;
+            }
+        }
+        clampGuildMenuSelection();
+    }
+
+    private String buildNextGuildId() {
+        int nextIndex = guildDefinitionsById.size() + 1;
+        String base = "guild_" + playerName.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "_");
+        String candidate = base + "_" + nextIndex;
+        while (guildDefinitionsById.containsKey(candidate)) {
+            nextIndex++;
+            candidate = base + "_" + nextIndex;
+        }
+        return candidate;
+    }
+
+    private String buildNextGuildName() {
+        String baseName = playerName + "'s Guild";
+        if (!guildDisplayNameExists(baseName)) {
+            return baseName;
+        }
+        int nextIndex = 2;
+        String candidate = baseName + " " + nextIndex;
+        while (guildDisplayNameExists(candidate)) {
+            nextIndex++;
+            candidate = baseName + " " + nextIndex;
+        }
+        return candidate;
+    }
+
+    private boolean guildDisplayNameExists(String displayName) {
+        if (displayName == null || displayName.isEmpty()) {
+            return false;
+        }
+        for (GuildDefinition guild : guildDefinitionsById.values()) {
+            if (guild != null && displayName.equalsIgnoreCase(guild.getDisplayName())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String getGuildDisplayName(String guildId) {
+        GuildDefinition guild = guildId != null ? guildDefinitionsById.get(guildId) : null;
+        return guild != null && guild.getDisplayName() != null && !guild.getDisplayName().isEmpty() ? guild.getDisplayName() : "Unknown Guild";
     }
 
     private void drawBuildOverlay() {
@@ -2170,6 +2586,7 @@ public class GameScreen implements Screen {
         gameState.setUnbankedGold(0L);
         gameState.clearUnbankedForgeComponents();
         gameState.clearUnbankedShards();
+        gameState.clearUnbankedBlueprintFragments();
     }
 
     private RunOutcomeSummary buildRunOutcomeSummary() {
@@ -2214,8 +2631,11 @@ public class GameScreen implements Screen {
         batch.dispose();
         shapeRenderer.dispose();
         font.dispose();
+        disposeCurrentTiledMap();
         groundTileTexture.dispose();
         wallTileTexture.dispose();
+        if (villageGroundTileTexture != null) villageGroundTileTexture.dispose();
+        if (villageWallTileTexture != null) villageWallTileTexture.dispose();
         doorTexture.dispose();
         chestTexture.dispose();
         shadowTexture.dispose();
@@ -2310,6 +2730,8 @@ public class GameScreen implements Screen {
         sf.setUnbankedForgeComponents(new HashMap<>(gameState.getUnbankedForgeComponents()));
         sf.setShardInventory(new HashMap<>(gameState.getShardInventory()));
         sf.setUnbankedShardInventory(new HashMap<>(gameState.getUnbankedShards()));
+        sf.setBlueprintFragments(new HashMap<>(gameState.getBlueprintFragments()));
+        sf.setUnbankedBlueprintFragments(new HashMap<>(gameState.getUnbankedBlueprintFragments()));
         sf.setForgeCoreLevel(gameState.getForgeCoreLevel());
         sf.setInfiniteDungeonCurrentFloor(gameState.getInfiniteDungeonCurrentFloor());
         sf.setInfiniteDungeonBestFloor(gameState.getInfiniteDungeonBestFloor());
@@ -2319,6 +2741,8 @@ public class GameScreen implements Screen {
         sf.setHarvestedFrontierFeatureIds(new ArrayList<>(harvestedFrontierFeatureIds));
         sf.setClaimedFrontierBaseSiteIds(new ArrayList<>(claimedFrontierBaseSiteIds));
         sf.setBaseStates(buildBaseStateSaveData());
+        sf.setGuilds(buildGuildSaveData());
+        sf.setActiveClaimGuildId(activeClaimGuildId);
         sf.setCurrentZoneId(gameState.getCurrentZoneId());
         sf.setRobotEquipment(copyRobotEquipment(robotEquipment));
         sf.setCollectedRobotIds(new ArrayList<>(gameState.getCollectedRobotIds()));
@@ -2343,26 +2767,13 @@ public class GameScreen implements Screen {
     private void loadFromSave(SaveFile saveFile) {
         currentZoneId = saveFile.getCurrentZoneId() != null ? saveFile.getCurrentZoneId() : currentZoneId;
         worldSeed = saveFile.getWorldSeed() != 0L ? saveFile.getWorldSeed() : generateWorldSeed();
+        loadGuildsFromSave(saveFile);
+        activeClaimGuildId = saveFile.getActiveClaimGuildId();
         loadBaseStatesFromSave(saveFile);
         gameState.setInfiniteDungeonCurrentFloor(saveFile.getInfiniteDungeonCurrentFloor());
         gameState.setInfiniteDungeonBestFloor(saveFile.getInfiniteDungeonBestFloor());
         gameState.setInfiniteDungeonFloorsCleared(saveFile.getInfiniteDungeonFloorsCleared());
         gameState.setInfiniteDungeonRunActive(saveFile.isInfiniteDungeonRunActive());
-        loadZone(currentZoneId, null, true);
-        playerHealth = saveFile.getPlayerHp();
-        playerMaxHealth = saveFile.getPlayerMaxHp() > 0 ? saveFile.getPlayerMaxHp() : playerMaxHealth;
-        playerPos.set(saveFile.getPlayerX(), saveFile.getPlayerY());
-        totalGold = saveFile.getCurrencyBalance();
-        healingPotions = saveFile.getHealingPotions();
-        playerLevel = Math.max(1, saveFile.getPlayerLevel());
-        playerExperience = Math.max(0, saveFile.getPlayerExperience());
-        gameState.setPlayerHealth(playerHealth);
-        gameState.setPlayerMaxHealth(playerMaxHealth);
-        gameState.setTotalGold(totalGold);
-        gameState.setUnbankedGold(saveFile.getUnbankedCurrencyBalance());
-        gameState.setHealingPotions(healingPotions);
-        gameState.setPlayerLevel(playerLevel);
-        gameState.setPlayerExperience(playerExperience);
         playerEquipment = saveFile.getPlayerEquipment() != null
             ? new HashMap<>(saveFile.getPlayerEquipment())
             : new HashMap<>();
@@ -2387,6 +2798,8 @@ public class GameScreen implements Screen {
         gameState.setUnbankedForgeComponents(saveFile.getUnbankedForgeComponents());
         gameState.setShardInventory(saveFile.getShardInventory());
         gameState.setUnbankedShards(saveFile.getUnbankedShardInventory());
+        gameState.setBlueprintFragments(saveFile.getBlueprintFragments());
+        gameState.setUnbankedBlueprintFragments(saveFile.getUnbankedBlueprintFragments());
         gameState.setForgeCoreLevel(saveFile.getForgeCoreLevel());
         gameState.setDefeatedBossIds(saveFile.getDefeatedBossIds());
         harvestedFrontierFeatureIds.clear();
@@ -2394,7 +2807,24 @@ public class GameScreen implements Screen {
         syncClaimedFrontierBaseSiteIds();
         worldStateManager.initialize(gameState);
         questManager.initialize(gameState);
+        backfillLegacyFrontierAnnexUnlock();
+        syncAct2TownFacilities();
         questManager.syncProgress(gameState, worldStateManager);
+        loadZone(currentZoneId, null, true);
+        playerHealth = saveFile.getPlayerHp();
+        playerMaxHealth = saveFile.getPlayerMaxHp() > 0 ? saveFile.getPlayerMaxHp() : playerMaxHealth;
+        playerPos.set(saveFile.getPlayerX(), saveFile.getPlayerY());
+        totalGold = saveFile.getCurrencyBalance();
+        healingPotions = saveFile.getHealingPotions();
+        playerLevel = Math.max(1, saveFile.getPlayerLevel());
+        playerExperience = Math.max(0, saveFile.getPlayerExperience());
+        gameState.setPlayerHealth(playerHealth);
+        gameState.setPlayerMaxHealth(playerMaxHealth);
+        gameState.setTotalGold(totalGold);
+        gameState.setUnbankedGold(saveFile.getUnbankedCurrencyBalance());
+        gameState.setHealingPotions(healingPotions);
+        gameState.setPlayerLevel(playerLevel);
+        gameState.setPlayerExperience(playerExperience);
         totalEnemiesKilled = saveFile.getTotalEnemiesKilled();
         survivalTime = saveFile.getPlayTimeSeconds();
         currentSaveSlot = saveFile.getSaveSlot();
@@ -2432,6 +2862,28 @@ public class GameScreen implements Screen {
         restoreChestState(saveFile.getChests());
 
         refreshHud();
+    }
+
+    private void backfillLegacyFrontierAnnexUnlock() {
+        if (worldStateManager.isFlagActive(gameState, "settlement.frontier_annex")) {
+            return;
+        }
+        if (!gameState.hasDefeatedBoss("rusted_sovereign_c")) {
+            return;
+        }
+        worldStateManager.setFlag(gameState, "frontier.shadow_caves_secured", true);
+        applySettlementUpgrade("frontier_annex");
+    }
+
+    private void syncAct2TownFacilities() {
+        if (getForgeCoreLevel() < 2) {
+            return;
+        }
+        worldStateManager.setFlag(gameState, "event.forge_core_lv2_online", true);
+        worldStateManager.setFlag(gameState, "settlement.tavern_open", true);
+        worldStateManager.setFlag(gameState, "settlement.hangar_open", true);
+        worldStateManager.setFlag(gameState, "settlement.archive_open", true);
+        worldStateManager.setFlag(gameState, "settlement.training_grounds_open", true);
     }
 
     private Map<String, Map<String, String>> copyRobotEquipment(Map<String, Map<String, String>> source) {
@@ -2649,6 +3101,12 @@ public class GameScreen implements Screen {
                 addForgeComponentLoot(entry.getKey(), entry.getValue());
             }
         }
+        Map<String, Integer> blueprintDrops = rollBlueprintFragmentDropsForBattle(result);
+        if (!blueprintDrops.isEmpty()) {
+            for (Map.Entry<String, Integer> entry : blueprintDrops.entrySet()) {
+                addBlueprintFragmentLoot(entry.getKey(), entry.getValue());
+            }
+        }
         handleBattleStoryEvents(result);
         handleInfiniteDungeonBattleResolution(result);
 
@@ -2735,6 +3193,100 @@ public class GameScreen implements Screen {
         }
     }
 
+    private Map<String, Integer> rollBlueprintFragmentDropsForBattle(BattleScreen.BattleResult result) {
+        Map<String, Integer> drops = new HashMap<>();
+        if (result == null || result.enemyReferences == null || result.enemyHealth == null || gameState.getForgeCoreLevel() < 2) {
+            return drops;
+        }
+        for (int i = 0; i < result.enemyReferences.length && i < result.enemyHealth.length; i++) {
+            if (result.enemyHealth[i] > 0f) {
+                continue;
+            }
+            Enemy enemy = result.enemyReferences[i] instanceof Enemy ? (Enemy) result.enemyReferences[i] : null;
+            if (enemy == null || enemy.monsterId == null || enemy.monsterId.isEmpty()) {
+                continue;
+            }
+            MonsterDefinition monster = monsterDefinitions.get(enemy.monsterId);
+            if (monster == null) {
+                continue;
+            }
+            mergeLootMap(drops, rollBlueprintFragmentDropsForEnemy(enemy.monsterId, monster.getRank(), isBossMonster(enemy.monsterId)));
+        }
+        return drops;
+    }
+
+    private Map<String, Integer> rollBlueprintFragmentDropsForEnemy(String monsterId, String rank, boolean bossKill) {
+        Map<String, Integer> drops = new HashMap<>();
+        if (monsterId == null || monsterId.isEmpty() || rank == null || rank.isEmpty()) {
+            return drops;
+        }
+        String fragmentId = getBlueprintFragmentIdForEnemy(monsterId);
+        if (fragmentId == null || fragmentId.isEmpty()) {
+            return drops;
+        }
+        if (bossKill) {
+            drops.put(fragmentId, 2);
+            return drops;
+        }
+        if (!isActTwoBlueprintRank(rank) || Math.random() > getBlueprintFragmentDropChance(rank)) {
+            return drops;
+        }
+        drops.put(fragmentId, 1);
+        return drops;
+    }
+
+    private boolean isActTwoBlueprintRank(String rank) {
+        return "C".equals(rank) || "B".equals(rank) || "A".equals(rank) || "S".equals(rank);
+    }
+
+    private float getBlueprintFragmentDropChance(String rank) {
+        switch (rank) {
+            case "S":
+                return 0.55f;
+            case "A":
+                return 0.4f;
+            case "B":
+                return 0.28f;
+            default:
+                return 0.18f;
+        }
+    }
+
+    private String getBlueprintFragmentIdForEnemy(String monsterId) {
+        String normalized = monsterId.toLowerCase(Locale.ROOT);
+        if (normalized.contains("sovereign") || normalized.contains("forge") || normalized.contains("drake")) {
+            return "forge_schema";
+        }
+        if (normalized.contains("warden") || normalized.contains("sentinel") || normalized.contains("core") || normalized.contains("construct")) {
+            return "bot_chassis_schema";
+        }
+        if (normalized.contains("raider") || normalized.contains("scout") || normalized.contains("marauder") || normalized.contains("specter")) {
+            return "settlement_plan";
+        }
+        switch (currentZoneId) {
+            case "shadow_caves":
+            case "dragon_peak":
+                return "forge_schema";
+            case "rusty_quarry":
+            case "coastal_shallows":
+                return "settlement_plan";
+            default:
+                return "bot_chassis_schema";
+        }
+    }
+
+    private void mergeLootMap(Map<String, Integer> target, Map<String, Integer> source) {
+        if (target == null || source == null || source.isEmpty()) {
+            return;
+        }
+        for (Map.Entry<String, Integer> entry : source.entrySet()) {
+            if (entry.getKey() == null || entry.getKey().isEmpty() || entry.getValue() == null || entry.getValue() <= 0) {
+                continue;
+            }
+            target.put(entry.getKey(), target.getOrDefault(entry.getKey(), 0) + entry.getValue());
+        }
+    }
+
     private void triggerStoryEvents(String triggerType, String triggerId) {
         if (triggerType == null || triggerType.isEmpty() || triggerId == null || triggerId.isEmpty()) {
             return;
@@ -2780,6 +3332,9 @@ public class GameScreen implements Screen {
         }
         if (definition.getCompleteQuestId() != null && !definition.getCompleteQuestId().isEmpty()) {
             questManager.completeQuest(gameState, definition.getCompleteQuestId());
+        }
+        if (definition.getSettlementUpgradeId() != null && !definition.getSettlementUpgradeId().isEmpty()) {
+            applySettlementUpgrade(definition.getSettlementUpgradeId());
         }
         if (definition.getAddKeyItem() != null && !definition.getAddKeyItem().isEmpty()) {
             addKeyItem(definition.getAddKeyItem());
@@ -2847,9 +3402,20 @@ public class GameScreen implements Screen {
                 // are gathered and a subsequent battle is won.
                 java.util.Map<String, Integer> cost =
                     RobotEvolutionManager.evolutionMaterialCost(state.getEvolutionTier());
-                if (gameState.consumeForgeComponents(cost)) {
+                String blueprintFragmentId = RobotEvolutionManager.evolutionBlueprintFragmentId(state.getEvolutionTier());
+                int blueprintFragmentCost = RobotEvolutionManager.evolutionBlueprintFragmentCost(state.getEvolutionTier());
+                boolean paidComponents = gameState.consumeForgeComponents(cost);
+                boolean paidBlueprints = blueprintFragmentCost <= 0
+                    || blueprintFragmentId.isEmpty()
+                    || gameState.consumeBlueprintFragments(blueprintFragmentId, blueprintFragmentCost);
+                if (paidComponents && paidBlueprints) {
                     evolveRobotAtIndex(i, state);
                 } else {
+                    if (paidComponents) {
+                        for (Map.Entry<String, Integer> entry : cost.entrySet()) {
+                            gameState.addForgeComponent(entry.getKey(), entry.getValue());
+                        }
+                    }
                     state.setEvolutionTier(tierBefore);
                 }
             }
@@ -3044,6 +3610,21 @@ public class GameScreen implements Screen {
         }
     }
 
+    private void loadBlueprintFragmentDefinitions() {
+        BlueprintFragmentDefinition[] definitions = new Json().fromJson(
+            BlueprintFragmentDefinition[].class,
+            Gdx.files.internal("data/blueprint_fragments.json").readString()
+        );
+        if (definitions == null) {
+            return;
+        }
+        for (BlueprintFragmentDefinition definition : definitions) {
+            if (definition != null && definition.getId() != null) {
+                blueprintFragmentDefinitions.put(definition.getId(), definition);
+            }
+        }
+    }
+
     private void loadForgeRecipes() {
         ForgeRecipeDefinition[] definitions = new Json().fromJson(
             ForgeRecipeDefinition[].class,
@@ -3100,6 +3681,7 @@ public class GameScreen implements Screen {
         currentZoneId = zoneId;
         gameState.setCurrentZoneId(zoneId);
         currentZoneDefinition = definition;
+        loadZoneVisualMap(definition);
         currentZone = worldLoader.load(definition);
         frontierTerrainSampler = definition.isExpansiveFrontier() ? new FrontierTerrainSampler(worldSeed) : null;
         frontierBiomeCatalog = definition.isExpansiveFrontier() ? new FrontierBiomeCatalog() : null;
@@ -3154,6 +3736,46 @@ public class GameScreen implements Screen {
         triggerStoryEvents("ZONE_ENTER", zoneId);
         refreshHud();
         autosave();
+    }
+
+    private void loadZoneVisualMap(ZoneDefinition definition) {
+        disposeCurrentTiledMap();
+        if (definition == null || definition.getTilemapPath() == null || definition.getTilemapPath().isEmpty()) {
+            return;
+        }
+        try {
+            currentTiledMap = new TmxMapLoader().load(definition.getTilemapPath());
+            if (hasRenderableTileLayers(currentTiledMap)) {
+                tiledMapRenderer = new OrthogonalTiledMapRenderer(currentTiledMap, 1f);
+            } else {
+                disposeCurrentTiledMap();
+            }
+        } catch (RuntimeException ignored) {
+            disposeCurrentTiledMap();
+        }
+    }
+
+    private boolean hasRenderableTileLayers(TiledMap tiledMap) {
+        if (tiledMap == null) {
+            return false;
+        }
+        for (com.badlogic.gdx.maps.MapLayer layer : tiledMap.getLayers()) {
+            if (layer instanceof TiledMapTileLayer) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void disposeCurrentTiledMap() {
+        if (tiledMapRenderer != null) {
+            tiledMapRenderer.dispose();
+            tiledMapRenderer = null;
+        }
+        if (currentTiledMap != null) {
+            currentTiledMap.dispose();
+            currentTiledMap = null;
+        }
     }
 
     private void handleInfiniteDungeonZoneLoad(String previousZoneId, String spawnId) {
@@ -3228,6 +3850,9 @@ public class GameScreen implements Screen {
         if (currentZone == null || !isHubTownZone()) {
             return;
         }
+        if (!"upgrade_workshop".equals(questManager.getQuestState(gameState, "workshop_tools"))) {
+            return;
+        }
         if (worldStateManager.isFlagActive(gameState, "settlement.workshop_tools")) {
             return;
         }
@@ -3286,6 +3911,56 @@ public class GameScreen implements Screen {
                 workshop != null ? new Vector2(workshop.x - 18f, workshop.y + workshop.height - 4f) : new Vector2(235f, 250f),
                 "Survey drones are airborne again. Bring me fresh route intel and I'll keep Ironhaven's map board honest."));
         }
+        if (worldStateManager.isFlagActive(gameState, "settlement.frontier_annex")) {
+            if (!hasTownNpc("hale")) {
+                npcs.add(new Npc("hale", "Hale",
+                    new Vector2(currentZone != null ? currentZone.pixelWidth - 620f : 1298f, 638f),
+                    "The annex is hungry for fresh salvage. Bring a live haul home and we keep the east line moving."));
+            }
+            if (!hasTownNpc("vesa")) {
+                npcs.add(new Npc("vesa", "Vesa",
+                    new Vector2(currentZone != null ? currentZone.pixelWidth - 492f : 1428f, 580f),
+                    "Every crate that clears this yard means another crew can push deeper tomorrow."));
+            }
+        }
+        if (worldStateManager.isFlagActive(gameState, "settlement.tavern_open") && !hasTownNpc("innkeeper_tamsin")) {
+            npcs.add(new Npc("innkeeper_tamsin", "Tamsin", new Vector2(162f, 494f),
+                "If Ironhaven is going to grow, it needs a room where crews can trade rumors before the next push."));
+        }
+        if (worldStateManager.isFlagActive(gameState, "settlement.hangar_open") && !hasTownNpc("hangar_keeper")) {
+            npcs.add(new Npc("hangar_keeper", "Hangar Keeper", new Vector2(334f, 350f),
+                "Reserve frames, spare chassis, field swaps. The hangar keeps your roster ready for the next climb."));
+        }
+        if (worldStateManager.isFlagActive(gameState, "settlement.training_grounds_open") && !hasTownNpc("commander_rex")) {
+            npcs.add(new Npc("commander_rex", "Commander Rex", new Vector2(612f, 348f),
+                "A stronger team starts with disciplined drills and clean command lines."));
+        }
+        if (worldStateManager.isFlagActive(gameState, "settlement.archive_open") && !hasTownNpc("professor_cogs")) {
+            npcs.add(new Npc("professor_cogs", "Professor Cogs", new Vector2(944f, 344f),
+                "The archive remembers what the field forgets."));
+        }
+        if (worldStateManager.isFlagActive(gameState, "settlement.workshop_tools") && !hasTownNpc("master_silas")) {
+            npcs.add(new Npc("master_silas", "Master Silas",
+                workshop != null ? new Vector2(workshop.x + workshop.width + 84f, workshop.y + 64f) : new Vector2(430f, 232f),
+                "The workshop is awake. Now we see whether your salvage deserves the fire."));
+        }
+        if (worldStateManager.isFlagActive(gameState, "settlement.apothecary_stock") && !hasTownNpc("elena_apothecary")) {
+            npcs.add(new Npc("elena_apothecary", "Elena",
+                herbalist != null ? new Vector2(herbalist.x + 92f, herbalist.y - 28f) : new Vector2(1028f, 226f),
+                "Every deep push is paid for twice: once in steel, once in recovery."));
+        }
+    }
+
+    private boolean hasTownNpc(String npcId) {
+        if (npcId == null || npcId.isEmpty()) {
+            return false;
+        }
+        for (Npc npc : npcs) {
+            if (npcId.equals(npc.id)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private House createHouseFromFeature(TmxWorldLoader.Feature feature) {
@@ -3430,6 +4105,7 @@ public class GameScreen implements Screen {
         if (result == null) {
             return;
         }
+        boolean settlementUpgradeApplied = true;
         if (result.setQuestId != null && !result.setQuestId.isEmpty()) {
             if ("NOT_STARTED".equals(questManager.getQuestState(gameState, result.setQuestId))) {
                 questManager.startQuest(gameState, result.setQuestId);
@@ -3444,21 +4120,32 @@ public class GameScreen implements Screen {
         if (result.addKeyItem != null && !result.addKeyItem.isEmpty()) {
             addKeyItem(result.addKeyItem);
         }
-        if (result.setWorldFlag != null && !result.setWorldFlag.isEmpty()) {
-            worldStateManager.setFlag(gameState, result.setWorldFlag, true);
-        }
         if (result.settlementUpgradeId != null && !result.settlementUpgradeId.isEmpty()) {
-            applySettlementUpgrade(result.settlementUpgradeId);
+            settlementUpgradeApplied = applySettlementUpgrade(result.settlementUpgradeId);
+        }
+        if (settlementUpgradeApplied && result.setWorldFlag != null && !result.setWorldFlag.isEmpty()) {
+            worldStateManager.setFlag(gameState, result.setWorldFlag, true);
         }
         if (result.recruitEventId != null && !result.recruitEventId.isEmpty()) {
             applyRecruitment(result.recruitEventId);
         }
         questManager.syncProgress(gameState, worldStateManager);
+        if (isHubTownZone()) {
+            addStarterTownUpgradeChest();
+        }
     }
 
     private void applyRecruitment(String eventId) {
-        RobotRecruitmentManager.RecruitmentResult recruitment = recruitmentManager.apply(eventId, collectedRobotIds, activeRobotIds);
+        RobotRecruitmentManager.RecruitmentResult recruitment = recruitmentManager.apply(eventId, collectedRobotIds, activeRobotIds, gameState);
         if (recruitment == null) {
+            return;
+        }
+        if (recruitment.blocked) {
+            String fragmentName = getBlueprintFragmentName(recruitment.requiredBlueprintFragmentId);
+            int current = gameState.getBlueprintFragmentCount(recruitment.requiredBlueprintFragmentId);
+            activeDialog = "That frame needs " + recruitment.requiredBlueprintFragmentCount + " " + fragmentName
+                + " before Ironhaven can stabilize it. You currently have " + current + ".";
+            dialogPageTrackingText = null;
             return;
         }
         gameState.setCollectedRobotIds(collectedRobotIds);
@@ -3475,24 +4162,72 @@ public class GameScreen implements Screen {
         }
     }
 
-    private void applySettlementUpgrade(String upgradeId) {
+    private boolean applySettlementUpgrade(String upgradeId) {
+        if (upgradeId == null || upgradeId.isEmpty()) {
+            return false;
+        }
+        SettlementManager settlement = settlementManager;
+        SettlementUpgradeDefinition definition = settlement.get(upgradeId);
+        if (definition != null && !canAffordSettlementUpgrade(definition)) {
+            String fragmentName = getBlueprintFragmentName(definition.getRequiredBlueprintFragmentId());
+            int current = gameState.getBlueprintFragmentCount(definition.getRequiredBlueprintFragmentId());
+            activeDialog = "Ironhaven needs " + definition.getRequiredBlueprintFragmentCount() + " " + fragmentName
+                + " to finish " + definition.getName() + ". You currently have " + current + ".";
+            activeDialogueSequence.clear();
+            activeDialogueSequence.add(new DialogueSystem.DialoguePage(activeSpeaker != null ? activeSpeaker : "Ironhaven", activeDialog));
+            activeDialogueSequenceIndex = 0;
+            dialogPageIndex = 0;
+            dialogPageTrackingText = null;
+            return false;
+        }
+        if (definition != null) {
+            spendSettlementUpgradeBlueprintCost(definition);
+        }
         SettlementState state = gameState.getSettlementUpgrade(upgradeId);
         if (state == null) {
             state = new SettlementState(upgradeId, 0);
         }
         state.setLevel(state.getLevel() + 1);
         gameState.putSettlementUpgrade(state);
-        SettlementManager settlement = settlementManager;
-        if (settlement.get(upgradeId) != null) {
-            if (settlement.get(upgradeId).getRewardEquipmentId() != null
-                && !settlement.get(upgradeId).getRewardEquipmentId().isEmpty()) {
-                unlockEquipment(settlement.get(upgradeId).getRewardEquipmentId());
+        if (definition != null) {
+            if (definition.getRewardEquipmentId() != null
+                && !definition.getRewardEquipmentId().isEmpty()) {
+                unlockEquipment(definition.getRewardEquipmentId());
             }
-            if (settlement.get(upgradeId).getRewardPotions() > 0) {
-                addHealingPotions(settlement.get(upgradeId).getRewardPotions());
+            if (definition.getRewardPotions() > 0) {
+                addHealingPotions(definition.getRewardPotions());
             }
         }
         worldStateManager.setFlag(gameState, "settlement." + upgradeId, true);
+        if (!QuestManager.COMPLETED.equals(questManager.getQuestState(gameState, upgradeId))) {
+            questManager.completeQuest(gameState, upgradeId);
+        }
+        refreshHud();
+        return true;
+    }
+
+    private boolean canAffordSettlementUpgrade(SettlementUpgradeDefinition definition) {
+        if (definition == null) {
+            return true;
+        }
+        if (definition.getRequiredBlueprintFragmentCount() <= 0 || definition.getRequiredBlueprintFragmentId().isEmpty()) {
+            return true;
+        }
+        return gameState.getBlueprintFragmentCount(definition.getRequiredBlueprintFragmentId())
+            >= definition.getRequiredBlueprintFragmentCount();
+    }
+
+    private void spendSettlementUpgradeBlueprintCost(SettlementUpgradeDefinition definition) {
+        if (definition == null) {
+            return;
+        }
+        if (definition.getRequiredBlueprintFragmentCount() <= 0 || definition.getRequiredBlueprintFragmentId().isEmpty()) {
+            return;
+        }
+        gameState.consumeBlueprintFragments(
+            definition.getRequiredBlueprintFragmentId(),
+            definition.getRequiredBlueprintFragmentCount()
+        );
     }
 
     private void initializeRobotStats(RobotCompanion robot, int index) {
@@ -4326,10 +5061,17 @@ public class GameScreen implements Screen {
             return false;
         }
         BaseState baseState = getOrCreateBaseState(currentZoneId);
-        baseState.claimSite(feature.persistentStateId);
+        OwnershipRecord claimOwnership = resolveDefaultClaimOwnership(feature.persistentStateId);
+        baseState.claimSite(feature.persistentStateId, claimOwnership);
+        boolean firstFrontierClaim = !worldStateManager.isFlagActive(gameState, "tutorial.frontier_outpost_claimed");
+        if (firstFrontierClaim) {
+            worldStateManager.setFlag(gameState, "tutorial.frontier_outpost_claimed", true);
+        }
         syncClaimedFrontierBaseSiteIds();
         showStandaloneDialog(feature.label != null && !feature.label.isEmpty() ? feature.label : "Frontier",
-            "Site logged. This clearing is now reserved for future base structures, reserve bot defenders, and local expansion.");
+            firstFrontierClaim
+                ? "Foothold secured. This site is yours now. Build a storage crate here so you can bank field haul without running all the way back to Ironhaven."
+                : buildClaimSiteMessage(claimOwnership));
         autosave();
         return true;
     }
@@ -4476,15 +5218,21 @@ public class GameScreen implements Screen {
                 : "That structure cannot be placed here.");
             return true;
         }
+        String claimedSiteId = findBuildClaimSiteId(structureDefinition);
+        BaseState baseState = getOrCreateBaseState(currentZoneId);
+        OwnershipRecord siteOwnership = baseState.getClaimedSiteOwnership(claimedSiteId);
+        if (!canCurrentPlayerActOnOwnership(siteOwnership, PermissionAction.BUILD)) {
+            showStandaloneDialog("Build Mode", "You do not have permission to build at this outpost.");
+            return true;
+        }
         if (!gameState.consumeForgeComponents(structureDefinition.getBuildCosts())) {
             showStandaloneDialog("Build Mode", "You do not have the required materials: " + buildStructureCostLine(structureDefinition) + ".");
             return true;
         }
-        String claimedSiteId = findBuildClaimSiteId(structureDefinition);
         float[] preview = getBuildPreviewOrigin(structureDefinition);
         PlacedStructure structure = baseBuildingEngine.placeStructure(
             structureDefinition.getId(),
-            getOrCreateBaseState(currentZoneId),
+            baseState,
             currentZone,
             frontierTerrainSampler,
             claimedSiteId,
@@ -4496,6 +5244,20 @@ public class GameScreen implements Screen {
                 gameState.addForgeComponent(entry.getKey(), entry.getValue());
             }
             showStandaloneDialog("Build Mode", "The structure could not be placed.");
+            return true;
+        }
+        OwnershipRecord structureOwnership = siteOwnership;
+        if (structureOwnership == null) {
+            structureOwnership = createPersonalOwnershipRecord();
+        }
+        baseState.setStructureOwnership(structure.getInstanceId(), structureOwnership);
+        if (structureDefinition.getStorageCapacity() > 0 && !worldStateManager.isFlagActive(gameState, "tutorial.frontier_storage_built")) {
+            worldStateManager.setFlag(gameState, "tutorial.frontier_storage_built", true);
+            addStructureFeatureToCurrentZone(structure);
+            syncCurrentZoneBaseDefenders();
+            refreshHud();
+            autosave();
+            showStandaloneDialog("Build Mode", "Storage crate placed. Bring haul back here and bank it safely to turn this claim into a real frontier foothold.");
             return true;
         }
         addStructureFeatureToCurrentZone(structure);
@@ -4599,6 +5361,11 @@ public class GameScreen implements Screen {
             ? baseBuildingEngine.getStructureRegistry().get(structure.getStructureDefinitionId())
             : null;
         BaseState baseState = getCurrentBaseState();
+        OwnershipRecord ownershipRecord = baseState != null ? baseState.getStructureOwnership(feature.id) : null;
+        if (!canCurrentPlayerActOnOwnership(ownershipRecord, PermissionAction.REMOVE_STRUCTURES)) {
+            showStandaloneDialog("Build Mode", "You do not have permission to dismantle this structure.");
+            return false;
+        }
         if (baseState == null || !baseBuildingEngine.removeStructure(baseState, feature.id)) {
             showStandaloneDialog("Build Mode", "That structure could not be removed.");
             return false;
@@ -4628,6 +5395,12 @@ public class GameScreen implements Screen {
         StructureDefinition definition = structure != null
             ? baseBuildingEngine.getStructureRegistry().get(structure.getStructureDefinitionId())
             : null;
+        BaseState baseState = getCurrentBaseState();
+        OwnershipRecord ownershipRecord = baseState != null ? baseState.getStructureOwnership(feature.id) : null;
+        if (!canCurrentPlayerActOnOwnership(ownershipRecord, PermissionAction.EDIT_STRUCTURES)) {
+            showStandaloneDialog("Build Mode", "You do not have permission to repair this structure.");
+            return false;
+        }
         if (structure == null || definition == null) {
             showStandaloneDialog("Build Mode", "That structure could not be repaired.");
             return false;
@@ -4718,6 +5491,11 @@ public class GameScreen implements Screen {
         }
         PlacedStructure structure = baseState.findStructure(feature.id);
         if (structure == null) {
+            return false;
+        }
+        OwnershipRecord ownershipRecord = baseState.getStructureOwnership(structure.getInstanceId());
+        if (!canCurrentPlayerActOnOwnership(ownershipRecord, PermissionAction.EDIT_STRUCTURES)) {
+            showStandaloneDialog("Build Mode", "You do not have permission to assign defenders here.");
             return false;
         }
         for (String robotId : reserveIds) {
@@ -4860,6 +5638,7 @@ public class GameScreen implements Screen {
             SaveFile.BaseStateData zoneState = new SaveFile.BaseStateData();
             zoneState.setZoneId(baseState.getZoneId());
             zoneState.setClaimedSiteIds(baseState.getClaimedSiteIds());
+            zoneState.setClaimedSiteOwnershipById(buildOwnershipRecordSaveMap(baseState.getClaimedSiteOwnershipById()));
 
             List<SaveFile.PlacedStructureData> structures = new ArrayList<>();
             for (PlacedStructure structure : baseState.getPlacedStructures()) {
@@ -4877,6 +5656,7 @@ public class GameScreen implements Screen {
                 structures.add(structureData);
             }
             zoneState.setPlacedStructures(structures);
+            zoneState.setStructureOwnershipByInstanceId(buildOwnershipRecordSaveMap(baseState.getStructureOwnershipByInstanceId()));
 
             List<SaveFile.DefenderAssignmentData> assignments = new ArrayList<>();
             for (DefenderAssignment assignment : baseState.getDefenderAssignments()) {
@@ -4908,7 +5688,11 @@ public class GameScreen implements Screen {
             }
             BaseState baseState = new BaseState(zoneState.getZoneId());
             for (String siteId : zoneState.getClaimedSiteIds()) {
-                baseState.claimSite(siteId);
+                OwnershipRecord siteOwnership = restoreOwnershipRecord(zoneState.getClaimedSiteOwnershipById().get(siteId));
+                baseState.claimSite(siteId, siteOwnership);
+                if (baseState.getClaimedSiteOwnership(siteId) == null) {
+                    baseState.setClaimedSiteOwnership(siteId, createPersonalOwnershipRecord());
+                }
             }
             for (SaveFile.PlacedStructureData structureData : zoneState.getPlacedStructures()) {
                 if (structureData == null) {
@@ -4929,6 +5713,16 @@ public class GameScreen implements Screen {
                 );
                 structure.setActive(structureData.isActive());
                 baseState.addPlacedStructure(structure);
+                OwnershipRecord structureOwnership = restoreOwnershipRecord(
+                    zoneState.getStructureOwnershipByInstanceId().get(structure.getInstanceId())
+                );
+                if (structureOwnership == null) {
+                    structureOwnership = baseState.getClaimedSiteOwnership(structure.getClaimedSiteId());
+                }
+                if (structureOwnership == null) {
+                    structureOwnership = createPersonalOwnershipRecord();
+                }
+                baseState.setStructureOwnership(structure.getInstanceId(), structureOwnership);
             }
             for (SaveFile.DefenderAssignmentData assignmentData : zoneState.getDefenderAssignments()) {
                 if (assignmentData == null) {
@@ -4956,10 +5750,188 @@ public class GameScreen implements Screen {
         if (saveFile.getBaseStates().isEmpty() && !saveFile.getClaimedFrontierBaseSiteIds().isEmpty()) {
             BaseState legacyBaseState = getOrCreateBaseState("verdant_fields");
             for (String siteId : saveFile.getClaimedFrontierBaseSiteIds()) {
-                legacyBaseState.claimSite(siteId);
+                legacyBaseState.claimSite(siteId, createPersonalOwnershipRecord());
             }
         }
         syncClaimedFrontierBaseSiteIds();
+    }
+
+    private List<SaveFile.GuildData> buildGuildSaveData() {
+        List<SaveFile.GuildData> guildData = new ArrayList<>();
+        for (GuildDefinition guild : guildDefinitionsById.values()) {
+            if (guild == null) {
+                continue;
+            }
+            SaveFile.GuildData data = new SaveFile.GuildData();
+            data.setGuildId(guild.getGuildId());
+            data.setDisplayName(guild.getDisplayName());
+            data.setFounderPlayerId(guild.getFounderPlayerId());
+            data.setRecruitingOpen(guild.isRecruitingOpen());
+            data.setHallZoneId(guild.getHallZoneId());
+            data.setHallClaimedSiteId(guild.getHallClaimedSiteId());
+
+            List<SaveFile.GuildRankData> rankData = new ArrayList<>();
+            for (GuildRank rank : guild.getRanks()) {
+                if (rank == null) {
+                    continue;
+                }
+                SaveFile.GuildRankData savedRank = new SaveFile.GuildRankData();
+                savedRank.setRankId(rank.getId());
+                savedRank.setDisplayName(rank.getDisplayName());
+                List<String> actions = new ArrayList<>();
+                for (PermissionAction action : rank.getPermissionSet().getAllowedActions()) {
+                    actions.add(action.name());
+                }
+                savedRank.setAllowedActions(actions);
+                rankData.add(savedRank);
+            }
+            data.setRanks(rankData);
+
+            List<SaveFile.GuildMembershipData> membershipData = new ArrayList<>();
+            for (GuildMembership membership : guild.getMemberships()) {
+                if (membership == null) {
+                    continue;
+                }
+                SaveFile.GuildMembershipData savedMembership = new SaveFile.GuildMembershipData();
+                savedMembership.setPlayerId(membership.getPlayerId());
+                savedMembership.setRankId(membership.getRankId());
+                savedMembership.setActive(membership.isActive());
+                membershipData.add(savedMembership);
+            }
+            data.setMemberships(membershipData);
+            guildData.add(data);
+        }
+        return guildData;
+    }
+
+    private void loadGuildsFromSave(SaveFile saveFile) {
+        guildDefinitionsById.clear();
+        if (saveFile == null) {
+            return;
+        }
+        for (SaveFile.GuildData data : saveFile.getGuilds()) {
+            if (data == null || data.getGuildId() == null || data.getGuildId().isEmpty()) {
+                continue;
+            }
+            GuildDefinition guild = new GuildDefinition(data.getGuildId(), data.getDisplayName(), data.getFounderPlayerId());
+            guild.setRecruitingOpen(data.isRecruitingOpen());
+            guild.setHallZoneId(data.getHallZoneId());
+            guild.setHallClaimedSiteId(data.getHallClaimedSiteId());
+            for (SaveFile.GuildRankData rankData : data.getRanks()) {
+                if (rankData == null || rankData.getRankId() == null || rankData.getRankId().isEmpty()) {
+                    continue;
+                }
+                java.util.EnumSet<PermissionAction> actions = java.util.EnumSet.noneOf(PermissionAction.class);
+                for (String actionName : rankData.getAllowedActions()) {
+                    try {
+                        actions.add(PermissionAction.valueOf(actionName));
+                    } catch (IllegalArgumentException ignored) {
+                    }
+                }
+                guild.registerRank(new GuildRank(rankData.getRankId(), rankData.getDisplayName(), new PermissionSet(actions)));
+            }
+            for (SaveFile.GuildMembershipData membershipData : data.getMemberships()) {
+                if (membershipData == null) {
+                    continue;
+                }
+                guild.upsertMembership(new GuildMembership(
+                    membershipData.getPlayerId(),
+                    membershipData.getRankId(),
+                    membershipData.isActive()
+                ));
+            }
+            guildDefinitionsById.put(guild.getGuildId(), guild);
+        }
+    }
+
+    private Map<String, SaveFile.OwnershipRecordData> buildOwnershipRecordSaveMap(Map<String, OwnershipRecord> ownershipById) {
+        Map<String, SaveFile.OwnershipRecordData> saveMap = new HashMap<>();
+        if (ownershipById == null) {
+            return saveMap;
+        }
+        for (Map.Entry<String, OwnershipRecord> entry : ownershipById.entrySet()) {
+            if (entry.getKey() == null || entry.getKey().isEmpty() || entry.getValue() == null) {
+                continue;
+            }
+            SaveFile.OwnershipRecordData recordData = new SaveFile.OwnershipRecordData();
+            recordData.setScope(entry.getValue().getScope().name());
+            recordData.setOwnerPlayerId(entry.getValue().getOwnerPlayerId());
+            recordData.setOwnerGuildId(entry.getValue().getOwnerGuildId());
+            recordData.setSettlementId(entry.getValue().getSettlementId());
+            recordData.setPublicInteractionAllowed(entry.getValue().isPublicInteractionAllowed());
+            recordData.setEditorPlayerIds(new ArrayList<>(entry.getValue().getEditorPlayerIds()));
+            saveMap.put(entry.getKey(), recordData);
+        }
+        return saveMap;
+    }
+
+    private OwnershipRecord restoreOwnershipRecord(SaveFile.OwnershipRecordData data) {
+        if (data == null) {
+            return null;
+        }
+        OwnershipScope scope;
+        try {
+            scope = data.getScope() != null ? OwnershipScope.valueOf(data.getScope()) : OwnershipScope.PERSONAL;
+        } catch (IllegalArgumentException ex) {
+            scope = OwnershipScope.PERSONAL;
+        }
+        return new OwnershipRecord(
+            scope,
+            data.getOwnerPlayerId(),
+            data.getOwnerGuildId(),
+            data.getSettlementId(),
+            data.isPublicInteractionAllowed(),
+            new java.util.HashSet<>(data.getEditorPlayerIds())
+        );
+    }
+
+    private OwnershipRecord createPersonalOwnershipRecord() {
+        return new OwnershipRecord(OwnershipScope.PERSONAL, playerName, "", "", false, java.util.Set.of());
+    }
+
+    private OwnershipRecord resolveDefaultClaimOwnership(String claimedSiteId) {
+        GuildDefinition controllableGuild = getActiveClaimGuild();
+        if (controllableGuild == null) {
+            return createPersonalOwnershipRecord();
+        }
+        if (controllableGuild.getHallClaimedSiteId() == null || controllableGuild.getHallClaimedSiteId().isEmpty()) {
+            controllableGuild.setHallZoneId(currentZoneId);
+            controllableGuild.setHallClaimedSiteId(claimedSiteId);
+        }
+        return new OwnershipRecord(OwnershipScope.GUILD, "", controllableGuild.getGuildId(), "", false, java.util.Set.of(playerName));
+    }
+
+    private String buildClaimSiteMessage(OwnershipRecord claimOwnership) {
+        if (claimOwnership != null && claimOwnership.getScope() == OwnershipScope.GUILD) {
+            GuildDefinition guild = guildDefinitionsById.get(claimOwnership.getOwnerGuildId());
+            String guildName = guild != null && guild.getDisplayName() != null && !guild.getDisplayName().isEmpty()
+                ? guild.getDisplayName()
+                : "your guild";
+            return "Site logged. This clearing is now held for " + guildName + " and can be expanded under guild permissions.";
+        }
+        return "Site logged. This clearing is now reserved for future base structures, reserve bot defenders, and local expansion.";
+    }
+
+    private GuildDefinition getActiveClaimGuild() {
+        if (activeClaimGuildId == null || activeClaimGuildId.isEmpty()) {
+            return null;
+        }
+        GuildDefinition guild = guildDefinitionsById.get(activeClaimGuildId);
+        if (guild == null || !guildPermissionsEngine.canPerform(guild, playerName, PermissionAction.CLAIM_LAND)) {
+            activeClaimGuildId = null;
+            return null;
+        }
+        return guild;
+    }
+
+    private boolean canCurrentPlayerActOnOwnership(OwnershipRecord ownershipRecord, PermissionAction action) {
+        if (ownershipRecord == null) {
+            return true;
+        }
+        GuildDefinition guild = ownershipRecord.getOwnerGuildId() != null && !ownershipRecord.getOwnerGuildId().isEmpty()
+            ? guildDefinitionsById.get(ownershipRecord.getOwnerGuildId())
+            : null;
+        return guildPermissionsEngine.canActOnRecord(ownershipRecord, guild, playerName, action);
     }
 
     private void syncClaimedFrontierBaseSiteIds() {
@@ -5132,6 +6104,19 @@ public class GameScreen implements Screen {
         refreshHud();
     }
 
+    private void addBlueprintFragmentLoot(String fragmentId, int amount) {
+        if (fragmentId == null || fragmentId.isEmpty() || amount <= 0) {
+            return;
+        }
+        if (shouldTreatCurrentRewardAsExpeditionLoot()) {
+            gameState.addUnbankedBlueprintFragment(fragmentId, amount);
+            bankExpeditionHaulIfPossible(true);
+        } else {
+            gameState.addBlueprintFragment(fragmentId, amount);
+        }
+        refreshHud();
+    }
+
     private boolean shouldTreatCurrentRewardAsExpeditionLoot() {
         return currentZoneDefinition != null && !canBankExpeditionHaulHere();
     }
@@ -5153,6 +6138,9 @@ public class GameScreen implements Screen {
             if (definition == null || definition.getStorageCapacity() <= 0) {
                 continue;
             }
+            if (!canCurrentPlayerActOnOwnership(baseState.getStructureOwnership(structure.getInstanceId()), PermissionAction.MANAGE_STORAGE)) {
+                continue;
+            }
             Rectangle bounds = structure.getBounds();
             Rectangle interactionRect = new Rectangle(bounds.x - 56f, bounds.y - 56f, bounds.width + 112f, bounds.height + 112f);
             if (interactionRect.contains(playerPos)) {
@@ -5166,10 +6154,12 @@ public class GameScreen implements Screen {
         if (!canBankExpeditionHaulHere()) {
             return;
         }
+        boolean bankedAtOutpostStorage = !currentZoneIsSafe() && isNearOperationalStorage();
         long bankedGold = gameState.getUnbankedGold();
         Map<String, Integer> bankedComponents = new HashMap<>(gameState.getUnbankedForgeComponents());
         Map<String, Integer> bankedShards = new HashMap<>(gameState.getUnbankedShards());
-        if (bankedGold <= 0L && bankedComponents.isEmpty() && bankedShards.isEmpty()) {
+        Map<String, Integer> bankedBlueprints = new HashMap<>(gameState.getUnbankedBlueprintFragments());
+        if (bankedGold <= 0L && bankedComponents.isEmpty() && bankedShards.isEmpty() && bankedBlueprints.isEmpty()) {
             return;
         }
         gameState.addGold(bankedGold);
@@ -5182,15 +6172,111 @@ public class GameScreen implements Screen {
             gameState.addShard(entry.getKey(), entry.getValue());
         }
         gameState.clearUnbankedShards();
+        for (Map.Entry<String, Integer> entry : bankedBlueprints.entrySet()) {
+            gameState.addBlueprintFragment(entry.getKey(), entry.getValue());
+        }
+        gameState.clearUnbankedBlueprintFragments();
         totalGold = gameState.getTotalGold();
         refreshHud();
         autosave();
-        if (showFeedback) {
-            showStandaloneDialog("Expedition Banked", buildBankedHaulSummary(bankedGold, bankedComponents, bankedShards));
+        boolean actZeroTutorialShown = maybeTriggerActZeroBankingTutorial(bankedGold, bankedComponents, bankedShards);
+        boolean actOneTutorialShown = maybeTriggerActOneOutpostBankingTutorial(
+            bankedAtOutpostStorage,
+            bankedGold,
+            bankedComponents,
+            bankedShards
+        );
+        maybeTriggerFrontierAnnexResupplyProgress(bankedGold, bankedComponents, bankedShards);
+        boolean actTwoBlueprintShown = maybeTriggerActTwoBlueprintTutorial(bankedBlueprints);
+        if (showFeedback && !actZeroTutorialShown && !actOneTutorialShown && !actTwoBlueprintShown) {
+            showStandaloneDialog("Expedition Banked", buildBankedHaulSummary(bankedGold, bankedComponents, bankedShards, bankedBlueprints));
         }
     }
 
-    private String buildBankedHaulSummary(long bankedGold, Map<String, Integer> bankedComponents, Map<String, Integer> bankedShards) {
+    private boolean maybeTriggerActZeroBankingTutorial(long bankedGold, Map<String, Integer> bankedComponents, Map<String, Integer> bankedShards) {
+        if (!isHubTownZone() || worldStateManager.isFlagActive(gameState, "tutorial.first_haul_banked")) {
+            return false;
+        }
+        if (bankedGold <= 0L && (bankedComponents == null || bankedComponents.isEmpty()) && (bankedShards == null || bankedShards.isEmpty())) {
+            return false;
+        }
+        worldStateManager.setFlag(gameState, "tutorial.first_haul_banked", true);
+        questManager.startQuest(gameState, "workshop_tools");
+        addStarterTownUpgradeChest();
+        autosave();
+        showStandaloneDialog(
+            "Ironhaven",
+            "You banked your first frontier haul. That salvage is safe now, and Ironhaven can actually build with it. Toma at the workshop wants to see what you brought back so he can get the forge line running."
+        );
+        return true;
+    }
+
+    private boolean maybeTriggerActOneOutpostBankingTutorial(
+        boolean bankedAtOutpostStorage,
+        long bankedGold,
+        Map<String, Integer> bankedComponents,
+        Map<String, Integer> bankedShards
+    ) {
+        if (!bankedAtOutpostStorage || worldStateManager.isFlagActive(gameState, "tutorial.frontier_outpost_banked")) {
+            return false;
+        }
+        if (bankedGold <= 0L && (bankedComponents == null || bankedComponents.isEmpty()) && (bankedShards == null || bankedShards.isEmpty())) {
+            return false;
+        }
+        worldStateManager.setFlag(gameState, "tutorial.frontier_outpost_banked", true);
+        autosave();
+        showStandaloneDialog(
+            "Frontier",
+            "Outpost banking confirmed. This foothold now shortens your return route and lets you push deeper before heading back to Ironhaven."
+        );
+        return true;
+    }
+
+    private void maybeTriggerFrontierAnnexResupplyProgress(
+        long bankedGold,
+        Map<String, Integer> bankedComponents,
+        Map<String, Integer> bankedShards
+    ) {
+        if (!isHubTownZone()) {
+            return;
+        }
+        if (!worldStateManager.isFlagActive(gameState, "settlement.frontier_annex")
+            || worldStateManager.isFlagActive(gameState, "event.frontier_annex_resupplied")) {
+            return;
+        }
+        if (!"bank_supply".equals(questManager.getQuestState(gameState, "annex_resupply"))) {
+            return;
+        }
+        if (bankedGold <= 0L && (bankedComponents == null || bankedComponents.isEmpty()) && (bankedShards == null || bankedShards.isEmpty())) {
+            return;
+        }
+        worldStateManager.setFlag(gameState, "event.frontier_annex_resupplied", true);
+        questManager.syncProgress(gameState, worldStateManager);
+        autosave();
+    }
+
+    private boolean maybeTriggerActTwoBlueprintTutorial(Map<String, Integer> bankedBlueprints) {
+        if (bankedBlueprints == null || bankedBlueprints.isEmpty()) {
+            return false;
+        }
+        if (gameState.getForgeCoreLevel() < 2 || worldStateManager.isFlagActive(gameState, "tutorial.first_blueprint_banked")) {
+            return false;
+        }
+        worldStateManager.setFlag(gameState, "tutorial.first_blueprint_banked", true);
+        autosave();
+        showStandaloneDialog(
+            "Archive",
+            "Recovered blueprint fragments have been indexed. Ironhaven's archive and workshop crews can now turn those fragments into better robot, forge, and settlement plans."
+        );
+        return true;
+    }
+
+    private String buildBankedHaulSummary(
+        long bankedGold,
+        Map<String, Integer> bankedComponents,
+        Map<String, Integer> bankedShards,
+        Map<String, Integer> bankedBlueprints
+    ) {
         List<String> parts = new ArrayList<>();
         if (bankedGold > 0L) {
             parts.add(bankedGold + " gold");
@@ -5200,6 +6286,9 @@ public class GameScreen implements Screen {
         }
         for (Map.Entry<String, Integer> entry : bankedShards.entrySet()) {
             parts.add(entry.getValue() + " " + entry.getKey() + " shards");
+        }
+        for (Map.Entry<String, Integer> entry : bankedBlueprints.entrySet()) {
+            parts.add(entry.getValue() + " " + getBlueprintFragmentName(entry.getKey()));
         }
         return parts.isEmpty() ? "No expedition haul to secure." : "Haul secured: " + String.join(", ", parts) + ".";
     }
@@ -5378,6 +6467,21 @@ public class GameScreen implements Screen {
         if (worldStateManager.isFlagActive(gameState, "settlement.survey_drones")) {
             lines.add("Survey drones unlock higher-tier town inventory.");
         }
+        if (worldStateManager.isFlagActive(gameState, "settlement.frontier_annex")) {
+            lines.add("Frontier Annex crews now bank and reroute salvage through Ironhaven.");
+        }
+        if (worldStateManager.isFlagActive(gameState, "settlement.tavern_open")) {
+            lines.add("Tavern rumors now support longer expedition planning.");
+        }
+        if (worldStateManager.isFlagActive(gameState, "settlement.hangar_open")) {
+            lines.add("Hangar crews keep reserve robots staged for deployment.");
+        }
+        if (worldStateManager.isFlagActive(gameState, "settlement.archive_open")) {
+            lines.add("Archive staff can turn field scans and notes into usable knowledge.");
+        }
+        if (worldStateManager.isFlagActive(gameState, "settlement.training_grounds_open")) {
+            lines.add("Training grounds now support disciplined team drills.");
+        }
         return lines;
     }
 
@@ -5394,6 +6498,21 @@ public class GameScreen implements Screen {
         }
         if (worldStateManager.isFlagActive(gameState, "settlement.survey_drones")) {
             lines.add("Survey drone pads now line the workshop yard.");
+        }
+        if (worldStateManager.isFlagActive(gameState, "settlement.frontier_annex")) {
+            lines.add("A frontier annex and depot counter now stand beside the east gate.");
+        }
+        if (worldStateManager.isFlagActive(gameState, "settlement.tavern_open")) {
+            lines.add("A proper tavern now anchors the west lane of Ironhaven.");
+        }
+        if (worldStateManager.isFlagActive(gameState, "settlement.hangar_open")) {
+            lines.add("A robot hangar now sits ready near the lower yard.");
+        }
+        if (worldStateManager.isFlagActive(gameState, "settlement.archive_open")) {
+            lines.add("An archive desk now catalogs frontier scans and recovered designs.");
+        }
+        if (worldStateManager.isFlagActive(gameState, "settlement.training_grounds_open")) {
+            lines.add("A training ground now marks Ironhaven's central drill yard.");
         }
         return lines;
     }
@@ -5969,8 +7088,15 @@ public class GameScreen implements Screen {
         List<String> lines = new ArrayList<>();
         for (ForgeComponentDefinition definition : forgeComponentDefinitions.values()) {
             int count = getForgeComponentCount(definition.getId());
+            int unbankedCount = gameState.getUnbankedForgeComponentCount(definition.getId());
             if (count > 0) {
-                lines.add(definition.getName() + " x" + count + " [" + definition.getRarity() + "] (Sell "
+                lines.add(definition.getName() + " x" + count
+                    + (unbankedCount > 0 ? "  |  Field haul +" + unbankedCount : "")
+                    + " [" + definition.getRarity() + "] (Sell "
+                    + getForgeComponentSellValue(definition.getId()) + "g)");
+            } else if (unbankedCount > 0) {
+                lines.add(definition.getName() + " x0  |  Field haul +" + unbankedCount
+                    + " [" + definition.getRarity() + "] (Sell "
                     + getForgeComponentSellValue(definition.getId()) + "g)");
             }
         }
@@ -5978,6 +7104,10 @@ public class GameScreen implements Screen {
             lines.add("No forge components collected yet.");
         }
         return lines;
+    }
+
+    public List<String> getMaterialInventoryLines() {
+        return getForgeInventoryLines();
     }
 
     public List<String> getForgeSellableComponentIds() {
@@ -5995,12 +7125,65 @@ public class GameScreen implements Screen {
         String[] grades = {"S", "A", "B", "C", "D", "E", "F", "G"};
         for (String grade : grades) {
             int count = getShardCount(grade);
+            int unbankedCount = gameState.getUnbankedShardCount(grade);
             if (count > 0) {
-                lines.add(grade + "-Grade Shard x" + count + " (Sell " + getShardSellValue(grade) + "g)");
+                lines.add(grade + "-Grade Shard x" + count
+                    + (unbankedCount > 0 ? "  |  Field haul +" + unbankedCount : "")
+                    + " (Sell " + getShardSellValue(grade) + "g)");
+            } else if (unbankedCount > 0) {
+                lines.add(grade + "-Grade Shard x0  |  Field haul +" + unbankedCount
+                    + " (Sell " + getShardSellValue(grade) + "g)");
             }
         }
         if (lines.isEmpty()) {
             lines.add("No graded shards recovered yet.");
+        }
+        return lines;
+    }
+
+    public String getBlueprintFragmentName(String fragmentId) {
+        BlueprintFragmentDefinition definition = blueprintFragmentDefinitions.get(fragmentId);
+        return definition != null ? definition.getName() : fragmentId;
+    }
+
+    public String getBlueprintFragmentDescription(String fragmentId) {
+        BlueprintFragmentDefinition definition = blueprintFragmentDefinitions.get(fragmentId);
+        return definition != null ? definition.getDescription() : "";
+    }
+
+    public List<String> getBlueprintFragmentInventoryLines() {
+        List<String> lines = new ArrayList<>();
+        for (BlueprintFragmentDefinition definition : blueprintFragmentDefinitions.values()) {
+            int count = gameState.getBlueprintFragmentCount(definition.getId());
+            int unbankedCount = gameState.getUnbankedBlueprintFragmentCount(definition.getId());
+            if (count > 0) {
+                lines.add(definition.getName() + " x" + count
+                    + (unbankedCount > 0 ? "  |  Field haul +" + unbankedCount : "")
+                    + "  |  " + definition.getSourceHint());
+            } else if (unbankedCount > 0) {
+                lines.add(definition.getName() + " x0  |  Field haul +" + unbankedCount
+                    + "  |  " + definition.getSourceHint());
+            }
+        }
+        if (lines.isEmpty()) {
+            lines.add("No blueprint fragments recovered yet.");
+        }
+        return lines;
+    }
+
+    public List<String> getItemInventoryLines() {
+        List<String> lines = new ArrayList<>();
+        lines.add("Repair Kits x" + Math.max(0, getHealingPotions()));
+        long unbankedGold = gameState.getUnbankedGold();
+        lines.add("Unbanked Gold x" + Math.max(0L, unbankedGold));
+        List<String> currentKeyItems = gameState.getKeyItems();
+        if (!currentKeyItems.isEmpty()) {
+            lines.add("Key Items");
+            for (String item : currentKeyItems) {
+                if (item != null && !item.isEmpty()) {
+                    lines.add("- " + item);
+                }
+            }
         }
         return lines;
     }
@@ -6514,9 +7697,12 @@ public class GameScreen implements Screen {
             return false;
         }
         gameState.setForgeCoreLevel(targetLevel);
+        if (targetLevel >= 2) {
+            syncAct2TownFacilities();
+        }
         String message;
         if (targetLevel == 2) {
-            message = "Five boss systems have fallen. Forge Core Lv2 is online. Tier-II evolutions and a second party slot are now unlocked.";
+            message = "Five boss systems have fallen. Forge Core Lv2 is online. Tier-II evolutions, a second party slot, and Ironhaven's economy districts are now coming online.";
         } else if (targetLevel == 3) {
             message = "Ten boss systems have fallen. Forge Core Lv3 surges to life. Tier-III evolutions and a third party slot are now unlocked.";
         } else {

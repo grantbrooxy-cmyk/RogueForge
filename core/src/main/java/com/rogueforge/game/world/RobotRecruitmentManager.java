@@ -2,6 +2,7 @@ package com.rogueforge.game.world;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.utils.Json;
+import com.rogueforge.game.core.GameState;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +28,10 @@ public class RobotRecruitmentManager {
     }
 
     public RecruitmentResult apply(String eventId, List<String> collectedRobotIds, List<String> activeRobotIds) {
+        return apply(eventId, collectedRobotIds, activeRobotIds, null);
+    }
+
+    public RecruitmentResult apply(String eventId, List<String> collectedRobotIds, List<String> activeRobotIds, GameState gameState) {
         RecruitmentDefinition definition = definitions.get(eventId);
         if (definition == null || definition.getRobotId() == null) {
             return null;
@@ -35,6 +40,15 @@ public class RobotRecruitmentManager {
         result.robotId = definition.getRobotId();
         result.message = definition.getMessage();
         result.joinedWorldFlag = definition.getJoinedWorldFlag();
+        result.requiredBlueprintFragmentId = definition.getRequiredBlueprintFragmentId();
+        result.requiredBlueprintFragmentCount = definition.getRequiredBlueprintFragmentCount();
+        if (gameState != null
+            && result.requiredBlueprintFragmentCount > 0
+            && !result.requiredBlueprintFragmentId.isEmpty()
+            && !gameState.consumeBlueprintFragments(result.requiredBlueprintFragmentId, result.requiredBlueprintFragmentCount)) {
+            result.blocked = true;
+            return result;
+        }
         if (!collectedRobotIds.contains(definition.getRobotId())) {
             collectedRobotIds.add(definition.getRobotId());
             result.newlyCollected = true;
@@ -54,5 +68,8 @@ public class RobotRecruitmentManager {
         public boolean deployed;
         public String message;
         public String joinedWorldFlag;
+        public boolean blocked;
+        public String requiredBlueprintFragmentId;
+        public int requiredBlueprintFragmentCount;
     }
 }

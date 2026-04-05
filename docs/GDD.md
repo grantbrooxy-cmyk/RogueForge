@@ -15,6 +15,12 @@ Companion documents:
 - `docs/Narrative_Bible.md` for story, world, zones, factions, NPCs, and quest structure
 - `docs/Systems_Spec.md` for combat, progression, economy, equipment, and hub systems
 - `docs/Run_World_Meta_Structure.md` for the relationship between roguelite expeditions, persistent world building, and meta progression
+- `docs/World_Generation_Structure_Plan.md` for the hybrid handcrafted, procedural, and prefab-injected world model
+- `docs/Player_Created_World_Systems_Plan.md` for guild masters, player-authored quests, player-created NPCs, and creator-facing sandbox systems
+- `docs/Loop_Alignment_Plan.md` for tightening the live town-to-expedition-to-return gameplay rhythm
+- `docs/Act_0_Arrival_Plan.md` for the dedicated tutorial-phase structure and onboarding goals
+- `docs/Act_1_Frontier_Expansion_Plan.md` for the first true frontier phase, foothold building, and settlement-response loop
+- `docs/Act_2_Crafting_and_Robots_Plan.md` for the economy, roster-building, and Forge Core progression phase
 
 Where useful, this document distinguishes between:
 
@@ -92,13 +98,16 @@ The player should feel like:
 
 ### 6.1 Macro Loop
 
-1. Leave Ironhaven or a field hub
-2. Explore zones, dungeons, and world routes
-3. Trigger tactical turn-based battles against enemy groups
-4. Win rewards: XP, gold, materials, equipment, proficiency growth, bestiary data
-5. Unlock new abilities, weapon arts, and robot evolution paths
-6. Return to Ironhaven to manage robots, craft, fuse, shop, quest, and upgrade
-7. Push into harder zones and story acts
+Everything in RogueForge should reinforce this loop:
+
+1. Prepare in Ironhaven or an owned outpost
+2. Travel to the frontier or deeper territory
+3. Explore, fight, gather, and pursue quests
+4. Decide whether to push deeper or extract
+5. Bank resources and progress
+6. Upgrade town, gear, robots, bases, and world state
+7. Unlock new zones, systems, and opportunities
+8. Repeat
 
 ### 6.2 Moment-to-Moment Loop
 
@@ -187,6 +196,25 @@ The player awakens as a Forge Master in a world whose automated systems have col
 
 ### 9.2 Story Format
 The main story is structured across four acts and approximately 18 primary story quests.
+
+### 9.2A Gameplay Act Structure
+
+In addition to the narrative arc, RogueForge should be planned as a staged gameplay-structure arc where each act teaches, reinforces, or expands a different part of the core gameplay loop.
+
+| Act | Focus | Loop Meaning | Major System Unlocks |
+|---|---|---|---|
+| Act 0 | Tutorial / Arrival | Learn the loop safely | Basic combat, town services, first robot, first quest flow |
+| Act 1 | Frontier | Learn risk, travel, and extraction | Frontier exploration, early gathering, banking, first outpost claims |
+| Act 2 | Expansion | Turn returns into growth | Crafting, robot progression depth, stronger expedition prep, settlement upgrades |
+| Act 3 | Industrial | Build specialized power and infrastructure | Fusion, advanced builds, stronger outpost utility, infrastructure specialization |
+| Act 4 | War | Defend what you built | Raids, base defense, defender networks, faction and guild pressure |
+| Act 5 | Endgame | Pursue long-tail mastery and spectacle | Dragon riding, infinite dungeon, high-tier systems, creator/social endgame loops |
+
+Design rule:
+
+- each act should introduce at least one major new reason to repeat the core gameplay loop
+
+The loop should not merely continue through each act. It should gain a new layer of meaning.
 
 ### 9.3 Main Story Arc
 

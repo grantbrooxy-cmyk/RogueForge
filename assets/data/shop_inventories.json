@@ -1,5 +1,18 @@
 [
   {
+    "id": "frontier_depot",
+    "zoneId": "town",
+    "vendorName": "Hale",
+    "locationLabel": "Frontier Depot",
+    "entries": [
+      { "type": "healing", "label": "Repair Kit x2", "quantity": 2, "cost": 44 },
+      { "type": "healing", "label": "Repair Kit x4", "quantity": 4, "cost": 86 },
+      { "type": "equipment", "itemId": "heavy_plating", "cost": 148 },
+      { "type": "equipment", "itemId": "hunter_blade", "cost": 212 },
+      { "type": "equipment", "itemId": "reactive_arms", "cost": 242 }
+    ]
+  },
+  {
     "id": "workshop",
     "zoneId": "town",
     "vendorName": "Rooke",

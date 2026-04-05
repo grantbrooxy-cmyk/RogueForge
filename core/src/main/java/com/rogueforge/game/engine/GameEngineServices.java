@@ -3,6 +3,7 @@ package com.rogueforge.game.engine;
 import com.rogueforge.game.engine.base.BaseBuildingEngine;
 import com.rogueforge.game.engine.base.BaseDefenseDirector;
 import com.rogueforge.game.engine.meta.CyberneticEnhancementEngine;
+import com.rogueforge.game.engine.social.GuildPermissionsEngine;
 import com.rogueforge.game.engine.world.FrontierZoneGenerator;
 import com.rogueforge.game.engine.world.InfiniteDungeonLayoutGenerator;
 import com.rogueforge.game.engine.world.TmxWorldLoader;
@@ -21,6 +22,7 @@ public class GameEngineServices {
     private final BaseBuildingEngine baseBuildingEngine = new BaseBuildingEngine();
     private final BaseDefenseDirector baseDefenseDirector = new BaseDefenseDirector();
     private final CyberneticEnhancementEngine cyberneticEnhancementEngine = new CyberneticEnhancementEngine();
+    private final GuildPermissionsEngine guildPermissionsEngine = new GuildPermissionsEngine();
     private final TmxWorldLoader worldLoader = new TmxWorldLoader();
     private final InfiniteDungeonLayoutGenerator infiniteDungeonLayoutGenerator = new InfiniteDungeonLayoutGenerator();
     private final FrontierZoneGenerator frontierZoneGenerator = new FrontierZoneGenerator();
@@ -37,6 +39,8 @@ public class GameEngineServices {
     public BaseDefenseDirector getBaseDefenseDirector() { return baseDefenseDirector; }
 
     public CyberneticEnhancementEngine getCyberneticEnhancementEngine() { return cyberneticEnhancementEngine; }
+
+    public GuildPermissionsEngine getGuildPermissionsEngine() { return guildPermissionsEngine; }
 
     public TmxWorldLoader getWorldLoader() { return worldLoader; }
 

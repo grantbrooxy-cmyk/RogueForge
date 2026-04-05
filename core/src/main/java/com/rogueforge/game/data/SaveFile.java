@@ -12,7 +12,7 @@ import java.util.Map;
  * Contains all player, robot, and progression data for a save game.
  */
 public class SaveFile {
-    private int version = 2;
+    private int version = 4;
 
     private String playerName;
     private int playerHp;
@@ -37,10 +37,14 @@ public class SaveFile {
     private Map<String, Integer> unbankedForgeComponents;
     private Map<String, Integer> shardInventory;
     private Map<String, Integer> unbankedShardInventory;
+    private Map<String, Integer> blueprintFragments;
+    private Map<String, Integer> unbankedBlueprintFragments;
     private List<String> defeatedBossIds;
     private List<String> harvestedFrontierFeatureIds;
     private List<String> claimedFrontierBaseSiteIds;
     private List<BaseStateData> baseStates;
+    private List<GuildData> guilds;
+    private String activeClaimGuildId;
 
     // Robot data: robotId -> Map of equipped items (slotType -> equipmentId)
     private Map<String, Map<String, String>> robotEquipment;
@@ -91,10 +95,13 @@ public class SaveFile {
         this.unbankedForgeComponents = new HashMap<>();
         this.shardInventory = new HashMap<>();
         this.unbankedShardInventory = new HashMap<>();
+        this.blueprintFragments = new HashMap<>();
+        this.unbankedBlueprintFragments = new HashMap<>();
         this.defeatedBossIds = new ArrayList<>();
         this.harvestedFrontierFeatureIds = new ArrayList<>();
         this.claimedFrontierBaseSiteIds = new ArrayList<>();
         this.baseStates = new ArrayList<>();
+        this.guilds = new ArrayList<>();
     }
 
     public SaveFile(String playerName, int playerHp, int playerMaxHp, float playerX, float playerY,
@@ -123,10 +130,13 @@ public class SaveFile {
         this.unbankedForgeComponents = new HashMap<>();
         this.shardInventory = new HashMap<>();
         this.unbankedShardInventory = new HashMap<>();
+        this.blueprintFragments = new HashMap<>();
+        this.unbankedBlueprintFragments = new HashMap<>();
         this.defeatedBossIds = new ArrayList<>();
         this.harvestedFrontierFeatureIds = new ArrayList<>();
         this.claimedFrontierBaseSiteIds = new ArrayList<>();
         this.baseStates = new ArrayList<>();
+        this.guilds = new ArrayList<>();
     }
 
     // Getters
@@ -250,6 +260,20 @@ public class SaveFile {
         return unbankedShardInventory;
     }
 
+    public Map<String, Integer> getBlueprintFragments() {
+        if (blueprintFragments == null) {
+            blueprintFragments = new HashMap<>();
+        }
+        return blueprintFragments;
+    }
+
+    public Map<String, Integer> getUnbankedBlueprintFragments() {
+        if (unbankedBlueprintFragments == null) {
+            unbankedBlueprintFragments = new HashMap<>();
+        }
+        return unbankedBlueprintFragments;
+    }
+
     public List<String> getDefeatedBossIds() {
         if (defeatedBossIds == null) {
             defeatedBossIds = new ArrayList<>();
@@ -280,6 +304,17 @@ public class SaveFile {
             baseStates = new ArrayList<>();
         }
         return baseStates;
+    }
+
+    public List<GuildData> getGuilds() {
+        if (guilds == null) {
+            guilds = new ArrayList<>();
+        }
+        return guilds;
+    }
+
+    public String getActiveClaimGuildId() {
+        return activeClaimGuildId;
     }
 
     public List<String> getCollectedRobotIds() {
@@ -446,6 +481,14 @@ public class SaveFile {
         this.unbankedShardInventory = unbankedShardInventory != null ? unbankedShardInventory : new HashMap<>();
     }
 
+    public void setBlueprintFragments(Map<String, Integer> blueprintFragments) {
+        this.blueprintFragments = blueprintFragments != null ? blueprintFragments : new HashMap<>();
+    }
+
+    public void setUnbankedBlueprintFragments(Map<String, Integer> unbankedBlueprintFragments) {
+        this.unbankedBlueprintFragments = unbankedBlueprintFragments != null ? unbankedBlueprintFragments : new HashMap<>();
+    }
+
     public void setDefeatedBossIds(List<String> defeatedBossIds) {
         this.defeatedBossIds = defeatedBossIds != null ? defeatedBossIds : new ArrayList<>();
     }
@@ -460,6 +503,14 @@ public class SaveFile {
 
     public void setBaseStates(List<BaseStateData> baseStates) {
         this.baseStates = baseStates != null ? baseStates : new ArrayList<>();
+    }
+
+    public void setGuilds(List<GuildData> guilds) {
+        this.guilds = guilds != null ? guilds : new ArrayList<>();
+    }
+
+    public void setActiveClaimGuildId(String activeClaimGuildId) {
+        this.activeClaimGuildId = activeClaimGuildId;
     }
 
     public void setRobotEquipment(Map<String, Map<String, String>> robotEquipment) {
@@ -816,7 +867,9 @@ public class SaveFile {
     public static class BaseStateData {
         private String zoneId;
         private List<String> claimedSiteIds;
+        private Map<String, OwnershipRecordData> claimedSiteOwnershipById;
         private List<PlacedStructureData> placedStructures;
+        private Map<String, OwnershipRecordData> structureOwnershipByInstanceId;
         private List<DefenderAssignmentData> defenderAssignments;
         private Map<String, Float> defenderHealthByRobotId;
         private boolean raidActive;
@@ -826,7 +879,9 @@ public class SaveFile {
 
         public BaseStateData() {
             this.claimedSiteIds = new ArrayList<>();
+            this.claimedSiteOwnershipById = new HashMap<>();
             this.placedStructures = new ArrayList<>();
+            this.structureOwnershipByInstanceId = new HashMap<>();
             this.defenderAssignments = new ArrayList<>();
             this.defenderHealthByRobotId = new HashMap<>();
         }
@@ -850,6 +905,17 @@ public class SaveFile {
             this.claimedSiteIds = claimedSiteIds != null ? claimedSiteIds : new ArrayList<>();
         }
 
+        public Map<String, OwnershipRecordData> getClaimedSiteOwnershipById() {
+            if (claimedSiteOwnershipById == null) {
+                claimedSiteOwnershipById = new HashMap<>();
+            }
+            return claimedSiteOwnershipById;
+        }
+
+        public void setClaimedSiteOwnershipById(Map<String, OwnershipRecordData> claimedSiteOwnershipById) {
+            this.claimedSiteOwnershipById = claimedSiteOwnershipById != null ? claimedSiteOwnershipById : new HashMap<>();
+        }
+
         public List<PlacedStructureData> getPlacedStructures() {
             if (placedStructures == null) {
                 placedStructures = new ArrayList<>();
@@ -859,6 +925,17 @@ public class SaveFile {
 
         public void setPlacedStructures(List<PlacedStructureData> placedStructures) {
             this.placedStructures = placedStructures != null ? placedStructures : new ArrayList<>();
+        }
+
+        public Map<String, OwnershipRecordData> getStructureOwnershipByInstanceId() {
+            if (structureOwnershipByInstanceId == null) {
+                structureOwnershipByInstanceId = new HashMap<>();
+            }
+            return structureOwnershipByInstanceId;
+        }
+
+        public void setStructureOwnershipByInstanceId(Map<String, OwnershipRecordData> structureOwnershipByInstanceId) {
+            this.structureOwnershipByInstanceId = structureOwnershipByInstanceId != null ? structureOwnershipByInstanceId : new HashMap<>();
         }
 
         public List<DefenderAssignmentData> getDefenderAssignments() {
@@ -998,6 +1075,223 @@ public class SaveFile {
 
         public void setCurrentHitPoints(int currentHitPoints) {
             this.currentHitPoints = currentHitPoints;
+        }
+
+        public boolean isActive() {
+            return active;
+        }
+
+        public void setActive(boolean active) {
+            this.active = active;
+        }
+    }
+
+    public static class OwnershipRecordData {
+        private String scope;
+        private String ownerPlayerId;
+        private String ownerGuildId;
+        private String settlementId;
+        private boolean publicInteractionAllowed;
+        private List<String> editorPlayerIds;
+
+        public OwnershipRecordData() {
+            this.editorPlayerIds = new ArrayList<>();
+        }
+
+        public String getScope() {
+            return scope;
+        }
+
+        public void setScope(String scope) {
+            this.scope = scope;
+        }
+
+        public String getOwnerPlayerId() {
+            return ownerPlayerId;
+        }
+
+        public void setOwnerPlayerId(String ownerPlayerId) {
+            this.ownerPlayerId = ownerPlayerId;
+        }
+
+        public String getOwnerGuildId() {
+            return ownerGuildId;
+        }
+
+        public void setOwnerGuildId(String ownerGuildId) {
+            this.ownerGuildId = ownerGuildId;
+        }
+
+        public String getSettlementId() {
+            return settlementId;
+        }
+
+        public void setSettlementId(String settlementId) {
+            this.settlementId = settlementId;
+        }
+
+        public boolean isPublicInteractionAllowed() {
+            return publicInteractionAllowed;
+        }
+
+        public void setPublicInteractionAllowed(boolean publicInteractionAllowed) {
+            this.publicInteractionAllowed = publicInteractionAllowed;
+        }
+
+        public List<String> getEditorPlayerIds() {
+            if (editorPlayerIds == null) {
+                editorPlayerIds = new ArrayList<>();
+            }
+            return editorPlayerIds;
+        }
+
+        public void setEditorPlayerIds(List<String> editorPlayerIds) {
+            this.editorPlayerIds = editorPlayerIds != null ? editorPlayerIds : new ArrayList<>();
+        }
+    }
+
+    public static class GuildData {
+        private String guildId;
+        private String displayName;
+        private String founderPlayerId;
+        private boolean recruitingOpen;
+        private String hallZoneId;
+        private String hallClaimedSiteId;
+        private List<GuildRankData> ranks;
+        private List<GuildMembershipData> memberships;
+
+        public GuildData() {
+            this.ranks = new ArrayList<>();
+            this.memberships = new ArrayList<>();
+        }
+
+        public String getGuildId() {
+            return guildId;
+        }
+
+        public void setGuildId(String guildId) {
+            this.guildId = guildId;
+        }
+
+        public String getDisplayName() {
+            return displayName;
+        }
+
+        public void setDisplayName(String displayName) {
+            this.displayName = displayName;
+        }
+
+        public String getFounderPlayerId() {
+            return founderPlayerId;
+        }
+
+        public void setFounderPlayerId(String founderPlayerId) {
+            this.founderPlayerId = founderPlayerId;
+        }
+
+        public boolean isRecruitingOpen() {
+            return recruitingOpen;
+        }
+
+        public void setRecruitingOpen(boolean recruitingOpen) {
+            this.recruitingOpen = recruitingOpen;
+        }
+
+        public String getHallZoneId() {
+            return hallZoneId;
+        }
+
+        public void setHallZoneId(String hallZoneId) {
+            this.hallZoneId = hallZoneId;
+        }
+
+        public String getHallClaimedSiteId() {
+            return hallClaimedSiteId;
+        }
+
+        public void setHallClaimedSiteId(String hallClaimedSiteId) {
+            this.hallClaimedSiteId = hallClaimedSiteId;
+        }
+
+        public List<GuildRankData> getRanks() {
+            if (ranks == null) {
+                ranks = new ArrayList<>();
+            }
+            return ranks;
+        }
+
+        public void setRanks(List<GuildRankData> ranks) {
+            this.ranks = ranks != null ? ranks : new ArrayList<>();
+        }
+
+        public List<GuildMembershipData> getMemberships() {
+            if (memberships == null) {
+                memberships = new ArrayList<>();
+            }
+            return memberships;
+        }
+
+        public void setMemberships(List<GuildMembershipData> memberships) {
+            this.memberships = memberships != null ? memberships : new ArrayList<>();
+        }
+    }
+
+    public static class GuildRankData {
+        private String rankId;
+        private String displayName;
+        private List<String> allowedActions;
+
+        public GuildRankData() {
+            this.allowedActions = new ArrayList<>();
+        }
+
+        public String getRankId() {
+            return rankId;
+        }
+
+        public void setRankId(String rankId) {
+            this.rankId = rankId;
+        }
+
+        public String getDisplayName() {
+            return displayName;
+        }
+
+        public void setDisplayName(String displayName) {
+            this.displayName = displayName;
+        }
+
+        public List<String> getAllowedActions() {
+            if (allowedActions == null) {
+                allowedActions = new ArrayList<>();
+            }
+            return allowedActions;
+        }
+
+        public void setAllowedActions(List<String> allowedActions) {
+            this.allowedActions = allowedActions != null ? allowedActions : new ArrayList<>();
+        }
+    }
+
+    public static class GuildMembershipData {
+        private String playerId;
+        private String rankId;
+        private boolean active;
+
+        public String getPlayerId() {
+            return playerId;
+        }
+
+        public void setPlayerId(String playerId) {
+            this.playerId = playerId;
+        }
+
+        public String getRankId() {
+            return rankId;
+        }
+
+        public void setRankId(String rankId) {
+            this.rankId = rankId;
         }
 
         public boolean isActive() {

@@ -1,12 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.rogueforge.game.world.WorldSystemsIntegrationTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-03-29T18:15:05" hostname="Grants-MacBook-Pro.local" time="0.012">
+<testsuite name="com.rogueforge.game.world.WorldSystemsIntegrationTest" tests="11" skipped="0" failures="0" errors="0" timestamp="2026-04-04T16:59:43" hostname="Grants-MacBook-Pro.local" time="0.021">
   <properties/>
-  <testcase name="worldStateManagerInitializesKnownFlagsAndSupportsMutations()" classname="com.rogueforge.game.world.WorldSystemsIntegrationTest" time="0.001"/>
-  <testcase name="questManagerBootstrapsStartsAndAdvancesQuests()" classname="com.rogueforge.game.world.WorldSystemsIntegrationTest" time="0.001"/>
+  <testcase name="forgeCoreRisingDialogueChainHandsOffAcrossActTwoTownSpecialists()" classname="com.rogueforge.game.world.WorldSystemsIntegrationTest" time="0.005"/>
+  <testcase name="shadowCavesBossStoryEventUnlocksFrontierAnnex()" classname="com.rogueforge.game.world.WorldSystemsIntegrationTest" time="0.001"/>
+  <testcase name="worldStateManagerInitializesKnownFlagsAndSupportsMutations()" classname="com.rogueforge.game.world.WorldSystemsIntegrationTest" time="0.0"/>
+  <testcase name="questManagerBootstrapsStartsAndAdvancesQuests()" classname="com.rogueforge.game.world.WorldSystemsIntegrationTest" time="0.0"/>
+  <testcase name="bramFrontierAnnexDebriefResolvesAfterShadowCavesSettlementExpansion()" classname="com.rogueforge.game.world.WorldSystemsIntegrationTest" time="0.003"/>
   <testcase name="ironhavenArrivalSurveyCompletesAfterTalkingToTownNpcs()" classname="com.rogueforge.game.world.WorldSystemsIntegrationTest" time="0.001"/>
-  <testcase name="miraFirstStepsReturnDoesNotResolveBeforeFrontierBattle()" classname="com.rogueforge.game.world.WorldSystemsIntegrationTest" time="0.004"/>
+  <testcase name="annexResupplyQuestAdvancesWhenDepotResupplyFlagIsSet()" classname="com.rogueforge.game.world.WorldSystemsIntegrationTest" time="0.001"/>
+  <testcase name="miraFirstStepsReturnDoesNotResolveBeforeFrontierBattle()" classname="com.rogueforge.game.world.WorldSystemsIntegrationTest" time="0.002"/>
   <testcase name="recruitmentAndSettlementManagersLoadAndApplyRealDefinitions()" classname="com.rogueforge.game.world.WorldSystemsIntegrationTest" time="0.001"/>
   <testcase name="dialogueSystemResolvesStatefulNpcDialogueFromRealData()" classname="com.rogueforge.game.world.WorldSystemsIntegrationTest" time="0.002"/>
+  <testcase name="mk2RecruitmentConsumesBlueprintFragmentsWhenAppliedToLiveState()" classname="com.rogueforge.game.world.WorldSystemsIntegrationTest" time="0.001"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

@@ -1,19 +1,215 @@
 [
-  { "id": "town", "name": "Ironhaven", "tilemapPath": "maps/town.tmx", "rankFloor": "G", "rankCeiling": "G", "bossId": null, "monsterIds": [] },
-  { "id": "verdant_fields", "name": "Verdant Fields", "tilemapPath": "maps/verdant_fields.tmx", "rankFloor": "G", "rankCeiling": "F", "bossId": null, "monsterIds": ["slime_g", "goblin_f"], "worldType": "expansive_frontier", "expansiveWidthTiles": 512, "expansiveHeightTiles": 512, "starterSafeRadiusTiles": 24 },
-  { "id": "whispering_forest", "name": "Whispering Forest", "tilemapPath": "maps/whispering_forest.tmx", "rankFloor": "G", "rankCeiling": "F", "bossId": "rust_king_e", "monsterIds": ["widow_f", "slime_g", "rust_king_e"] },
-  { "id": "rusty_quarry", "name": "Rusty Quarry", "tilemapPath": "maps/rusty_quarry.tmx", "rankFloor": "F", "rankCeiling": "E", "bossId": "iron_maiden_d", "monsterIds": ["goblin_f", "quarry_mole_e", "iron_maiden_d"] },
-  { "id": "coastal_shallows", "name": "Coastal Shallows", "tilemapPath": "maps/coastal_shallows.tmx", "rankFloor": "F", "rankCeiling": "E", "bossId": "circuit_breaker_c", "monsterIds": ["tide_hopper_f", "slime_g", "circuit_breaker_c"] },
-  { "id": "shadow_caves", "name": "Shadow Caves", "tilemapPath": "maps/shadow_caves.tmx", "rankFloor": "E", "rankCeiling": "D", "bossId": "rusted_sovereign_c", "monsterIds": ["skeleton_e", "mage_d", "rusted_sovereign_c"] },
-  { "id": "scorched_plateau", "name": "Scorched Plateau", "tilemapPath": "maps/scorched_plateau.tmx", "rankFloor": "D", "rankCeiling": "C", "bossId": null, "monsterIds": ["ember_hound_d", "mage_d"] },
-  { "id": "frozen_vale", "name": "Frozen Vale", "tilemapPath": "maps/frozen_vale.tmx", "rankFloor": "E", "rankCeiling": "D", "bossId": null, "monsterIds": ["frost_wisp_e", "skeleton_e"] },
-  { "id": "crystal_depths", "name": "Crystal Depths", "tilemapPath": "maps/crystal_depths.tmx", "rankFloor": "D", "rankCeiling": "C", "bossId": null, "monsterIds": ["mage_d", "crystal_wyrm_c"] },
-  { "id": "dragon_peak", "name": "Dragon Peak", "tilemapPath": "maps/dragon_peak.tmx", "rankFloor": "C", "rankCeiling": "B", "bossId": "dragon_boss_b", "monsterIds": ["golem_c", "dragon_boss_b"] },
-  { "id": "sunken_abyss", "name": "Sunken Abyss", "tilemapPath": "maps/sunken_abyss.tmx", "rankFloor": "C", "rankCeiling": "B", "bossId": "null_warden_a", "monsterIds": ["abyss_angler_c", "golem_c", "null_warden_a"] },
-  { "id": "sky_fortress", "name": "Sky Fortress", "tilemapPath": "maps/sky_fortress.tmx", "rankFloor": "B", "rankCeiling": "A", "bossId": "volt_specter_b", "monsterIds": ["volt_specter_b", "clockwork_bishop_b", "sky_sentinel_b"] },
-  { "id": "volcanic_core", "name": "Volcanic Core", "tilemapPath": "maps/volcanic_core.tmx", "rankFloor": "B", "rankCeiling": "A", "bossId": "phoenix_a", "monsterIds": ["ember_hound_d", "phoenix_a"] },
-  { "id": "clockwork_sanctum", "name": "Clockwork Sanctum", "tilemapPath": "maps/clockwork_sanctum.tmx", "rankFloor": "B", "rankCeiling": "A", "bossId": "clockwork_bishop_b", "monsterIds": ["clockwork_bishop_b", "crystal_wyrm_c"] },
-  { "id": "abyssal_rift", "name": "Abyssal Rift", "tilemapPath": "maps/abyssal_rift.tmx", "rankFloor": "A", "rankCeiling": "S", "bossId": "the_unmaker_s", "monsterIds": ["the_unmaker_s", "rift_horror_a"] },
-  { "id": "the_void", "name": "The Void", "tilemapPath": "maps/the_void.tmx", "rankFloor": "S", "rankCeiling": "S++", "bossId": "origin_core_s", "monsterIds": ["void_wisp_s", "origin_core_s"] },
-  { "id": "infinite_dungeon", "name": "Infinite Dungeon", "tilemapPath": "maps/infinite_dungeon.tmx", "rankFloor": "B", "rankCeiling": "S++", "bossId": "apex_predator_s", "monsterIds": ["clockwork_bishop_b", "rift_horror_a", "apex_predator_s", "dungeon_overlord_s"] }
+  {
+    "id": "town",
+    "name": "Ironhaven",
+    "tilemapPath": "maps/town.tmx",
+    "rankFloor": "G",
+    "rankCeiling": "G",
+    "bossId": null,
+    "monsterIds": []
+  },
+  {
+    "id": "verdant_fields",
+    "name": "Verdant Fields",
+    "tilemapPath": "maps/verdant_fields.tmx",
+    "rankFloor": "G",
+    "rankCeiling": "F",
+    "bossId": null,
+    "monsterIds": [
+      "slime_g",
+      "goblin_f"
+    ],
+    "worldType": "expansive_frontier",
+    "expansiveWidthTiles": 512,
+    "expansiveHeightTiles": 512,
+    "starterSafeRadiusTiles": 24
+  },
+  {
+    "id": "whispering_forest",
+    "name": "Whispering Forest",
+    "tilemapPath": "maps/whispering_forest.tmx",
+    "rankFloor": "G",
+    "rankCeiling": "F",
+    "bossId": "rust_king_e",
+    "monsterIds": [
+      "widow_f",
+      "slime_g",
+      "rust_king_e"
+    ]
+  },
+  {
+    "id": "rusty_quarry",
+    "name": "Rusty Quarry",
+    "tilemapPath": "maps/rusty_quarry.tmx",
+    "rankFloor": "F",
+    "rankCeiling": "E",
+    "bossId": "iron_maiden_d",
+    "monsterIds": [
+      "goblin_f",
+      "quarry_mole_e",
+      "iron_maiden_d"
+    ]
+  },
+  {
+    "id": "coastal_shallows",
+    "name": "Coastal Shallows",
+    "tilemapPath": "maps/coastal_shallows.tmx",
+    "rankFloor": "F",
+    "rankCeiling": "E",
+    "bossId": "circuit_breaker_c",
+    "monsterIds": [
+      "tide_hopper_f",
+      "slime_g",
+      "circuit_breaker_c"
+    ]
+  },
+  {
+    "id": "shadow_caves",
+    "name": "Shadow Caves",
+    "tilemapPath": "maps/shadow_caves.tmx",
+    "rankFloor": "E",
+    "rankCeiling": "D",
+    "bossId": "rusted_sovereign_c",
+    "monsterIds": [
+      "skeleton_e",
+      "mage_d",
+      "rusted_sovereign_c"
+    ]
+  },
+  {
+    "id": "scorched_plateau",
+    "name": "Scorched Plateau",
+    "tilemapPath": "maps/scorched_plateau.tmx",
+    "rankFloor": "D",
+    "rankCeiling": "C",
+    "bossId": null,
+    "monsterIds": [
+      "ember_hound_d",
+      "mage_d"
+    ]
+  },
+  {
+    "id": "frozen_vale",
+    "name": "Frozen Vale",
+    "tilemapPath": "maps/frozen_vale.tmx",
+    "rankFloor": "E",
+    "rankCeiling": "D",
+    "bossId": null,
+    "monsterIds": [
+      "frost_wisp_e",
+      "skeleton_e"
+    ]
+  },
+  {
+    "id": "crystal_depths",
+    "name": "Crystal Depths",
+    "tilemapPath": "maps/crystal_depths.tmx",
+    "rankFloor": "D",
+    "rankCeiling": "C",
+    "bossId": null,
+    "monsterIds": [
+      "mage_d",
+      "crystal_wyrm_c"
+    ]
+  },
+  {
+    "id": "dragon_peak",
+    "name": "Dragon Peak",
+    "tilemapPath": "maps/dragon_peak.tmx",
+    "rankFloor": "C",
+    "rankCeiling": "B",
+    "bossId": "dragon_boss_b",
+    "monsterIds": [
+      "golem_c",
+      "dragon_boss_b"
+    ]
+  },
+  {
+    "id": "sunken_abyss",
+    "name": "Sunken Abyss",
+    "tilemapPath": "maps/sunken_abyss.tmx",
+    "rankFloor": "C",
+    "rankCeiling": "B",
+    "bossId": "null_warden_a",
+    "monsterIds": [
+      "abyss_angler_c",
+      "golem_c",
+      "null_warden_a"
+    ]
+  },
+  {
+    "id": "sky_fortress",
+    "name": "Sky Fortress",
+    "tilemapPath": "maps/sky_fortress.tmx",
+    "rankFloor": "B",
+    "rankCeiling": "A",
+    "bossId": "volt_specter_b",
+    "monsterIds": [
+      "volt_specter_b",
+      "clockwork_bishop_b",
+      "sky_sentinel_b"
+    ]
+  },
+  {
+    "id": "volcanic_core",
+    "name": "Volcanic Core",
+    "tilemapPath": "maps/volcanic_core.tmx",
+    "rankFloor": "B",
+    "rankCeiling": "A",
+    "bossId": "phoenix_a",
+    "monsterIds": [
+      "ember_hound_d",
+      "phoenix_a"
+    ]
+  },
+  {
+    "id": "clockwork_sanctum",
+    "name": "Clockwork Sanctum",
+    "tilemapPath": "maps/clockwork_sanctum.tmx",
+    "rankFloor": "B",
+    "rankCeiling": "A",
+    "bossId": "clockwork_bishop_b",
+    "monsterIds": [
+      "clockwork_bishop_b",
+      "crystal_wyrm_c"
+    ]
+  },
+  {
+    "id": "abyssal_rift",
+    "name": "Abyssal Rift",
+    "tilemapPath": "maps/abyssal_rift.tmx",
+    "rankFloor": "A",
+    "rankCeiling": "S",
+    "bossId": "the_unmaker_s",
+    "monsterIds": [
+      "the_unmaker_s",
+      "rift_horror_a"
+    ]
+  },
+  {
+    "id": "the_void",
+    "name": "The Void",
+    "tilemapPath": "maps/the_void.tmx",
+    "rankFloor": "S",
+    "rankCeiling": "S++",
+    "bossId": "origin_core_s",
+    "monsterIds": [
+      "void_wisp_s",
+      "origin_core_s"
+    ]
+  },
+  {
+    "id": "infinite_dungeon",
+    "name": "Infinite Dungeon",
+    "tilemapPath": "maps/infinite_dungeon.tmx",
+    "rankFloor": "B",
+    "rankCeiling": "S++",
+    "bossId": "apex_predator_s",
+    "monsterIds": [
+      "clockwork_bishop_b",
+      "rift_horror_a",
+      "apex_predator_s",
+      "dungeon_overlord_s"
+    ]
+  }
 ]

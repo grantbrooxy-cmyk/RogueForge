@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.rogueforge.game.progression.CombatArtRegistryTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-03-29T18:15:05" hostname="Grants-MacBook-Pro.local" time="0.001">
+<testsuite name="com.rogueforge.game.progression.CombatArtRegistryTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-04-04T16:59:42" hostname="Grants-MacBook-Pro.local" time="0.001">
   <properties/>
   <testcase name="nonCombatWeaponTypeReturnsEmptyValues()" classname="com.rogueforge.game.progression.CombatArtRegistryTest" time="0.001"/>
   <testcase name="returnsExpectedArtIdsForSwordMilestones()" classname="com.rogueforge.game.progression.CombatArtRegistryTest" time="0.0"/>

@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <map version="1.10" tiledversion="1.12.1" orientation="orthogonal" renderorder="right-down" width="120" height="84" tilewidth="16" tileheight="16" infinite="0" nextlayerid="12" nextobjectid="53">
  <properties>
-  <property name="groundStyle" value="meadow" />
+  <property name="groundStyle" value="village" />
   <property name="safeZone" value="true" />
  </properties>
  <tileset firstgid="1" source="tileset.tsx" />
  <tileset firstgid="91" source="objects.tsx" />
+ <tileset firstgid="99" source="serene_village.tsx" />
+ <tileset firstgid="954" source="serene_village_animated.tsx" />
  <layer id="7" name="01_Ground" width="120" height="84">
   <data encoding="csv">
 61,61,61,61,61,61,61,61,61,1,61,21,61,61,61,21,61,51,61,61,61,61,61,21,51,61,61,21,61,21,61,21,61,51,61,21,21,51,61,61,21,61,61,61,1,21,61,51,61,61,21,61,61,61,61,61,61,61,51,61,1,61,61,61,1,61,61,61,61,51,61,61,61,1,1,61,61,61,1,61,61,1,61,61,61,61,1,21,61,61,51,51,61,61,61,61,61,61,61,61,61,61,21,61,1,61,51,61,61,61,1,1,61,61,21,1,61,61,61,61,
@@ -463,6 +465,29 @@
     <property name="houseId" value="3" />
    </properties>
   </object>
+  <object id="52" name="frontier_annex_north" x="1180" y="620" width="300" height="88">
+   <properties>
+    <property name="kind" value="gate" />
+    <property name="label" value="Frontier Annex" />
+    <property name="requiredWorldFlag" value="settlement.frontier_annex" />
+   </properties>
+  </object>
+  <object id="53" name="frontier_annex_south" x="1180" y="836" width="300" height="88">
+   <properties>
+    <property name="kind" value="gate" />
+    <property name="label" value="Salvage Yard" />
+    <property name="requiredWorldFlag" value="settlement.frontier_annex" />
+   </properties>
+  </object>
+  <object id="54" name="frontier_depot_counter" x="1208" y="732" width="108" height="56">
+   <properties>
+    <property name="kind" value="stall" />
+    <property name="label" value="Depot Counter" />
+    <property name="interactionType" value="shop" />
+    <property name="shopId" value="frontier_depot" />
+    <property name="requiredWorldFlag" value="settlement.frontier_annex" />
+   </properties>
+  </object>
  </objectgroup>
  <objectgroup id="2" name="collisions">
  <object id="6" x="240" y="452" width="240" height="192" />
@@ -557,6 +582,20 @@
    <properties>
     <property name="npcId" value="edda_town" />
     <property name="displayName" value="Edda" />
+   </properties>
+  </object>
+  <object id="55" name="hale" x="1218" y="706">
+   <properties>
+    <property name="npcId" value="hale" />
+    <property name="displayName" value="Hale" />
+    <property name="requiredWorldFlag" value="settlement.frontier_annex" />
+   </properties>
+  </object>
+  <object id="56" name="vesa" x="1342" y="774">
+   <properties>
+    <property name="npcId" value="vesa" />
+    <property name="displayName" value="Vesa" />
+    <property name="requiredWorldFlag" value="settlement.frontier_annex" />
    </properties>
   </object>
  </objectgroup>

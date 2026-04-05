@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.rogueforge.game.data.ShopCoverageDataTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-03-29T18:15:05" hostname="Grants-MacBook-Pro.local" time="0.003">
+<testsuite name="com.rogueforge.game.data.ShopCoverageDataTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-04-04T16:59:42" hostname="Grants-MacBook-Pro.local" time="0.004">
   <properties/>
-  <testcase name="everyZoneHasAtLeastOneShopWithResolvableEntries()" classname="com.rogueforge.game.data.ShopCoverageDataTest" time="0.003"/>
+  <testcase name="everyZoneHasAtLeastOneShopWithResolvableEntries()" classname="com.rogueforge.game.data.ShopCoverageDataTest" time="0.004"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>
