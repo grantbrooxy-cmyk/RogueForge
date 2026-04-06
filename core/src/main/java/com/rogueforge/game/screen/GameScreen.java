@@ -42,6 +42,9 @@ import com.rogueforge.game.engine.GameEngineServices;
 import com.rogueforge.game.engine.meta.CyberneticBonuses;
 import com.rogueforge.game.engine.meta.CyberneticEnhancementEngine;
 import com.rogueforge.game.engine.meta.DeathDraftResult;
+import com.rogueforge.game.engine.meta.ForgeLegacyBonuses;
+import com.rogueforge.game.engine.meta.ForgeLegacyEngine;
+import com.rogueforge.game.engine.meta.ForgeLegacyNodeDefinition;
 import com.rogueforge.game.engine.meta.RunOutcomeSummary;
 import com.rogueforge.game.engine.social.GuildPermissionsEngine;
 import com.rogueforge.game.engine.social.GuildDefinition;
@@ -85,11 +88,14 @@ import com.rogueforge.game.progression.CombatArtRegistry;
 import com.rogueforge.game.progression.WeaponProficiencyTracker;
 import com.rogueforge.game.robot.RobotDefinition;
 import com.rogueforge.game.world.DialogueSystem;
+import com.rogueforge.game.world.ActTwoSupportDirector;
 import com.rogueforge.game.world.QuestManager;
 import com.rogueforge.game.world.RobotRecruitmentManager;
 import com.rogueforge.game.world.SettlementManager;
 import com.rogueforge.game.world.SettlementState;
 import com.rogueforge.game.world.SettlementUpgradeDefinition;
+import com.rogueforge.game.world.WarPhaseManager;
+import com.rogueforge.game.world.WarPhaseSnapshot;
 import com.rogueforge.game.world.WorldStateManager;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -160,6 +166,14 @@ public class GameScreen implements Screen {
     private static final String INFINITE_DUNGEON_ZONE_ID = "infinite_dungeon";
     private static final int INFINITE_DUNGEON_START_FLOOR = 1;
     private static final int INFINITE_DUNGEON_BOSS_INTERVAL = 10;
+    private static final List<String> ENDGAME_BOSS_IDS = List.of(
+        "origin_core_s",
+        "the_unmaker_s",
+        "apex_predator_s",
+        "dungeon_overlord_s"
+    );
+    private static final String[] LEGENDARY_ROBOT_UNLOCK_IDS = {"scout_mk3", "guardian_mk3", "striker_mk3"};
+    private static final String[] LEGENDARY_ROBOT_EVENTS = {"scout_mk3_join", "guardian_mk3_join", "striker_mk3_join"};
     private static final float ENEMY_SIZE = 48f;
     private static final float ENEMY_SPAWN_MIN_DISTANCE = 400f;
     private static final float ENEMY_SPAWN_MAX_DISTANCE = 800f;
@@ -211,6 +225,7 @@ public class GameScreen implements Screen {
     private final BaseBuildingEngine baseBuildingEngine = engineServices.getBaseBuildingEngine();
     private final BaseDefenseDirector baseDefenseDirector = engineServices.getBaseDefenseDirector();
     private final CyberneticEnhancementEngine cyberneticEnhancementEngine = engineServices.getCyberneticEnhancementEngine();
+    private final ForgeLegacyEngine forgeLegacyEngine = new ForgeLegacyEngine();
     private final GuildPermissionsEngine guildPermissionsEngine = engineServices.getGuildPermissionsEngine();
     private final TmxWorldLoader worldLoader = engineServices.getWorldLoader();
     private final InfiniteDungeonLayoutGenerator infiniteDungeonLayoutGenerator = engineServices.getInfiniteDungeonLayoutGenerator();
@@ -223,6 +238,7 @@ public class GameScreen implements Screen {
     private final WorldStateManager worldStateManager = engineServices.getWorldStateManager();
     private final RobotRecruitmentManager recruitmentManager = engineServices.getRecruitmentManager();
     private final SettlementManager settlementManager = engineServices.getSettlementManager();
+    private final WarPhaseManager warPhaseManager = engineServices.getWarPhaseManager();
     private final Map<String, Boolean> openedChestStates = new HashMap<>();
     private final List<String> harvestedFrontierFeatureIds = new ArrayList<>();
     private final List<String> claimedFrontierBaseSiteIds = new ArrayList<>();
@@ -262,12 +278,20 @@ public class GameScreen implements Screen {
     private boolean questMenuOpen = false;
     private int questMenuTabIndex = 0;
     private boolean guildMenuOpen = false;
+    private boolean expeditionBoardOpen = false;
+    private int expeditionBoardSelectionIndex = 0;
+    private String pinnedExpeditionContractTitle = null;
+    private String pinnedExpeditionContractText = null;
+    private String pinnedExpeditionContractZoneId = null;
+    private String pinnedExpeditionContractKind = null;
+    private String pinnedExpeditionContractTargetId = null;
+    private boolean pinnedExpeditionContractCompleted = false;
     private int guildMenuSelectionIndex = 0;
     private boolean buildModeOpen = false;
     private int selectedBuildStructureIndex = 0;
     private String activeClaimGuildId = null;
     private static final String OPENING_HOME_INTRO_FLAG = "intro.player_home_seen";
-    private static final String[] QUEST_MENU_TABS = {"Quests", "Materials", "Shards", "Blueprints", "Items"};
+    private static final String[] QUEST_MENU_TABS = {"Quests", "Command", "Materials", "Shards", "Blueprints", "Items"};
     private boolean pendingOpeningCutscene = false;
     private final List<DialogueSystem.DialoguePage> activeDialogueSequence = new ArrayList<>();
     private int activeDialogueSequenceIndex = 0;
@@ -327,11 +351,7 @@ public class GameScreen implements Screen {
         normalizeActiveRobotSlots();
         clampActiveRobotsToUnlockedSlots();
         if (collectedRobotIds.isEmpty()) {
-            for (String robotId : List.of("scout_mk1", "guardian_mk1", "striker_mk1")) {
-                if (robotId != null && !robotId.isEmpty() && !collectedRobotIds.contains(robotId)) {
-                    collectedRobotIds.add(robotId);
-                }
-            }
+            collectedRobotIds.add("scout_mk1");
         }
         gameState.setActiveRobotIds(activeRobotIds);
         gameState.setCollectedRobotIds(collectedRobotIds);
@@ -369,6 +389,7 @@ public class GameScreen implements Screen {
             applyMetaEnhancementsToFreshRun();
             pendingOpeningCutscene = true;
         }
+        syncAct5EndgameState(false);
     }
 
     private void initializeActiveRobotHealthForNewRun() {
@@ -477,6 +498,21 @@ public class GameScreen implements Screen {
                 if (Gdx.input.isKeyJustPressed(Input.Keys.RIGHT) || Gdx.input.isKeyJustPressed(Input.Keys.D) || Gdx.input.isKeyJustPressed(Input.Keys.TAB)) {
                     cycleQuestMenuTab(1);
                 }
+            } else if (expeditionBoardOpen) {
+                if (Gdx.input.isKeyJustPressed(Input.Keys.P) || Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+                    expeditionBoardOpen = false;
+                    return;
+                }
+                if (Gdx.input.isKeyJustPressed(Input.Keys.UP) || Gdx.input.isKeyJustPressed(Input.Keys.W)) {
+                    cycleExpeditionBoardSelection(-1);
+                }
+                if (Gdx.input.isKeyJustPressed(Input.Keys.DOWN) || Gdx.input.isKeyJustPressed(Input.Keys.S)) {
+                    cycleExpeditionBoardSelection(1);
+                }
+                if (Gdx.input.isKeyJustPressed(Input.Keys.E) || Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) {
+                    launchSelectedExpeditionDestination();
+                    return;
+                }
             } else if (guildMenuOpen) {
                 if (Gdx.input.isKeyJustPressed(Input.Keys.G) || Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
                     guildMenuOpen = false;
@@ -506,19 +542,26 @@ public class GameScreen implements Screen {
                     questMenuTabIndex = 0;
                     return;
                 }
+                if (Gdx.input.isKeyJustPressed(Input.Keys.P)) {
+                    expeditionBoardOpen = false;
+                    guildMenuOpen = false;
+                    questMenuOpen = true;
+                    questMenuTabIndex = Math.min(1, QUEST_MENU_TABS.length - 1);
+                    return;
+                }
                 if (Gdx.input.isKeyJustPressed(Input.Keys.G)) {
                     guildMenuOpen = true;
                     clampGuildMenuSelection();
                     return;
                 }
             }
-            if (!questMenuOpen && !guildMenuOpen && Gdx.input.isKeyJustPressed(Input.Keys.B)) {
+            if (!questMenuOpen && !expeditionBoardOpen && !guildMenuOpen && Gdx.input.isKeyJustPressed(Input.Keys.B)) {
                 toggleBuildMode();
                 return;
             }
         }
 
-        if (!isPaused && !battleActive && !questMenuOpen && !guildMenuOpen && !buildModeOpen) {
+        if (!isPaused && !battleActive && !questMenuOpen && !expeditionBoardOpen && !guildMenuOpen && !buildModeOpen) {
             if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
                 pauseGame();
                 return;
@@ -537,7 +580,7 @@ public class GameScreen implements Screen {
             handleBuildModeShortcuts();
         }
 
-        if (!isPaused && !questMenuOpen && !guildMenuOpen) {
+        if (!isPaused && !questMenuOpen && !expeditionBoardOpen && !guildMenuOpen) {
             gameLoop.update(delta);
             updatePlayer(delta);
             updateRobots(delta);
@@ -582,7 +625,9 @@ public class GameScreen implements Screen {
 
         // HUD on top
         hudOverlay.render();
-        drawDialogOverlay();
+        if (!expeditionBoardOpen) {
+            drawDialogOverlay();
+        }
         drawQuestOverlay();
         drawGuildOverlay();
         drawBuildOverlay();
@@ -1005,6 +1050,7 @@ public class GameScreen implements Screen {
             dy /= len;
             lastMoveDirection.set(dx, dy);
             playerAnimationTime += delta;
+            maybeCompleteTownMovementTutorial();
         }
 
         float nextX = playerPos.x + dx * PLAYER_SPEED * delta;
@@ -1036,6 +1082,21 @@ public class GameScreen implements Screen {
             }
         }
         bankExpeditionHaulIfPossible(false);
+    }
+
+    private void maybeCompleteTownMovementTutorial() {
+        if (!isHubTownZone() || worldStateManager.isFlagActive(gameState, "tutorial.town_movement_complete")) {
+            return;
+        }
+        if (!"learn_movement".equals(questManager.getQuestState(gameState, "ironhaven_arrival"))) {
+            return;
+        }
+        worldStateManager.setFlag(gameState, "tutorial.town_movement_complete", true);
+        questManager.syncProgress(gameState, worldStateManager);
+        showStandaloneDialog(
+            "Ironhaven",
+            "Movement confirmed. Walk the town, speak with Mira, Tor, and Edda, and get a feel for how Ironhaven works before you head into the frontier."
+        );
     }
 
     private void updateAttackEffects(float delta) {
@@ -2109,15 +2170,18 @@ public class GameScreen implements Screen {
     private void drawQuestMenuTabContent(SpriteBatch batch, float height) {
         switch (questMenuTabIndex) {
             case 1:
-                drawQuestMenuListSection(batch, height, "Forge Components", getMaterialInventoryLines(), "No forge components collected yet.");
+                drawQuestMenuListSection(batch, height, getCommandTabHeading(), getCommandTabLines(), "Command data unavailable.");
                 break;
             case 2:
-                drawQuestMenuListSection(batch, height, "Graded Shards", getShardInventoryLines(), "No graded shards recovered yet.");
+                drawQuestMenuListSection(batch, height, "Forge Components", getMaterialInventoryLines(), "No forge components collected yet.");
                 break;
             case 3:
-                drawQuestMenuListSection(batch, height, "Blueprint Fragments", getBlueprintFragmentInventoryLines(), "No blueprint fragments recovered yet.");
+                drawQuestMenuListSection(batch, height, "Graded Shards", getShardInventoryLines(), "No graded shards recovered yet.");
                 break;
             case 4:
+                drawQuestMenuListSection(batch, height, "Blueprint Fragments", getBlueprintFragmentInventoryLines(), "No blueprint fragments recovered yet.");
+                break;
+            case 5:
                 drawQuestMenuListSection(batch, height, "Items", getItemInventoryLines(), "No usable items carried.");
                 break;
             case 0:
@@ -2166,6 +2230,234 @@ public class GameScreen implements Screen {
         }
     }
 
+    public List<String> getActTwoCommandLines() {
+        List<String> lines = new ArrayList<>();
+        int forgeCoreLevel = getForgeCoreLevel();
+        int defeatedBosses = gameState.getDefeatedBossCount();
+        if (forgeCoreLevel < 2) {
+            lines.add("Act 2 gate: Forge Core Lv2 unlocks after 5 boss defeats. Current progress: " + defeatedBosses + "/5.");
+            lines.add("Priority: keep pushing frontier bosses until Ironhaven's economy districts come online.");
+            return lines;
+        }
+
+        lines.add("Forge Core Lv" + forgeCoreLevel + " online. Boss defeats logged: " + defeatedBosses + ".");
+        if (forgeCoreLevel < 3) {
+            lines.add("Next milestone: Forge Core Lv3 at 10 boss defeats. Remaining: " + Math.max(0, 10 - defeatedBosses) + ".");
+        } else if (forgeCoreLevel < 4) {
+            lines.add("Next milestone: Forge Core Lv4 at 15 boss defeats. Remaining: " + Math.max(0, 15 - defeatedBosses) + ".");
+        } else {
+            lines.add("Forge Core is at maximum resonance. Act 2 command systems are fully online.");
+        }
+
+        String forgeCoreQuestState = questManager.getQuestState(gameState, "forge_core_rising");
+        if (!QuestManager.NOT_STARTED.equals(forgeCoreQuestState) && !QuestManager.COMPLETED.equals(forgeCoreQuestState)) {
+            lines.add("Command briefing active: " + questManager.getCurrentObjective(gameState));
+        }
+
+        lines.add(buildFacilityProgressLine("Data Vaults", "settlement.data_vaults", "settlement_plan", 3, "Professor Cogs"));
+        lines.add(buildFacilityProgressLine("Prototype Lab", "settlement.prototype_lab", "forge_schema", 4, "Professor Cogs"));
+        lines.add("Hangar: " + (worldStateManager.isFlagActive(gameState, "settlement.hangar_open") ? "online" : "offline")
+            + "  |  Archive: " + (worldStateManager.isFlagActive(gameState, "settlement.archive_open") ? "online" : "offline")
+            + "  |  Training Grounds: " + (worldStateManager.isFlagActive(gameState, "settlement.training_grounds_open") ? "online" : "offline"));
+        lines.add(buildApothecaryReadinessLine());
+        lines.add(buildArchiveResearchLine());
+
+        boolean addedRobotLine = false;
+        int slotLimit = Math.min(getPartySlotLimit(), activeRobotIds.size());
+        for (int i = 0; i < slotLimit; i++) {
+            RobotProgressionState state = getRobotProgressionStateForPartyIndex(i);
+            if (state == null) {
+                continue;
+            }
+            String robotName = getRobotName(i);
+            if (state.getEvolutionTier() >= 2) {
+                lines.add(robotName + ": Mk-II online at Lv" + state.getLevel() + ".");
+            } else if (state.getLevel() >= 5) {
+                lines.add(robotName + ": ready for Mk-II if you can pay 3 Bone Fiber and 2 Bot Chassis Fragments.");
+            } else {
+                lines.add(robotName + ": Lv" + state.getLevel() + "  |  Mk-II unlocks at Lv5 plus Forge Core Lv2.");
+            }
+            addedRobotLine = true;
+            if (i >= 1) {
+                break;
+            }
+        }
+        if (!addedRobotLine) {
+            lines.add("No active robots registered for Act 2 progression checks.");
+        }
+
+        lines.add("Mk-II reserve frames require 2 Bot Chassis Fragments when recovered in the frontier.");
+        return lines;
+    }
+
+    private String getCommandTabHeading() {
+        if (warPhaseManager.isWarPhaseUnlocked(gameState)) {
+            return "Act 4 Command";
+        }
+        if (isActThreeCommandPhaseActive()) {
+            return "Act 3 Command";
+        }
+        return "Act 2 Command";
+    }
+
+    private List<String> getCommandTabLines() {
+        if (warPhaseManager.isWarPhaseUnlocked(gameState)) {
+            return getActFourCommandLines();
+        }
+        if (isActThreeCommandPhaseActive()) {
+            return getActThreeCommandLines();
+        }
+        return getActTwoCommandLines();
+    }
+
+    private boolean isActThreeCommandPhaseActive() {
+        return getForgeCoreLevel() >= 3
+            || worldStateManager.isFlagActive(gameState, "frontier.sky_route_mapped")
+            || worldStateManager.isFlagActive(gameState, "frontier.command_rails_online")
+            || worldStateManager.isFlagActive(gameState, "frontier.dragon_roosts_active")
+            || !QuestManager.NOT_STARTED.equals(questManager.getQuestState(gameState, "abyss_archive"))
+            || !QuestManager.NOT_STARTED.equals(questManager.getQuestState(gameState, "fortress_command"))
+            || !QuestManager.NOT_STARTED.equals(questManager.getQuestState(gameState, "void_key"));
+    }
+
+    private List<String> getActThreeCommandLines() {
+        List<String> lines = new ArrayList<>();
+        int forgeCoreLevel = getForgeCoreLevel();
+        int defeatedBosses = gameState.getDefeatedBossCount();
+        lines.add("Forge Core Lv" + forgeCoreLevel + " online. Unlocked grade: " + getUnlockedGrade() + ".");
+        if (forgeCoreLevel < 4) {
+            lines.add("Next milestone: Forge Core Lv4 at 15 boss defeats. Remaining: " + Math.max(0, 15 - defeatedBosses) + ".");
+        } else {
+            lines.add("Forge Core resonance maxed. Final-route support lattice is fully energized.");
+        }
+
+        String actThreeObjective = getCurrentActThreeObjective();
+        if (actThreeObjective != null) {
+            lines.add("Act 3 operation: " + actThreeObjective);
+        }
+
+        lines.add("Route control: Archive Chart " + stateLabel("frontier.sky_route_mapped", "mapped", "pending")
+            + "  |  Dragon roosts " + stateLabel("frontier.dragon_roosts_active", "active", "offline")
+            + "  |  Command rails " + stateLabel("frontier.command_rails_online", "active", "sealed"));
+        lines.add("Danger zones: Sunken Abyss " + zoneAccessLabel(true)
+            + "  |  Sky Fortress " + zoneAccessLabel(worldStateManager.isFlagActive(gameState, "frontier.sky_route_mapped"))
+            + "  |  Abyssal Rift " + zoneAccessLabel(worldStateManager.isFlagActive(gameState, "frontier.command_rails_online")));
+        lines.add("Advanced systems: Fusion Forge " + stateLabel("settlement.fusion_forge", "online", "offline")
+            + "  |  Command Hub " + stateLabel("settlement.command_hub", "online", "offline")
+            + "  |  Prototype Lab " + stateLabel("settlement.prototype_lab", "online", "offline"));
+        lines.add("Field science: Experimental Compounds " + stateLabel("settlement.experimental_compounds", "ready", "pending")
+            + "  |  Data Vaults " + stateLabel("settlement.data_vaults", "indexed", "pending"));
+        lines.add("Elemental break: three matching elemental hits crack resistance and trigger a one-round break window.");
+
+        boolean addedRobotLine = false;
+        int slotLimit = Math.min(getPartySlotLimit(), activeRobotIds.size());
+        for (int i = 0; i < slotLimit; i++) {
+            RobotProgressionState state = getRobotProgressionStateForPartyIndex(i);
+            if (state == null) {
+                continue;
+            }
+            String robotName = getRobotName(i);
+            if (state.getEvolutionTier() >= 3) {
+                lines.add(robotName + ": Mk-III online at Lv" + state.getLevel() + ". Unique ability lattice stabilized.");
+            } else if (state.getLevel() >= 10 && forgeCoreLevel >= 3 && isGradeUnlocked("C")) {
+                lines.add(robotName + ": ready for Mk-III if you can pay 2 Drake Hearts.");
+            } else if (state.getEvolutionTier() >= 2) {
+                lines.add(robotName + ": Mk-II deployed. Mk-III requires Lv10, grade C, and Forge Core Lv3.");
+            } else {
+                lines.add(robotName + ": still below advanced-frame thresholds. Reach Mk-II first, then push toward Lv10.");
+            }
+            addedRobotLine = true;
+        }
+        if (!addedRobotLine) {
+            lines.add("No active robots registered for Act 3 progression checks.");
+        }
+
+        lines.add("Advanced forge queue: Phoenix Visor, Solaris Frame, Comet Greaves, and Starforged Relay are now valid chase crafts.");
+        return lines;
+    }
+
+    private String getCurrentActThreeObjective() {
+        if (isQuestActive("abyss_archive") || isQuestActive("fortress_command") || isQuestActive("void_key")) {
+            return questManager.getCurrentObjective(gameState);
+        }
+        if (!worldStateManager.isFlagActive(gameState, "frontier.sky_route_mapped")) {
+            return "Recover the Archive Chart and open the first air route.";
+        }
+        if (!worldStateManager.isFlagActive(gameState, "frontier.command_rails_online")) {
+            return "Restore the Command Sigil and reopen the fortress rail network.";
+        }
+        if (!worldStateManager.isFlagActive(gameState, "frontier.dragon_roosts_active")) {
+            return "Secure Dragon Peak and activate the dragon roost network.";
+        }
+        return "Strengthen fusion, MK-III frames, and air mobility before the final gate.";
+    }
+
+    private boolean isQuestActive(String questId) {
+        String state = questManager.getQuestState(gameState, questId);
+        return !QuestManager.NOT_STARTED.equals(state) && !QuestManager.COMPLETED.equals(state);
+    }
+
+    private String stateLabel(String worldFlag, String activeLabel, String inactiveLabel) {
+        return worldStateManager.isFlagActive(gameState, worldFlag) ? activeLabel : inactiveLabel;
+    }
+
+    private String zoneAccessLabel(boolean unlocked) {
+        return unlocked ? "reachable" : "locked";
+    }
+
+    private List<String> getActFourCommandLines() {
+        WarPhaseSnapshot snapshot = warPhaseManager.buildSnapshot(
+            gameState,
+            baseStatesByZoneId,
+            guildDefinitionsById,
+            playerName
+        );
+        return new ArrayList<>(snapshot.getCommandLines());
+    }
+
+    private String buildFacilityProgressLine(String facilityName, String worldFlag, String fragmentId, int requiredCount, String contactName) {
+        if (worldFlag != null && !worldFlag.isEmpty() && worldStateManager.isFlagActive(gameState, worldFlag)) {
+            return facilityName + ": online.";
+        }
+        int current = fragmentId != null && !fragmentId.isEmpty() ? gameState.getBlueprintFragmentCount(fragmentId) : 0;
+        String fragmentName = fragmentId != null && !fragmentId.isEmpty() ? getBlueprintFragmentName(fragmentId) : "fragments";
+        return facilityName + ": " + current + "/" + requiredCount + " " + fragmentName
+            + " banked. Check with " + contactName + " once you're ready to fund it.";
+    }
+
+    private String buildApothecaryReadinessLine() {
+        if (!worldStateManager.isFlagActive(gameState, "settlement.apothecary_stock")) {
+            return "Apothecary: basic supplies only. Elena still needs the first stock restoration.";
+        }
+        int potions = Math.max(0, healingPotions);
+        if (worldStateManager.isFlagActive(gameState, "settlement.experimental_compounds")) {
+            return "Apothecary: compound lab online. Current field kits ready: " + potions + ".";
+        }
+        if (worldStateManager.isFlagActive(gameState, "settlement.field_kit_supply")) {
+            return "Apothecary: field-kit line online. Current field kits ready: " + potions + ".";
+        }
+        return "Apothecary: stocked for emergency care. Current field kits ready: " + potions + ".";
+    }
+
+    private String buildArchiveResearchLine() {
+        if (!worldStateManager.isFlagActive(gameState, "settlement.archive_open")) {
+            return "Archive: offline. Professor Cogs is still building the desk and indexing lanes.";
+        }
+        int scanned = 0;
+        int fullyScanned = 0;
+        for (Integer level : gameState.getBestiaryScanLevels().values()) {
+            if (level == null || level <= 0) {
+                continue;
+            }
+            scanned++;
+            if (level >= 3) {
+                fullyScanned++;
+            }
+        }
+        return "Archive: " + scanned + " hostile profiles logged, " + fullyScanned + " fully decoded. Blueprint stock: "
+            + sumInventoryAmounts(gameState.getBlueprintFragments()) + ".";
+    }
+
     private void drawQuestMenuListSection(SpriteBatch batch, float height, String heading, List<String> lines, String emptyText) {
         float y = height - 218f;
         font.setColor(new Color(0.88f, 0.9f, 0.98f, 1f));
@@ -2191,6 +2483,557 @@ public class GameScreen implements Screen {
             }
             y -= 8f;
         }
+    }
+
+    private void drawExpeditionBoardOverlayExpanded() {
+        if (!expeditionBoardOpen) {
+            return;
+        }
+
+        uiViewport.apply();
+        float w = uiViewport.getWorldWidth();
+        float h = uiViewport.getWorldHeight();
+
+        float panelX = 120f;
+        float panelY = 88f;
+        float panelW = w - 240f;
+        float panelH = h - 176f;
+        float gutter = 18f;
+        float columnW = (panelW - 48f - gutter * 2f) / 3f;
+        float leftX = panelX + 24f;
+        float midX = leftX + columnW + gutter;
+        float rightX = midX + columnW + gutter;
+        float columnTop = h - 212f;
+
+        shapeRenderer.setProjectionMatrix(uiCamera.combined);
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        shapeRenderer.setColor(0.03f, 0.04f, 0.08f, 0.88f);
+        shapeRenderer.rect(0f, 0f, w, h);
+        shapeRenderer.setColor(0.09f, 0.11f, 0.16f, 0.97f);
+        shapeRenderer.rect(panelX, panelY, panelW, panelH);
+        shapeRenderer.setColor(0.12f, 0.16f, 0.22f, 0.95f);
+        shapeRenderer.rect(leftX - 12f, panelY + 28f, columnW + 18f, panelH - 132f);
+        shapeRenderer.rect(midX - 12f, panelY + 28f, columnW + 18f, panelH - 132f);
+        shapeRenderer.rect(rightX - 12f, panelY + 28f, columnW + 18f, panelH - 132f);
+        shapeRenderer.end();
+
+        batch.setProjectionMatrix(uiCamera.combined);
+        batch.begin();
+        font.setColor(Color.WHITE);
+        font.draw(batch, getExpeditionBoardTitle(), panelX + 26f, h - 126f);
+        font.setColor(Color.LIGHT_GRAY);
+        font.draw(batch, "P or ESC to close  |  Review launch point, checklist, and frontier projects before the next sortie.",
+            panelX + 26f, h - 150f);
+
+        drawOverlayListSection(batch, "Launch Point", getExpeditionBoardLaunchLines(), leftX, columnTop, 30);
+        drawOverlayListSection(batch, "Launch Checklist", getExpeditionChecklistLines(), midX, columnTop, 30);
+        drawOverlayListSection(batch, "Frontier Projects", getExpeditionProjectLines(), rightX, columnTop, 30);
+        batch.end();
+    }
+
+    private void drawOverlayListSection(SpriteBatch batch, String heading, List<String> lines, float x, float topY, int maxWrappedLines) {
+        float y = topY;
+        int drawn = 0;
+        font.setColor(new Color(0.88f, 0.9f, 0.98f, 1f));
+        font.draw(batch, heading, x, y);
+        y -= 34f;
+        font.setColor(Color.WHITE);
+        if (lines == null || lines.isEmpty()) {
+            font.draw(batch, "No data available.", x, y);
+            return;
+        }
+        for (String line : lines) {
+            for (String wrapped : wrapTextLines(line, 34)) {
+                if (drawn >= maxWrappedLines) {
+                    return;
+                }
+                font.draw(batch, wrapped, x, y);
+                y -= 24f;
+                drawn++;
+            }
+            if (drawn >= maxWrappedLines) {
+                return;
+            }
+            y -= 8f;
+        }
+    }
+
+    private String getExpeditionBoardTitle() {
+        if (isHubTownZone()) {
+            return "Expedition Board - Ironhaven Command";
+        }
+        return "Expedition Board - Frontier Staging";
+    }
+
+    private List<String> getExpeditionBoardLaunchLines() {
+        List<String> lines = new ArrayList<>();
+        List<ExpeditionLaunchDestination> destinations = getExpeditionLaunchDestinations();
+        clampExpeditionBoardSelection();
+        ExpeditionLaunchDestination selectedDestination = destinations.isEmpty()
+            ? null
+            : destinations.get(Math.min(expeditionBoardSelectionIndex, destinations.size() - 1));
+        if (isHubTownZone()) {
+            lines.add("Current launch point: Ironhaven. Full banking, forge, shops, and recovery support are available here.");
+            lines.add("Town districts online: Hangar " + stateLabel("settlement.hangar_open", "ready", "offline")
+                + ", Archive " + stateLabel("settlement.archive_open", "ready", "offline")
+                + ", Training Grounds " + stateLabel("settlement.training_grounds_open", "ready", "offline") + ".");
+            lines.add("Owned frontier territories: " + getTotalClaimedTerritories() + ". Guild settlements: " + getGuildSettlementCount() + ".");
+        } else {
+            BaseState baseState = getCurrentBaseState();
+            int claimedSites = baseState != null ? baseState.getClaimedSiteIds().size() : 0;
+            lines.add("Current launch point: owned outpost in " + getCurrentZoneDisplayName() + ".");
+            lines.add("Claimed sites in this zone: " + claimedSites + ". Operational storage nearby: " + (isNearOperationalStorage() ? "yes" : "no") + ".");
+            lines.add("Outpost banking " + (canBankExpeditionHaulHere() ? "is available from this staging point." : "is unavailable until storage is built and staffed here."));
+        }
+        lines.add("World event pressure: " + getActiveWorldEventName() + ".");
+        if (selectedDestination != null) {
+            for (int i = 0; i < destinations.size(); i++) {
+                ExpeditionLaunchDestination destination = destinations.get(i);
+                String prefix = i == expeditionBoardSelectionIndex ? "> " : "  ";
+                lines.add(prefix + destination.label + (destination.currentZone ? " [Here]" : ""));
+            }
+            lines.add("Selected deployment: " + selectedDestination.label + ".");
+            lines.add(selectedDestination.detail);
+        }
+        lines.add("Up/Down choose destination. E launches immediately.");
+        return lines;
+    }
+
+    private List<String> getExpeditionChecklistLines() {
+        List<String> lines = new ArrayList<>();
+        ExpeditionLaunchDestination destination = getSelectedExpeditionDestination();
+        if (pinnedExpeditionContractText != null && !pinnedExpeditionContractText.isEmpty()) {
+            lines.add("Pinned contract: " + pinnedExpeditionContractText);
+        }
+        int slotLimit = getPartySlotLimit();
+        lines.add("Forge Core Lv" + getForgeCoreLevel() + "  |  Grade " + getUnlockedGrade() + "  |  Party slots " + slotLimit + "/3.");
+        String nextSlot = getPartySlotNextGrade();
+        if (nextSlot != null) {
+            lines.add("Next party slot unlock: " + nextSlot + ".");
+        }
+        lines.add("Field kits ready: " + Math.max(0, getHealingPotions()) + ".");
+        long unbankedGold = Math.max(0L, gameState.getUnbankedGold());
+        int unbankedComponents = sumInventoryAmounts(gameState.getUnbankedForgeComponents());
+        int unbankedShards = sumInventoryAmounts(gameState.getUnbankedShards());
+        int unbankedBlueprints = sumInventoryAmounts(gameState.getUnbankedBlueprintFragments());
+        if (unbankedGold > 0L || unbankedComponents > 0 || unbankedShards > 0 || unbankedBlueprints > 0) {
+            lines.add("Warning: unbanked haul at risk - " + unbankedGold + "g, "
+                + unbankedComponents + " components, " + unbankedShards + " shards, " + unbankedBlueprints + " fragments.");
+        } else {
+            lines.add("No unbanked haul at risk. The next sortie starts clean.");
+        }
+
+        int activeCount = 0;
+        for (int i = 0; i < Math.min(slotLimit, activeRobotIds.size()); i++) {
+            if (!hasActiveRobotAt(i)) {
+                lines.add("Party slot " + (i + 1) + ": empty.");
+                continue;
+            }
+            RobotProgressionState state = getRobotProgressionStateForPartyIndex(i);
+            String robotName = getRobotName(i);
+            String tierLabel = state != null ? "Mk-" + state.getEvolutionTier() : "Mk-I";
+            int level = state != null ? state.getLevel() : 1;
+            lines.add("Slot " + (i + 1) + ": " + robotName + " Lv" + level + " " + tierLabel + ".");
+            activeCount++;
+        }
+        if (activeCount == 0) {
+            lines.add("No active robots assigned. Visit the workshop before launching.");
+        }
+        lines.add("Reserve frames available: " + getReserveRobotLines().size() + ".");
+        lines.addAll(getDestinationChecklistNotes(destination, activeCount, slotLimit));
+        return lines;
+    }
+
+    private List<String> getDestinationChecklistNotes(ExpeditionLaunchDestination destination, int activeCount, int slotLimit) {
+        List<String> lines = new ArrayList<>();
+        if (destination == null) {
+            return lines;
+        }
+        if ("town".equals(destination.zoneId)) {
+            lines.add("Town readiness: spend haul, evolve frames, and restock before deploying again.");
+            return lines;
+        }
+
+        ZoneDefinition definition = zoneDefinitions.get(destination.zoneId);
+        if (definition == null) {
+            return lines;
+        }
+
+        int recommendedKits = definition.isExpansiveFrontier() ? 3 : definition.getBossId() != null && !definition.getBossId().isEmpty() ? 4 : 2;
+        int currentKits = Math.max(0, getHealingPotions());
+        if (currentKits < recommendedKits) {
+            lines.add("Readiness warning: " + destination.label + " is better approached with about " + recommendedKits
+                + " field kits. Current stock is " + currentKits + ".");
+        } else {
+            lines.add("Supply check: field kits meet the current recommendation for " + destination.label + ".");
+        }
+
+        String rankFloor = definition.getRankFloor();
+        if (rankFloor != null && !rankFloor.isEmpty() && gradeIndex(getUnlockedGrade()) < gradeIndex(rankFloor)) {
+            lines.add("Power warning: zone floor rank is " + rankFloor + " but your current grade is " + getUnlockedGrade() + ".");
+        } else {
+            lines.add("Power check: your grade is on pace for this deployment band.");
+        }
+
+        if (slotLimit < 2 && definition.isExpansiveFrontier()) {
+            lines.add("Team warning: frontier expansion is smoother once Forge Core Lv2 and a second party slot are online.");
+        } else if (activeCount < Math.min(2, slotLimit) && definition.isExpansiveFrontier()) {
+            lines.add("Team warning: deploy at least two active frames before pushing deeper into the frontier.");
+        }
+
+        int lowestRobotLevel = Integer.MAX_VALUE;
+        for (int i = 0; i < Math.min(slotLimit, activeRobotIds.size()); i++) {
+            RobotProgressionState state = getRobotProgressionStateForPartyIndex(i);
+            if (state != null) {
+                lowestRobotLevel = Math.min(lowestRobotLevel, state.getLevel());
+            }
+        }
+        if (lowestRobotLevel != Integer.MAX_VALUE) {
+            int recommendedLevel = definition.isExpansiveFrontier() ? 4 : definition.getBossId() != null && !definition.getBossId().isEmpty() ? 6 : 5;
+            if (lowestRobotLevel < recommendedLevel) {
+                lines.add("Frame warning: lowest active robot level is " + lowestRobotLevel + ". Recommended floor for this route is around Lv" + recommendedLevel + ".");
+            } else {
+                lines.add("Frame check: active robot levels are holding above the suggested floor for this route.");
+            }
+        }
+
+        String fragmentGoal = getDestinationFragmentGoal(destination.zoneId);
+        if (fragmentGoal != null) {
+            lines.add(fragmentGoal);
+        }
+
+        BaseState baseState = baseStatesByZoneId.get(destination.zoneId);
+        if (definition.isExpansiveFrontier() && (baseState == null || baseState.getClaimedSiteIds().isEmpty())) {
+            lines.add("Foothold warning: no claimed site is active there yet. Prioritize a claim before a long salvage run.");
+        }
+        return lines;
+    }
+
+    private String getDestinationFragmentGoal(String zoneId) {
+        if (zoneId == null || zoneId.isEmpty()) {
+            return null;
+        }
+        if ("verdant_fields".equals(zoneId)) {
+            return "Recommended target: Bot Chassis Fragments for Mk-II frames and reserve recruitment.";
+        }
+        if ("shadow_caves".equals(zoneId)) {
+            return "Recommended target: Settlement Plan Fragments to finish Data Vaults and deepen Ironhaven's archive.";
+        }
+        if ("rusty_quarry".equals(zoneId) || "crystal_depths".equals(zoneId)) {
+            return "Recommended target: Forge Schema Fragments for Prototype Lab and stronger gear projects.";
+        }
+        return null;
+    }
+
+    private void cycleExpeditionBoardSelection(int delta) {
+        List<ExpeditionLaunchDestination> destinations = getExpeditionLaunchDestinations();
+        if (destinations.isEmpty()) {
+            expeditionBoardSelectionIndex = 0;
+            return;
+        }
+        expeditionBoardSelectionIndex = Math.floorMod(expeditionBoardSelectionIndex + delta, destinations.size());
+    }
+
+    private void clampExpeditionBoardSelection() {
+        List<ExpeditionLaunchDestination> destinations = getExpeditionLaunchDestinations();
+        if (destinations.isEmpty()) {
+            expeditionBoardSelectionIndex = 0;
+            return;
+        }
+        expeditionBoardSelectionIndex = Math.floorMod(expeditionBoardSelectionIndex, destinations.size());
+    }
+
+    private List<ExpeditionLaunchDestination> getExpeditionLaunchDestinations() {
+        List<ExpeditionLaunchDestination> destinations = new ArrayList<>();
+        addExpeditionLaunchDestination(destinations, "town", "town_square", "Ironhaven",
+            "Return to Ironhaven for full banking, drafting, and facility support.");
+        for (Map.Entry<String, BaseState> entry : baseStatesByZoneId.entrySet()) {
+            String zoneId = entry.getKey();
+            BaseState baseState = entry.getValue();
+            if (zoneId == null || zoneId.isEmpty() || "town".equals(zoneId) || baseState == null || baseState.getClaimedSiteIds().isEmpty()) {
+                continue;
+            }
+            String label = getZoneDisplayName(zoneId);
+            String detail = "Deploy to " + label + " from your claimed frontier staging route. Claimed sites: "
+                + baseState.getClaimedSiteIds().size() + ".";
+            addExpeditionLaunchDestination(destinations, zoneId, null, label, detail);
+        }
+        if (destinations.size() == 1 && zoneDefinitions.containsKey("verdant_fields")) {
+            addExpeditionLaunchDestination(destinations, "verdant_fields", null, getZoneDisplayName("verdant_fields"),
+                "Deploy through the first frontier gate and begin a fresh scouting push.");
+        }
+        return destinations;
+    }
+
+    private void addExpeditionLaunchDestination(
+        List<ExpeditionLaunchDestination> destinations,
+        String zoneId,
+        String spawnId,
+        String label,
+        String detail
+    ) {
+        if (zoneId == null || zoneId.isEmpty() || !zoneDefinitions.containsKey(zoneId)) {
+            return;
+        }
+        for (ExpeditionLaunchDestination existing : destinations) {
+            if (existing.zoneId.equals(zoneId)) {
+                return;
+            }
+        }
+        destinations.add(new ExpeditionLaunchDestination(zoneId, spawnId, label, detail, zoneId.equals(currentZoneId)));
+    }
+
+    private void launchSelectedExpeditionDestination() {
+        List<ExpeditionLaunchDestination> destinations = getExpeditionLaunchDestinations();
+        if (destinations.isEmpty()) {
+            showStandaloneDialog("Expedition Board", "No valid launch destinations are available yet.");
+            expeditionBoardOpen = false;
+            return;
+        }
+        clampExpeditionBoardSelection();
+        ExpeditionLaunchDestination destination = destinations.get(expeditionBoardSelectionIndex);
+        pinExpeditionContract(destination);
+        expeditionBoardOpen = false;
+        loadZone(destination.zoneId, destination.spawnId, true);
+        showStandaloneDialog("Expedition Board", "Deployment confirmed: " + destination.label + ". "
+            + (pinnedExpeditionContractText != null ? "Pinned contract: " + pinnedExpeditionContractText : ""));
+    }
+
+    private ExpeditionLaunchDestination getSelectedExpeditionDestination() {
+        List<ExpeditionLaunchDestination> destinations = getExpeditionLaunchDestinations();
+        if (destinations.isEmpty()) {
+            return null;
+        }
+        clampExpeditionBoardSelection();
+        return destinations.get(expeditionBoardSelectionIndex);
+    }
+
+    private String getZoneDisplayName(String zoneId) {
+        ZoneDefinition definition = zoneId != null ? zoneDefinitions.get(zoneId) : null;
+        if (definition != null && definition.getName() != null && !definition.getName().isEmpty()) {
+            return definition.getName();
+        }
+        return formatZoneName(zoneId);
+    }
+
+    private void pinExpeditionContract(ExpeditionLaunchDestination destination) {
+        if (destination == null || destination.zoneId == null || destination.zoneId.isEmpty() || "town".equals(destination.zoneId)) {
+            pinnedExpeditionContractTitle = "Ironhaven Command";
+            pinnedExpeditionContractText = "Prepare the next sortie, spend banked haul, and choose a stronger frontier target.";
+            pinnedExpeditionContractZoneId = "town";
+            pinnedExpeditionContractKind = "PREPARE";
+            pinnedExpeditionContractTargetId = "town";
+            pinnedExpeditionContractCompleted = false;
+            return;
+        }
+        pinnedExpeditionContractTitle = destination.label;
+        pinnedExpeditionContractKind = determinePinnedContractKind(destination);
+        pinnedExpeditionContractTargetId = determinePinnedContractTargetId(destination, pinnedExpeditionContractKind);
+        pinnedExpeditionContractText = buildPinnedExpeditionContract(destination);
+        pinnedExpeditionContractZoneId = destination.zoneId;
+        pinnedExpeditionContractCompleted = false;
+    }
+
+    private String buildPinnedExpeditionContract(ExpeditionLaunchDestination destination) {
+        String objective = getDestinationObjective(destination);
+        String fragmentGoal = getDestinationFragmentGoal(destination.zoneId);
+        if (fragmentGoal != null && !fragmentGoal.isEmpty()) {
+            return objective + " " + fragmentGoal;
+        }
+        return objective;
+    }
+
+    private String determinePinnedContractKind(ExpeditionLaunchDestination destination) {
+        if (destination == null || destination.zoneId == null || destination.zoneId.isEmpty()) {
+            return "PREPARE";
+        }
+        if ("verdant_fields".equals(destination.zoneId) && !worldStateManager.isFlagActive(gameState, "tutorial.frontier_outpost_claimed")) {
+            return "CLAIM_SITE";
+        }
+        if ("verdant_fields".equals(destination.zoneId) && !worldStateManager.isFlagActive(gameState, "tutorial.frontier_outpost_banked")) {
+            return "BANK_HAUL";
+        }
+        ZoneDefinition definition = zoneDefinitions.get(destination.zoneId);
+        if (definition != null && definition.getBossId() != null && !definition.getBossId().isEmpty()
+            && !gameState.hasDefeatedBoss(definition.getBossId())) {
+            return "DEFEAT_BOSS";
+        }
+        if (getDestinationFragmentId(destination.zoneId) != null) {
+            return "RECOVER_FRAGMENT";
+        }
+        return "DEPLOY";
+    }
+
+    private String determinePinnedContractTargetId(ExpeditionLaunchDestination destination, String contractKind) {
+        if (destination == null) {
+            return null;
+        }
+        if ("DEFEAT_BOSS".equals(contractKind)) {
+            ZoneDefinition definition = zoneDefinitions.get(destination.zoneId);
+            return definition != null ? definition.getBossId() : null;
+        }
+        if ("RECOVER_FRAGMENT".equals(contractKind)) {
+            return getDestinationFragmentId(destination.zoneId);
+        }
+        return destination.zoneId;
+    }
+
+    private String getDestinationFragmentId(String zoneId) {
+        if ("verdant_fields".equals(zoneId)) {
+            return "bot_chassis_schema";
+        }
+        if ("shadow_caves".equals(zoneId)) {
+            return "settlement_plan";
+        }
+        if ("rusty_quarry".equals(zoneId) || "crystal_depths".equals(zoneId)) {
+            return "forge_schema";
+        }
+        return null;
+    }
+
+    private void handlePinnedContractClaim(String siteId) {
+        if (!"CLAIM_SITE".equals(pinnedExpeditionContractKind) || pinnedExpeditionContractCompleted) {
+            return;
+        }
+        if (pinnedExpeditionContractZoneId != null && pinnedExpeditionContractZoneId.equals(currentZoneId)) {
+            if ("verdant_fields".equals(pinnedExpeditionContractZoneId)
+                && !worldStateManager.isFlagActive(gameState, "tutorial.frontier_outpost_banked")) {
+                pinnedExpeditionContractKind = "BANK_HAUL";
+                pinnedExpeditionContractTargetId = pinnedExpeditionContractZoneId;
+                pinnedExpeditionContractText = "Bank one live haul at your outpost to lock in the frontier extraction loop.";
+                pinnedExpeditionContractCompleted = false;
+                refreshHud();
+                autosave();
+                showStandaloneDialog("Expedition Board", "Contract updated: foothold secured. Next step is banking one live haul at the outpost.");
+                return;
+            }
+            completePinnedExpeditionContract("Contract complete. Foothold claimed in " + getZoneDisplayName(currentZoneId) + ".");
+        }
+    }
+
+    private void handlePinnedContractFragmentRecovery(String fragmentId, int amount) {
+        if (!"RECOVER_FRAGMENT".equals(pinnedExpeditionContractKind) || pinnedExpeditionContractCompleted) {
+            return;
+        }
+        if (fragmentId == null || amount <= 0) {
+            return;
+        }
+        if (pinnedExpeditionContractTargetId != null && pinnedExpeditionContractTargetId.equals(fragmentId)) {
+            completePinnedExpeditionContract("Contract complete. Required fragment recovered for this route.");
+        }
+    }
+
+    private void handlePinnedContractBossDefeat(String bossId) {
+        if (!"DEFEAT_BOSS".equals(pinnedExpeditionContractKind) || pinnedExpeditionContractCompleted) {
+            return;
+        }
+        if (bossId != null && bossId.equals(pinnedExpeditionContractTargetId)) {
+            completePinnedExpeditionContract("Contract complete. Zone boss neutralized.");
+        }
+    }
+
+    private void completePinnedExpeditionContract(String completionMessage) {
+        pinnedExpeditionContractCompleted = true;
+        if (pinnedExpeditionContractText != null && !pinnedExpeditionContractText.endsWith(" Return to the Expedition Board for the next assignment.")) {
+            pinnedExpeditionContractText += " Return to the Expedition Board for the next assignment.";
+        }
+        refreshHud();
+        autosave();
+        if (completionMessage != null && !completionMessage.isEmpty()) {
+            showStandaloneDialog("Expedition Board", completionMessage);
+        }
+    }
+
+    private List<String> getExpeditionProjectLines() {
+        List<String> lines = new ArrayList<>();
+        ExpeditionLaunchDestination destination = getSelectedExpeditionDestination();
+        if (pinnedExpeditionContractTitle != null && !pinnedExpeditionContractTitle.isEmpty()
+            && pinnedExpeditionContractText != null && !pinnedExpeditionContractText.isEmpty()) {
+            lines.add((pinnedExpeditionContractCompleted ? "Completed contract [" : "Pinned contract [")
+                + pinnedExpeditionContractTitle + "]: " + pinnedExpeditionContractText);
+        }
+        lines.add("Primary objective: " + getDestinationObjective(destination));
+        lines.addAll(getDestinationThreatLines(destination));
+        List<String> questLines = getQuestJournalLines();
+        int addedQuestLines = 0;
+        for (String questLine : questLines) {
+            if (questLine == null || questLine.isEmpty()) {
+                continue;
+            }
+            lines.add(questLine);
+            addedQuestLines++;
+            if (addedQuestLines >= 3) {
+                break;
+            }
+        }
+        if (addedQuestLines == 0) {
+            lines.add("No active quest contracts. Push the frontier and talk to Ironhaven's crew.");
+        }
+        List<String> commandLines = getCommandTabLines();
+        for (int i = 0; i < Math.min(4, commandLines.size()); i++) {
+            lines.add(commandLines.get(i));
+        }
+        return lines;
+    }
+
+    private String getDestinationObjective(ExpeditionLaunchDestination destination) {
+        if (destination == null) {
+            return getCurrentObjective();
+        }
+        if ("town".equals(destination.zoneId)) {
+            return "Prepare the next sortie, spend banked haul, and bring Ironhaven's next project online.";
+        }
+        if ("verdant_fields".equals(destination.zoneId)) {
+            if (!worldStateManager.isFlagActive(gameState, "tutorial.frontier_outpost_claimed")) {
+                return "Claim your first outpost and build storage so Verdant Fields becomes a real foothold.";
+            }
+            if (!worldStateManager.isFlagActive(gameState, "tutorial.frontier_outpost_banked")) {
+                return "Bank one live haul at your outpost to lock in the frontier extraction loop.";
+            }
+            return "Push beyond your footholds and bring back salvage, shards, and blueprint fragments.";
+        }
+        ZoneDefinition definition = zoneDefinitions.get(destination.zoneId);
+        if (definition != null && definition.getBossId() != null && !definition.getBossId().isEmpty()
+            && !gameState.hasDefeatedBoss(definition.getBossId())) {
+            return "Advance through " + destination.label + " and break the zone boss hold there.";
+        }
+        return "Use " + destination.label + " as a staging ground for tougher salvage runs and local projects.";
+    }
+
+    private List<String> getDestinationThreatLines(ExpeditionLaunchDestination destination) {
+        List<String> lines = new ArrayList<>();
+        if (destination == null) {
+            return lines;
+        }
+        ZoneDefinition definition = zoneDefinitions.get(destination.zoneId);
+        if (definition == null) {
+            return lines;
+        }
+        if ("town".equals(destination.zoneId)) {
+            lines.add("Threat: safe hub. Best use is banking, refitting, and choosing the next frontier objective.");
+            return lines;
+        }
+
+        lines.add("Threat band: " + definition.getRankFloor() + " to " + definition.getRankCeiling()
+            + "  |  Player grade " + getUnlockedGrade() + " / Forge Core Lv" + getForgeCoreLevel() + ".");
+        if (definition.getBossId() != null && !definition.getBossId().isEmpty()) {
+            lines.add(gameState.hasDefeatedBoss(definition.getBossId())
+                ? "Boss status: zone boss already defeated."
+                : "Boss status: zone boss still active.");
+        }
+        BaseState baseState = baseStatesByZoneId.get(destination.zoneId);
+        int claimedSites = baseState != null ? baseState.getClaimedSiteIds().size() : 0;
+        int structures = baseState != null ? baseState.getPlacedStructures().size() : 0;
+        lines.add("Foothold status: " + claimedSites + " claimed site" + (claimedSites == 1 ? "" : "s")
+            + ", " + structures + " built structure" + (structures == 1 ? "" : "s") + ".");
+        if (definition.isExpansiveFrontier()) {
+            lines.add("Recommended focus: outpost growth, local banking, and fragment recovery from deeper frontier bands.");
+        } else if (definition.getBossId() != null && !definition.getBossId().isEmpty() && !gameState.hasDefeatedBoss(definition.getBossId())) {
+            lines.add("Recommended focus: clear the route, preserve kits, and arrive at the boss gate with a banked fallback nearby.");
+        } else {
+            lines.add("Recommended focus: harvest tougher materials and convert the zone into a safer repeatable route.");
+        }
+        return lines;
     }
 
     private void drawGuildOverlay() {
@@ -2567,6 +3410,7 @@ public class GameScreen implements Screen {
 
     private void transitionToGameOver() {
         clearUnbankedExpeditionHaul();
+        handleInfiniteDungeonRunEnd(false);
         metaProgressionState.setDeathCount(metaProgressionState.getDeathCount() + 1);
         DeathDraftResult deathDraft = cyberneticEnhancementEngine.buildDeathDraft(metaProgressionState, buildRunOutcomeSummary());
         metaProgressionManager.save(metaProgressionState);
@@ -2587,6 +3431,134 @@ public class GameScreen implements Screen {
         gameState.clearUnbankedForgeComponents();
         gameState.clearUnbankedShards();
         gameState.clearUnbankedBlueprintFragments();
+    }
+
+    private void openExpeditionBoard() {
+        if (!canAccessExpeditionBoard()) {
+            showStandaloneDialog(
+                "Expedition Board",
+                "You need to be in Ironhaven or at one of your claimed frontier outposts to review the next launch plan."
+            );
+            return;
+        }
+        expeditionBoardOpen = true;
+        expeditionBoardSelectionIndex = 0;
+        guildMenuOpen = false;
+        questMenuOpen = false;
+        buildModeOpen = false;
+        clearActiveDialog();
+    }
+
+    private boolean canAccessExpeditionBoard() {
+        if (isHubTownZone()) {
+            return true;
+        }
+        BaseState baseState = getCurrentBaseState();
+        return baseState != null && !baseState.getClaimedSiteIds().isEmpty();
+    }
+
+    private void awardForgeShards(int amount, String speaker, String reason) {
+        if (amount <= 0) {
+            return;
+        }
+        metaProgressionState.setForgeShards(metaProgressionState.getForgeShards() + amount);
+        metaProgressionManager.save(metaProgressionState);
+        if (speaker != null && !speaker.isEmpty() && reason != null && !reason.isEmpty()) {
+            showStandaloneDialog(speaker, reason + " Forge Shards +" + amount + ".");
+        }
+    }
+
+    private void handleInfiniteDungeonRunEnd(boolean sealedExit) {
+        if (!gameState.isInfiniteDungeonRunActive()) {
+            return;
+        }
+        int floorReached = Math.max(0, getInfiniteDungeonCurrentFloor() - 1);
+        int reward = sealedExit ? forgeLegacyEngine.getSealRunBonus() : forgeLegacyEngine.getDeathShardBonus(floorReached);
+        if (reward > 0) {
+            awardForgeShards(reward, sealedExit ? "Legacy Vault" : "Bolt Simulation",
+                sealedExit
+                    ? "Run sealed at floor " + floorReached + ". Legacy data archived."
+                    : "Run collapse recorded at floor " + floorReached + ".");
+        }
+        gameState.setInfiniteDungeonRunActive(false);
+        gameState.setInfiniteDungeonCurrentFloor(INFINITE_DUNGEON_START_FLOOR);
+        syncAct5EndgameState(sealedExit);
+    }
+
+    private void syncAct5EndgameState(boolean showUnlockDialog) {
+        if (gameState.getInfiniteDungeonBestFloor() > 0) {
+            worldStateManager.setFlag(gameState, "meta.shard_run_unlocked", true);
+        }
+        if (gameState.getInfiniteDungeonBestFloor() >= 15) {
+            worldStateManager.setFlag(gameState, "meta.floor15_cleared", true);
+        }
+        if (gameState.getInfiniteDungeonBestFloor() >= 30) {
+            worldStateManager.setFlag(gameState, "meta.floor30_cleared", true);
+        }
+        unlockLegendaryRobots(showUnlockDialog);
+    }
+
+    private void unlockLegendaryRobots(boolean showUnlockDialog) {
+        int unlockedCount = forgeLegacyEngine.getLegendaryRobotsUnlocked(gameState.getInfiniteDungeonBestFloor());
+        for (int i = 0; i < unlockedCount && i < LEGENDARY_ROBOT_UNLOCK_IDS.length; i++) {
+            String robotId = LEGENDARY_ROBOT_UNLOCK_IDS[i];
+            if (metaProgressionState.getUnlockedLegendaryRobotIds().contains(robotId)) {
+                continue;
+            }
+            metaProgressionState.getUnlockedLegendaryRobotIds().add(robotId);
+            applyRecruitment(LEGENDARY_ROBOT_EVENTS[i]);
+            metaProgressionState.setWorldEventCompletions(metaProgressionState.getWorldEventCompletions() + 1);
+            if (showUnlockDialog) {
+                showStandaloneDialog("Legacy Vault", getRobotDisplayName(robotId)
+                    + " has been archived as a legendary frame and added to your roster.");
+            }
+        }
+        metaProgressionManager.save(metaProgressionState);
+    }
+
+    private int getTotalClaimedTerritories() {
+        int total = 0;
+        for (BaseState baseState : baseStatesByZoneId.values()) {
+            if (baseState != null) {
+                total += baseState.getClaimedSiteIds().size();
+            }
+        }
+        return total;
+    }
+
+    private int getGuildSettlementCount() {
+        int total = 0;
+        for (GuildDefinition guild : guildDefinitionsById.values()) {
+            if (guild != null && guild.getHallClaimedSiteId() != null && !guild.getHallClaimedSiteId().isEmpty()) {
+                total++;
+            }
+        }
+        return total;
+    }
+
+    private int getDefeatedEndgameBossCount() {
+        int count = 0;
+        for (String bossId : ENDGAME_BOSS_IDS) {
+            if (gameState.hasDefeatedBoss(bossId)) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private String getActiveWorldEventName() {
+        int territories = getTotalClaimedTerritories();
+        int guildSettlements = getGuildSettlementCount();
+        if (gameState.getInfiniteDungeonBestFloor() >= 30) {
+            return "Rift Storm";
+        }
+        if (guildSettlements >= 1 && territories >= 4) {
+            return "Guild Summit";
+        }
+        if (territories >= 2) {
+            return "Salvage Surge";
+        }
+        return "Frontier Recon";
     }
 
     private RunOutcomeSummary buildRunOutcomeSummary() {
@@ -2743,6 +3715,12 @@ public class GameScreen implements Screen {
         sf.setBaseStates(buildBaseStateSaveData());
         sf.setGuilds(buildGuildSaveData());
         sf.setActiveClaimGuildId(activeClaimGuildId);
+        sf.setPinnedExpeditionContractTitle(pinnedExpeditionContractTitle);
+        sf.setPinnedExpeditionContractText(pinnedExpeditionContractText);
+        sf.setPinnedExpeditionContractZoneId(pinnedExpeditionContractZoneId);
+        sf.setPinnedExpeditionContractKind(pinnedExpeditionContractKind);
+        sf.setPinnedExpeditionContractTargetId(pinnedExpeditionContractTargetId);
+        sf.setPinnedExpeditionContractCompleted(pinnedExpeditionContractCompleted);
         sf.setCurrentZoneId(gameState.getCurrentZoneId());
         sf.setRobotEquipment(copyRobotEquipment(robotEquipment));
         sf.setCollectedRobotIds(new ArrayList<>(gameState.getCollectedRobotIds()));
@@ -2769,6 +3747,12 @@ public class GameScreen implements Screen {
         worldSeed = saveFile.getWorldSeed() != 0L ? saveFile.getWorldSeed() : generateWorldSeed();
         loadGuildsFromSave(saveFile);
         activeClaimGuildId = saveFile.getActiveClaimGuildId();
+        pinnedExpeditionContractTitle = saveFile.getPinnedExpeditionContractTitle();
+        pinnedExpeditionContractText = saveFile.getPinnedExpeditionContractText();
+        pinnedExpeditionContractZoneId = saveFile.getPinnedExpeditionContractZoneId();
+        pinnedExpeditionContractKind = saveFile.getPinnedExpeditionContractKind();
+        pinnedExpeditionContractTargetId = saveFile.getPinnedExpeditionContractTargetId();
+        pinnedExpeditionContractCompleted = saveFile.isPinnedExpeditionContractCompleted();
         loadBaseStatesFromSave(saveFile);
         gameState.setInfiniteDungeonCurrentFloor(saveFile.getInfiniteDungeonCurrentFloor());
         gameState.setInfiniteDungeonBestFloor(saveFile.getInfiniteDungeonBestFloor());
@@ -3141,10 +4125,14 @@ public class GameScreen implements Screen {
         gameState.setInfiniteDungeonBestFloor(Math.max(gameState.getInfiniteDungeonBestFloor(), completedFloor));
         gameState.setInfiniteDungeonCurrentFloor(completedFloor + 1);
         gameState.setInfiniteDungeonRunActive(true);
+        int shardReward = forgeLegacyEngine.getFloorClearReward()
+            + (completedFloor % INFINITE_DUNGEON_BOSS_INTERVAL == 0 ? forgeLegacyEngine.getBossFloorReward() : 0);
+        awardForgeShards(shardReward, "", "");
+        syncAct5EndgameState(true);
         regenerateInfiniteDungeonFloor("from_boss_gate", true);
         showStandaloneDialog("Bolt Simulation", completedFloor % INFINITE_DUNGEON_BOSS_INTERVAL == 0
-            ? "Boss floor cleared. Routing you deeper into the challenge loop."
-            : "Floor " + completedFloor + " cleared. Preparing the next trial.");
+            ? "Boss floor cleared. Routing you deeper into the challenge loop. Forge Shards +" + shardReward + "."
+            : "Floor " + completedFloor + " cleared. Preparing the next trial. Forge Shards +" + shardReward + ".");
         refreshHud();
     }
 
@@ -3185,6 +4173,7 @@ public class GameScreen implements Screen {
             if (gameState.markBossDefeated(enemyId)) {
                 milestoneTriggered = updateForgeCoreMilestones() || milestoneTriggered;
             }
+            handlePinnedContractBossDefeat(enemyId);
             triggerStoryEvents("BOSS_DEFEAT", enemyId);
         }
         questManager.syncProgress(gameState, worldStateManager);
@@ -3442,7 +4431,7 @@ public class GameScreen implements Screen {
         hudOverlay.setExperience(playerExperience, getExperienceForNextLevel());
         hudOverlay.setRobotHealth(getRobotHealthValues(), getRobotMaxHealthValues());
         hudOverlay.setZoneName(getCurrentZoneDisplayName());
-        hudOverlay.setObjectiveText(getCurrentObjective());
+        hudOverlay.setObjectiveText(getDisplayedObjectiveText());
     }
 
     private String getCurrentZoneDisplayName() {
@@ -3782,6 +4771,7 @@ public class GameScreen implements Screen {
         if (!isInfiniteDungeonZone()) {
             return;
         }
+        worldStateManager.setFlag(gameState, "meta.shard_run_unlocked", true);
         if (!gameState.isInfiniteDungeonRunActive()) {
             gameState.setInfiniteDungeonCurrentFloor(INFINITE_DUNGEON_START_FLOOR);
             gameState.setInfiniteDungeonRunActive(true);
@@ -3799,6 +4789,7 @@ public class GameScreen implements Screen {
             showStandaloneDialog("Bolt Simulation", "Deep trial gate accepted. Floor "
                 + gameState.getInfiniteDungeonCurrentFloor() + " is now active.");
         }
+        syncAct5EndgameState(false);
     }
 
     private void regenerateInfiniteDungeonFloor(String spawnId, boolean resetEnemies) {
@@ -3949,6 +4940,10 @@ public class GameScreen implements Screen {
                 herbalist != null ? new Vector2(herbalist.x + 92f, herbalist.y - 28f) : new Vector2(1028f, 226f),
                 "Every deep push is paid for twice: once in steel, once in recovery."));
         }
+        if (worldStateManager.isFlagActive(gameState, "meta.shard_run_unlocked") && !hasTownNpc("coda")) {
+            npcs.add(new Npc("coda", "Coda", new Vector2(742f, 418f),
+                "The Legacy Vault records every collapse and every breakthrough. Bring me shards and I'll turn them into permanence."));
+        }
     }
 
     private boolean hasTownNpc(String npcId) {
@@ -4077,6 +5072,18 @@ public class GameScreen implements Screen {
     private String getCurrentObjective() {
         questManager.syncProgress(gameState, worldStateManager);
         return questManager.getCurrentObjective(gameState);
+    }
+
+    private String getDisplayedObjectiveText() {
+        String questObjective = getCurrentObjective();
+        if (pinnedExpeditionContractText == null || pinnedExpeditionContractText.isEmpty()) {
+            return questObjective;
+        }
+        String contractPrefix = pinnedExpeditionContractCompleted ? "Contract complete: " : "Contract: ";
+        if (questObjective == null || questObjective.isEmpty() || questObjective.equals(pinnedExpeditionContractText)) {
+            return contractPrefix + pinnedExpeditionContractText;
+        }
+        return contractPrefix + pinnedExpeditionContractText + "  |  Quest: " + questObjective;
     }
 
     private DialogueSystem.DialogueResult resolveNpcDialogue(String npcId, String speakerName) {
@@ -4722,6 +5729,9 @@ public class GameScreen implements Screen {
         }
 
         if (nearbyNpc != null) {
+            if (handleAct5NpcInteraction(nearbyNpc)) {
+                return;
+            }
             DialogueSystem.DialogueResult conversation = resolveNpcDialogue(nearbyNpc.id, nearbyNpc.name);
             showDialogueSequence(conversation.pages, conversation.speaker != null ? conversation.speaker : nearbyNpc.name, conversation.text);
             if (conversation.rewardGold > 0) {
@@ -4736,6 +5746,36 @@ public class GameScreen implements Screen {
         } else {
             clearActiveDialog();
         }
+    }
+
+    private boolean handleAct5NpcInteraction(Npc npc) {
+        if (npc == null || npc.id == null || npc.id.isEmpty()) {
+            return false;
+        }
+        if ("coda".equals(npc.id)) {
+            ForgeLegacyNodeDefinition purchased = forgeLegacyEngine.getNextAffordableNode(metaProgressionState);
+            if (purchased != null && forgeLegacyEngine.purchaseNode(metaProgressionState, purchased.getId())) {
+                metaProgressionManager.save(metaProgressionState);
+                showStandaloneDialog("Coda", "Legacy Vault expenditure confirmed: " + purchased.getName()
+                    + " purchased for " + purchased.getCost() + " Forge Shards. Remaining balance: "
+                    + metaProgressionState.getForgeShards() + ".");
+            } else {
+                ForgeLegacyNodeDefinition nextNode = forgeLegacyEngine.getNextLockedNode(metaProgressionState);
+                String guidance = nextNode != null
+                    ? "Next node: " + nextNode.getName() + " (" + nextNode.getCost() + " Shards)."
+                    : "Every available legacy node has already been secured.";
+                showStandaloneDialog("Coda", "Forge Shards: " + metaProgressionState.getForgeShards()
+                    + ". " + guidance);
+            }
+            return true;
+        }
+        if ("bolt_simulation".equals(npc.id)) {
+            showStandaloneDialog("Bolt Simulation", "Best floor " + gameState.getInfiniteDungeonBestFloor()
+                + ". Challenge Runs " + (forgeLegacyEngine.areChallengeRunsUnlocked(gameState.getInfiniteDungeonBestFloor()) ? "ready" : "locked")
+                + ". Hard-mode seeds " + forgeLegacyEngine.getHardModeSeedsUnlocked(gameState.getInfiniteDungeonBestFloor()) + ".");
+            return true;
+        }
+        return false;
     }
 
     public DialogueSystem.DialogueResult interactWithInteriorNpc(String npcId, String speakerName) {
@@ -4822,6 +5862,9 @@ public class GameScreen implements Screen {
                     loadZone(door.targetZoneId, door.targetSpawnId, true);
                     refreshHud();
                     return true;
+                }
+                if (isInfiniteDungeonZone() && !currentZoneId.equals(door.targetZoneId)) {
+                    handleInfiniteDungeonRunEnd(true);
                 }
                 loadZone(door.targetZoneId, door.targetSpawnId, true);
                 refreshHud();
@@ -5068,6 +6111,7 @@ public class GameScreen implements Screen {
             worldStateManager.setFlag(gameState, "tutorial.frontier_outpost_claimed", true);
         }
         syncClaimedFrontierBaseSiteIds();
+        handlePinnedContractClaim(feature.persistentStateId);
         showStandaloneDialog(feature.label != null && !feature.label.isEmpty() ? feature.label : "Frontier",
             firstFrontierClaim
                 ? "Foothold secured. This site is yours now. Build a storage crate here so you can bank field haul without running all the way back to Ironhaven."
@@ -6114,6 +7158,7 @@ public class GameScreen implements Screen {
         } else {
             gameState.addBlueprintFragment(fragmentId, amount);
         }
+        handlePinnedContractFragmentRecovery(fragmentId, amount);
         refreshHud();
     }
 
@@ -6187,9 +7232,15 @@ public class GameScreen implements Screen {
             bankedShards
         );
         maybeTriggerFrontierAnnexResupplyProgress(bankedGold, bankedComponents, bankedShards);
+        List<String> actTwoSupportLines = applyActTwoTownReturnSupport(bankedGold, bankedComponents, bankedShards, bankedBlueprints);
         boolean actTwoBlueprintShown = maybeTriggerActTwoBlueprintTutorial(bankedBlueprints);
+        handlePinnedContractBankingProgress(bankedAtOutpostStorage);
         if (showFeedback && !actZeroTutorialShown && !actOneTutorialShown && !actTwoBlueprintShown) {
-            showStandaloneDialog("Expedition Banked", buildBankedHaulSummary(bankedGold, bankedComponents, bankedShards, bankedBlueprints));
+            String summary = buildBankedHaulSummary(bankedGold, bankedComponents, bankedShards, bankedBlueprints);
+            if (!actTwoSupportLines.isEmpty()) {
+                summary += " " + String.join(" ", actTwoSupportLines);
+            }
+            showStandaloneDialog("Expedition Banked", summary);
         }
     }
 
@@ -6209,6 +7260,18 @@ public class GameScreen implements Screen {
             "You banked your first frontier haul. That salvage is safe now, and Ironhaven can actually build with it. Toma at the workshop wants to see what you brought back so he can get the forge line running."
         );
         return true;
+    }
+
+    private void handlePinnedContractBankingProgress(boolean bankedAtOutpostStorage) {
+        if (!"BANK_HAUL".equals(pinnedExpeditionContractKind) || pinnedExpeditionContractCompleted) {
+            return;
+        }
+        if (pinnedExpeditionContractZoneId == null || pinnedExpeditionContractZoneId.isEmpty()) {
+            return;
+        }
+        if (bankedAtOutpostStorage || isHubTownZone()) {
+            completePinnedExpeditionContract("Contract complete. Haul banked safely for the current route.");
+        }
     }
 
     private boolean maybeTriggerActOneOutpostBankingTutorial(
@@ -6269,6 +7332,102 @@ public class GameScreen implements Screen {
             "Recovered blueprint fragments have been indexed. Ironhaven's archive and workshop crews can now turn those fragments into better robot, forge, and settlement plans."
         );
         return true;
+    }
+
+    private List<String> applyActTwoTownReturnSupport(
+        long bankedGold,
+        Map<String, Integer> bankedComponents,
+        Map<String, Integer> bankedShards,
+        Map<String, Integer> bankedBlueprints
+    ) {
+        List<String> lines = new ArrayList<>();
+        if (!isHubTownZone()) {
+            return lines;
+        }
+        if (worldStateManager.isFlagActive(gameState, "settlement.training_grounds_open")) {
+            int reserveCount = 0;
+            int drillXp = ActTwoSupportDirector.calculateTrainingGroundDrillXp(
+                bankedGold,
+                bankedComponents,
+                bankedShards,
+                bankedBlueprints
+            );
+            if (drillXp > 0) {
+                for (String robotId : getReserveRobotIds()) {
+                    RobotProgressionState state = getOrCreateRobotProgressionState(robotId);
+                    if (state == null) {
+                        continue;
+                    }
+                    RobotEvolutionManager.addExperience(state, drillXp);
+                    reserveCount++;
+                }
+                if (reserveCount > 0) {
+                    lines.add("Training Grounds drilled " + reserveCount + " reserve frame"
+                        + (reserveCount == 1 ? "" : "s") + " for +" + drillXp + " XP.");
+                }
+            }
+        }
+        if (worldStateManager.isFlagActive(gameState, "settlement.apothecary_stock")) {
+            int maxPotions = worldStateManager.isFlagActive(gameState, "settlement.experimental_compounds") ? 8
+                : worldStateManager.isFlagActive(gameState, "settlement.field_kit_supply") ? 6
+                : 4;
+            int refillAmount = worldStateManager.isFlagActive(gameState, "settlement.experimental_compounds") ? 2 : 1;
+            if (healingPotions < maxPotions && calculateTrainingGroundDrillXp(bankedGold, bankedComponents, bankedShards, bankedBlueprints) > 0) {
+                int before = healingPotions;
+                gameState.setHealingPotions(Math.min(maxPotions, healingPotions + refillAmount));
+                healingPotions = gameState.getHealingPotions();
+                if (healingPotions > before) {
+                    lines.add("Apothecary packed +" + (healingPotions - before) + " field kit"
+                        + (healingPotions - before == 1 ? "" : "s") + " for the next sortie.");
+                }
+            }
+        }
+        if (worldStateManager.isFlagActive(gameState, "settlement.hangar_open")) {
+            int repaired = 0;
+            for (String robotId : getReserveRobotIds()) {
+                RobotProgressionState state = getOrCreateRobotProgressionState(robotId);
+                if (state == null) {
+                    continue;
+                }
+                RobotStatBlock block = getRobotStatsForRobotId(robotId);
+                if (block.maxHealth <= 0f) {
+                    continue;
+                }
+                float currentHealth = state.getCurrentHealth() < 0f ? block.maxHealth : state.getCurrentHealth();
+                if (currentHealth + 0.5f < block.maxHealth) {
+                    state.setCurrentHealth(block.maxHealth);
+                    repaired++;
+                }
+            }
+            if (repaired > 0) {
+                lines.add("Hangar crews repaired " + repaired + " reserve frame" + (repaired == 1 ? "" : "s") + " to full readiness.");
+            }
+        }
+        if (worldStateManager.isFlagActive(gameState, "settlement.archive_open")) {
+            int decoded = sumInventoryAmounts(bankedBlueprints) + sumInventoryAmounts(bankedShards);
+            if (decoded > 0) {
+                lines.add("Archive staff indexed " + decoded + " new research artifact" + (decoded == 1 ? "" : "s") + " from this return.");
+            }
+        }
+        return lines;
+    }
+
+    private int calculateTrainingGroundDrillXp(
+        long bankedGold,
+        Map<String, Integer> bankedComponents,
+        Map<String, Integer> bankedShards,
+        Map<String, Integer> bankedBlueprints
+    ) {
+        return ActTwoSupportDirector.calculateTrainingGroundDrillXp(
+            bankedGold,
+            bankedComponents,
+            bankedShards,
+            bankedBlueprints
+        );
+    }
+
+    private int sumInventoryAmounts(Map<String, Integer> inventory) {
+        return ActTwoSupportDirector.sumInventoryAmounts(inventory);
     }
 
     private String buildBankedHaulSummary(
@@ -6357,13 +7516,18 @@ public class GameScreen implements Screen {
 
     public RobotStatBlock getPlayerStats() {
         CyberneticBonuses bonuses = getCyberneticBonuses();
+        ForgeLegacyBonuses legacyBonuses = getForgeLegacyBonuses();
         EquipmentTotals equipmentTotals = getPlayerEquipmentTotals();
         float levelOffset = playerLevel - 1;
+        float maxHealth = (playerMaxHealth + (levelOffset * 6f) + equipmentTotals.hpBonus + bonuses.getHpBonus())
+            * legacyBonuses.getMaxHealthMultiplier();
+        float strength = (PLAYER_STRENGTH + (levelOffset * 0.7f) + equipmentTotals.strengthBonus + bonuses.getStrengthBonus())
+            * legacyBonuses.getAttackMultiplier();
         return new RobotStatBlock(
             playerHealth,
-            playerMaxHealth + (levelOffset * 6f) + equipmentTotals.hpBonus + bonuses.getHpBonus(),
+            maxHealth,
             PLAYER_AGILITY + (levelOffset * 0.5f) + equipmentTotals.agilityBonus + bonuses.getAgilityBonus(),
-            PLAYER_STRENGTH + (levelOffset * 0.7f) + equipmentTotals.strengthBonus + bonuses.getStrengthBonus(),
+            strength,
             PLAYER_INTELLIGENCE + (levelOffset * 0.65f) + equipmentTotals.intelligenceBonus + bonuses.getIntelligenceBonus(),
             PLAYER_STAMINA + (levelOffset * 0.6f) + equipmentTotals.staminaBonus + bonuses.getStaminaBonus()
         );
@@ -6373,12 +7537,21 @@ public class GameScreen implements Screen {
         return cyberneticEnhancementEngine.getBonuses(metaProgressionState);
     }
 
+    private ForgeLegacyBonuses getForgeLegacyBonuses() {
+        return forgeLegacyEngine.getBonuses(metaProgressionState);
+    }
+
     private void applyMetaEnhancementsToFreshRun() {
         CyberneticBonuses bonuses = getCyberneticBonuses();
+        ForgeLegacyBonuses legacyBonuses = getForgeLegacyBonuses();
         if (bonuses.getStartingGoldBonus() > 0) {
             addGold(bonuses.getStartingGoldBonus());
         }
-        gameState.setHealingPotions(Math.max(0, healingPotions + bonuses.getStartingHealingPotionsBonus()));
+        if (legacyBonuses.getStartingGoldBonus() > 0) {
+            addGold(legacyBonuses.getStartingGoldBonus());
+        }
+        gameState.setHealingPotions(Math.max(0,
+            healingPotions + bonuses.getStartingHealingPotionsBonus() + legacyBonuses.getStartingPotionBonus()));
         healingPotions = gameState.getHealingPotions();
         for (Map.Entry<String, Integer> entry : bonuses.getStartingForgeComponents().entrySet()) {
             gameState.addForgeComponent(entry.getKey(), entry.getValue());
@@ -6450,6 +7623,39 @@ public class GameScreen implements Screen {
             }
             lines.add(definition.getName() + " Lv." + state.getLevel());
         }
+        return lines;
+    }
+
+    public List<String> getEndgameProgressionLines() {
+        List<String> lines = new ArrayList<>();
+        ForgeLegacyNodeDefinition nextNode = forgeLegacyEngine.getNextLockedNode(metaProgressionState);
+        lines.add("Forge Shards: " + metaProgressionState.getForgeShards());
+        lines.add("Infinite Dungeon best floor: " + gameState.getInfiniteDungeonBestFloor());
+        lines.add(nextNode != null
+            ? "Next Legacy node: " + nextNode.getName() + " (" + nextNode.getCost() + ")"
+            : "Legacy tree: all current nodes secured");
+        return lines;
+    }
+
+    public List<String> getEmpireStatusLines() {
+        List<String> lines = new ArrayList<>();
+        int territories = getTotalClaimedTerritories();
+        int guildSettlements = getGuildSettlementCount();
+        lines.add("Empire tier: " + forgeLegacyEngine.describeEmpireTier(territories, guildSettlements));
+        lines.add("Territories held: " + territories);
+        lines.add("Guild settlements: " + guildSettlements);
+        lines.add("World event: " + getActiveWorldEventName());
+        return lines;
+    }
+
+    public List<String> getChallengeUnlockLines() {
+        List<String> lines = new ArrayList<>();
+        int bestFloor = gameState.getInfiniteDungeonBestFloor();
+        int defeatedEndgameBosses = getDefeatedEndgameBossCount();
+        lines.add("Legendary robots: " + metaProgressionState.getUnlockedLegendaryRobotIds().size() + "/3");
+        lines.add("Challenge runs: " + (forgeLegacyEngine.areChallengeRunsUnlocked(bestFloor) ? "Unlocked" : "Locked"));
+        lines.add("Boss rush: " + (forgeLegacyEngine.isBossRushUnlocked(defeatedEndgameBosses) ? "Unlocked" : defeatedEndgameBosses + "/2 bosses"));
+        lines.add("Hard mode seeds: " + forgeLegacyEngine.getHardModeSeedsUnlocked(bestFloor));
         return lines;
     }
 
@@ -6669,6 +7875,7 @@ public class GameScreen implements Screen {
         RobotCompanion robot = robots[index];
         RobotProgressionState progressionState = getRobotProgressionStateForPartyIndex(index);
         EquipmentTotals equipmentTotals = getEquipmentTotals(index);
+        ForgeLegacyBonuses legacyBonuses = getForgeLegacyBonuses();
         int robotLevel = progressionState != null ? progressionState.getLevel() : 1;
         int evolutionTier = progressionState != null ? progressionState.getEvolutionTier() : 1;
         float levelBonus = Math.max(0f, (robotLevel - 1) * RobotEvolutionManager.levelBonusPerLevel());
@@ -6677,7 +7884,7 @@ public class GameScreen implements Screen {
         RobotStatBlock block = new RobotStatBlock(
             robot.health,
             maxHealth,
-            (robot.agility + levelBonus) * evolutionMultiplier + equipmentTotals.agilityBonus,
+            (robot.agility + levelBonus) * evolutionMultiplier + equipmentTotals.agilityBonus + legacyBonuses.getRobotSpeedBonus(),
             (robot.strength + levelBonus) * evolutionMultiplier + equipmentTotals.strengthBonus,
             (robot.intelligence + levelBonus) * evolutionMultiplier + equipmentTotals.intelligenceBonus,
             (robot.stamina + levelBonus) * evolutionMultiplier + equipmentTotals.staminaBonus
@@ -8090,6 +9297,22 @@ public class GameScreen implements Screen {
         String text;
         float lifetime;
         float timer;
+    }
+
+    private static class ExpeditionLaunchDestination {
+        final String zoneId;
+        final String spawnId;
+        final String label;
+        final String detail;
+        final boolean currentZone;
+
+        ExpeditionLaunchDestination(String zoneId, String spawnId, String label, String detail, boolean currentZone) {
+            this.zoneId = zoneId;
+            this.spawnId = spawnId;
+            this.label = label;
+            this.detail = detail;
+            this.currentZone = currentZone;
+        }
     }
 
     private static class AnimationSet {

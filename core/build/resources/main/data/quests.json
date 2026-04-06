@@ -8,6 +8,7 @@
     "startStepId": "meet_bram",
     "steps": [
       { "id": "meet_bram", "objective": "Speak with Bram, the settlement leader of Ironhaven." },
+      { "id": "learn_movement", "objective": "Get your bearings in Ironhaven and move through the town.", "completionWorldFlag": "tutorial.town_movement_complete" },
       { "id": "survey_town", "objective": "Explore Ironhaven and speak with the people here.", "completionWorldFlag": "arrival.town_surveyed" },
       { "id": "return_bram", "objective": "Report back to Bram once you know what Ironhaven needs." }
     ]

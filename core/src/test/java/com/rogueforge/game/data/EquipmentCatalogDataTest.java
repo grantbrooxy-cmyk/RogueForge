@@ -79,7 +79,12 @@ class EquipmentCatalogDataTest {
             EquipmentItem[].class,
             Gdx.files.internal("data/equipment.json").readString()
         );
+        ForgeComponentDefinition[] components = new Json().fromJson(
+            ForgeComponentDefinition[].class,
+            Gdx.files.internal("data/forge_components.json").readString()
+        );
         Set<String> ids = Arrays.stream(items).map(EquipmentItem::getId).collect(Collectors.toSet());
+        Set<String> componentIds = Arrays.stream(components).map(ForgeComponentDefinition::getId).collect(Collectors.toSet());
 
         ShopDefinition[] shops = new Json().fromJson(
             ShopDefinition[].class,
@@ -101,11 +106,22 @@ class EquipmentCatalogDataTest {
             ForgeRecipeDefinition[].class,
             Gdx.files.internal("data/forge_recipes.json").readString()
         );
+        Set<String> recipeIds = new HashSet<>();
         for (ForgeRecipeDefinition recipe : recipes) {
+            assertTrue(recipeIds.add(recipe.getId()), "Duplicate forge recipe id " + recipe.getId());
             assertTrue(
                 ids.contains(recipe.getResultEquipmentId()),
                 "Forge recipe " + recipe.getId() + " references missing equipment " + recipe.getResultEquipmentId()
             );
+            assertTrue(recipe.getGoldCost() >= 0L, "Forge recipe should not use a negative gold cost: " + recipe.getId());
+            assertTrue(recipe.getShardCost() >= 0, "Forge recipe should not use a negative shard cost: " + recipe.getId());
+            for (ForgeIngredientDefinition ingredient : recipe.getIngredients()) {
+                assertTrue(
+                    componentIds.contains(ingredient.getComponentId()),
+                    "Forge recipe " + recipe.getId() + " references missing component " + ingredient.getComponentId()
+                );
+                assertTrue(ingredient.getQuantity() > 0, "Forge recipe ingredient quantity should be positive for " + recipe.getId());
+            }
         }
 
         SettlementUpgradeDefinition[] upgrades = new Json().fromJson(
@@ -123,6 +139,10 @@ class EquipmentCatalogDataTest {
         }
 
         assertFalse(ids.isEmpty());
+        assertTrue(recipeIds.contains("phoenix_visor_recipe"));
+        assertTrue(recipeIds.contains("solaris_frame_recipe"));
+        assertTrue(recipeIds.contains("comet_striders_recipe"));
+        assertTrue(recipeIds.contains("starforged_relay_recipe"));
     }
 
     @Test

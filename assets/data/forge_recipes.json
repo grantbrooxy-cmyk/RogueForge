@@ -118,5 +118,65 @@
       { "componentId": "drake_heart", "quantity": 1 },
       { "componentId": "primal_core", "quantity": 1 }
     ]
+  },
+  {
+    "id": "phoenix_visor_recipe",
+    "name": "Phoenix Visor",
+    "category": "Advanced Robot Parts",
+    "description": "A high-tier optics rig forged for MK-III support frames and late-frontier command crews.",
+    "resultEquipmentId": "phoenix_visor",
+    "goldCost": 420,
+    "shardGrade": "C",
+    "shardCost": 7,
+    "ingredients": [
+      { "componentId": "hex_crystal", "quantity": 3 },
+      { "componentId": "fortress_plate", "quantity": 2 },
+      { "componentId": "drake_heart", "quantity": 1 }
+    ]
+  },
+  {
+    "id": "solaris_frame_recipe",
+    "name": "Solaris Frame",
+    "category": "Advanced Robot Parts",
+    "description": "A late-game chassis intended for hardened expedition frames pushing into extreme zones.",
+    "resultEquipmentId": "solaris_frame",
+    "goldCost": 500,
+    "shardGrade": "B",
+    "shardCost": 8,
+    "ingredients": [
+      { "componentId": "fortress_plate", "quantity": 4 },
+      { "componentId": "primal_core", "quantity": 2 },
+      { "componentId": "drake_heart", "quantity": 1 }
+    ]
+  },
+  {
+    "id": "comet_striders_recipe",
+    "name": "Comet Greaves",
+    "category": "Advanced Frontier Gear",
+    "description": "Precision-built greaves tuned for air-lane drops, ridge traversal, and evasive late-frontier routes.",
+    "resultEquipmentId": "comet_striders",
+    "goldCost": 430,
+    "shardGrade": "C",
+    "shardCost": 7,
+    "ingredients": [
+      { "componentId": "scout_gyro", "quantity": 3 },
+      { "componentId": "hex_crystal", "quantity": 2 },
+      { "componentId": "drake_heart", "quantity": 1 }
+    ]
+  },
+  {
+    "id": "starforged_relay_recipe",
+    "name": "Starforged Relay",
+    "category": "Advanced Robot Parts",
+    "description": "A command-grade relay accessory that keeps flying routes, scans, and coordinated strikes synchronized.",
+    "resultEquipmentId": "starforged_relay",
+    "goldCost": 460,
+    "shardGrade": "B",
+    "shardCost": 8,
+    "ingredients": [
+      { "componentId": "scout_gyro", "quantity": 2 },
+      { "componentId": "hex_crystal", "quantity": 3 },
+      { "componentId": "primal_core", "quantity": 1 }
+    ]
   }
 ]

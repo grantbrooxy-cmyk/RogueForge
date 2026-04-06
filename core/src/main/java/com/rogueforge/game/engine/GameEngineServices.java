@@ -13,6 +13,7 @@ import com.rogueforge.game.world.DialogueSystem;
 import com.rogueforge.game.world.QuestManager;
 import com.rogueforge.game.world.RobotRecruitmentManager;
 import com.rogueforge.game.world.SettlementManager;
+import com.rogueforge.game.world.WarPhaseManager;
 import com.rogueforge.game.world.WorldStateManager;
 
 /**
@@ -33,6 +34,7 @@ public class GameEngineServices {
     private final WorldStateManager worldStateManager = new WorldStateManager();
     private final RobotRecruitmentManager recruitmentManager = new RobotRecruitmentManager();
     private final SettlementManager settlementManager = new SettlementManager();
+    private final WarPhaseManager warPhaseManager = new WarPhaseManager();
 
     public BaseBuildingEngine getBaseBuildingEngine() { return baseBuildingEngine; }
 
@@ -61,4 +63,6 @@ public class GameEngineServices {
     public RobotRecruitmentManager getRecruitmentManager() { return recruitmentManager; }
 
     public SettlementManager getSettlementManager() { return settlementManager; }
+
+    public WarPhaseManager getWarPhaseManager() { return warPhaseManager; }
 }

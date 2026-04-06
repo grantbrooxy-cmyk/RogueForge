@@ -23,7 +23,7 @@ import java.util.Map;
  * In-game roster and equipment menu opened with I.
  */
 public class WorkshopScreen implements Screen {
-    private static final String[] TAB_LABELS = {"Roster", "Equipment", "Hub", "Archive"};
+    private static final String[] TAB_LABELS = {"Roster", "Equipment", "Command", "Archive"};
     private static final float TAB_W = 150f;
     private static final float TAB_H = 42f;
     private static final float TAB_GAP = 10f;
@@ -433,6 +433,7 @@ public class WorkshopScreen implements Screen {
             : gameScreen.getRobotEquipmentSlots(selectedPartyMember - 1);
         List<String> questLines = gameScreen.getQuestJournalLines();
         List<String> settlementLines = gameScreen.getSettlementUpgradeLines();
+        List<String> endgameLines = gameScreen.getEndgameProgressionLines();
 
         batch.begin();
         batch.setColor(0.12f, 0.14f, 0.2f, 0.96f);
@@ -507,6 +508,11 @@ public class WorkshopScreen implements Screen {
             for (int i = 0; i < settlementLines.size() && i < 3; i++) {
                 bodyFont.draw(batch, settlementLines.get(i), rightX, settlementY - 30f - (i * 26f));
             }
+        }
+        float endgameY = topY - 620f;
+        bodyFont.draw(batch, "Endgame:", rightX, endgameY);
+        for (int i = 0; i < endgameLines.size() && i < 3; i++) {
+            bodyFont.draw(batch, endgameLines.get(i), rightX, endgameY - 30f - (i * 26f));
         }
         batch.end();
     }
@@ -596,6 +602,9 @@ public class WorkshopScreen implements Screen {
         List<String> townChangeLines = gameScreen.getTownChangeLines();
         List<String> questLines = gameScreen.getQuestJournalLines();
         List<String> reserveLines = gameScreen.getReserveRobotLines();
+        List<String> endgameLines = gameScreen.getEndgameProgressionLines();
+        List<String> empireLines = gameScreen.getEmpireStatusLines();
+        List<String> challengeLines = gameScreen.getChallengeUnlockLines();
 
         batch.begin();
         batch.setColor(0.12f, 0.14f, 0.2f, 0.96f);
@@ -605,9 +614,9 @@ public class WorkshopScreen implements Screen {
 
         float leftX = 350f;
         float topY = h - 170f;
-        bodyFont.draw(batch, "Ironhaven Hub", leftX, topY);
+        bodyFont.draw(batch, "Ironhaven Command", leftX, topY);
         bodyFont.setColor(Color.LIGHT_GRAY);
-        bodyFont.draw(batch, "Town growth, unlocked services, and current projects.", leftX, topY - 28f);
+        bodyFont.draw(batch, "Town readiness, hangar logistics, training output, and current projects.", leftX, topY - 28f);
         bodyFont.setColor(Color.WHITE);
 
         bodyFont.draw(batch, "Settlement Upgrades:", leftX, topY - 74f);
@@ -658,11 +667,41 @@ public class WorkshopScreen implements Screen {
                 bodyFont.draw(batch, reserveLines.get(i), rightX, reserveY - 30f - (i * 26f));
             }
         }
+
+        float commandY = topY - 390f;
+        bodyFont.draw(batch, "Command Readiness:", leftX, commandY);
+        List<String> commandLines = gameScreen.getActTwoCommandLines();
+        if (commandLines.isEmpty()) {
+            bodyFont.draw(batch, "Act 2 command systems are not online yet.", leftX, commandY - 30f);
+        } else {
+            for (int i = 0; i < commandLines.size() && i < 5; i++) {
+                bodyFont.draw(batch, commandLines.get(i), leftX, commandY - 30f - (i * 26f));
+            }
+        }
+
+        float legacyY = topY - 548f;
+        bodyFont.draw(batch, "Forge Legacy:", leftX, legacyY);
+        for (int i = 0; i < endgameLines.size() && i < 3; i++) {
+            bodyFont.draw(batch, endgameLines.get(i), leftX, legacyY - 30f - (i * 26f));
+        }
+
+        float empireY = topY - 548f;
+        bodyFont.draw(batch, "Empire Status:", rightX, empireY);
+        for (int i = 0; i < empireLines.size() && i < 4; i++) {
+            bodyFont.draw(batch, empireLines.get(i), rightX, empireY - 30f - (i * 26f));
+        }
+
+        float challengeY = topY - 700f;
+        bodyFont.draw(batch, "Challenge Unlocks:", leftX, challengeY);
+        for (int i = 0; i < challengeLines.size() && i < 4; i++) {
+            bodyFont.draw(batch, challengeLines.get(i), leftX, challengeY - 30f - (i * 26f));
+        }
         batch.end();
     }
 
     private void drawArchivePanel(float w, float h) {
         List<String> lines = gameScreen.getBestiaryArchiveLines();
+        List<String> blueprintLines = gameScreen.getBlueprintFragmentInventoryLines();
 
         batch.begin();
         batch.setColor(0.12f, 0.14f, 0.2f, 0.96f);
@@ -674,20 +713,30 @@ public class WorkshopScreen implements Screen {
         bodyFont.setColor(Color.WHITE);
         bodyFont.draw(batch, "Bestiary Archive", leftX, topY);
         bodyFont.setColor(Color.LIGHT_GRAY);
-        bodyFont.draw(batch, "Monsters revealed through the Analyze command in battle.", leftX, topY - 28f);
+        bodyFont.draw(batch, "Monsters revealed through Analyze, plus current research stock.", leftX, topY - 28f);
+
+        bodyFont.setColor(Color.WHITE);
+        bodyFont.draw(batch, "Research Stock:", leftX, topY - 72f);
+        if (blueprintLines.isEmpty()) {
+            bodyFont.draw(batch, "No blueprint fragments recovered yet.", leftX, topY - 100f);
+        } else {
+            for (int i = 0; i < blueprintLines.size() && i < 3; i++) {
+                bodyFont.draw(batch, blueprintLines.get(i), leftX, topY - 100f - (i * 24f));
+            }
+        }
 
         if (lines.isEmpty()) {
             bodyFont.setColor(new Color(0.55f, 0.56f, 0.62f, 1f));
-            bodyFont.draw(batch, "No data yet. Use Analyze in battle to scan enemies.", leftX, topY - 80f);
-            bodyFont.draw(batch, "Scan level 1 reveals HP and stats.", leftX, topY - 110f);
-            bodyFont.draw(batch, "Scan level 2 reveals speed and elemental data.", leftX, topY - 140f);
-            bodyFont.draw(batch, "Scan level 3 reveals the enemy's gold reward.", leftX, topY - 170f);
+            bodyFont.draw(batch, "No data yet. Use Analyze in battle to scan enemies.", leftX, topY - 200f);
+            bodyFont.draw(batch, "Scan level 1 reveals HP and stats.", leftX, topY - 230f);
+            bodyFont.draw(batch, "Scan level 2 reveals speed and elemental data.", leftX, topY - 260f);
+            bodyFont.draw(batch, "Scan level 3 reveals the enemy's gold reward.", leftX, topY - 290f);
         } else {
             // Two-column layout: left column and right column
             float col1X = leftX;
             float col2X = leftX + (w - 400f) / 2f;
             float lineH = 20f;
-            float startY = topY - 74f;
+            float startY = topY - 200f;
             float maxY = 110f; // don't draw below this
             float col1Y = startY;
             float col2Y = startY;

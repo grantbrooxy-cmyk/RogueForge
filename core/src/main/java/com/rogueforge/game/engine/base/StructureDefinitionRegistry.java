@@ -118,5 +118,55 @@ public class StructureDefinitionRegistry {
                 FrontierTerrainSampler.TerrainType.STONE_FLATS
             )
         ));
+        register(new StructureDefinition(
+            "storm_relay",
+            "Storm Relay",
+            StructureCategory.UTILITY,
+            2,
+            1,
+            true,
+            240,
+            0,
+            2,
+            Map.of("scout_gyro", 3, "hex_crystal", 2, "scrap_alloy", 2),
+            EnumSet.of(
+                FrontierTerrainSampler.TerrainType.MEADOW,
+                FrontierTerrainSampler.TerrainType.SCRUB,
+                FrontierTerrainSampler.TerrainType.STONE_FLATS
+            )
+        ));
+        register(new StructureDefinition(
+            "fusion_anvil",
+            "Fusion Anvil",
+            StructureCategory.CRAFTING,
+            2,
+            2,
+            true,
+            280,
+            0,
+            0,
+            Map.of("fortress_plate", 2, "hex_crystal", 2, "primal_core", 1),
+            EnumSet.of(
+                FrontierTerrainSampler.TerrainType.STONE_FLATS,
+                FrontierTerrainSampler.TerrainType.SCRUB
+            )
+        ));
+        register(new StructureDefinition(
+            "dragon_roost_beacon",
+            "Dragon Roost Beacon",
+            StructureCategory.UTILITY,
+            2,
+            2,
+            true,
+            320,
+            8,
+            1,
+            Map.of("drake_heart", 1, "fortress_plate", 2, "scout_gyro", 2),
+            EnumSet.of(
+                FrontierTerrainSampler.TerrainType.GROVE,
+                FrontierTerrainSampler.TerrainType.SCRUB,
+                FrontierTerrainSampler.TerrainType.STONE_FLATS
+            )
+        ));
     }
 }

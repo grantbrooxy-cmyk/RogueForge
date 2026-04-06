@@ -45,6 +45,12 @@ public class SaveFile {
     private List<BaseStateData> baseStates;
     private List<GuildData> guilds;
     private String activeClaimGuildId;
+    private String pinnedExpeditionContractTitle;
+    private String pinnedExpeditionContractText;
+    private String pinnedExpeditionContractZoneId;
+    private String pinnedExpeditionContractKind;
+    private String pinnedExpeditionContractTargetId;
+    private boolean pinnedExpeditionContractCompleted;
 
     // Robot data: robotId -> Map of equipped items (slotType -> equipmentId)
     private Map<String, Map<String, String>> robotEquipment;
@@ -166,6 +172,30 @@ public class SaveFile {
 
     public String getCurrentZoneId() {
         return currentZoneId;
+    }
+
+    public String getPinnedExpeditionContractTitle() {
+        return pinnedExpeditionContractTitle;
+    }
+
+    public String getPinnedExpeditionContractText() {
+        return pinnedExpeditionContractText;
+    }
+
+    public String getPinnedExpeditionContractZoneId() {
+        return pinnedExpeditionContractZoneId;
+    }
+
+    public String getPinnedExpeditionContractKind() {
+        return pinnedExpeditionContractKind;
+    }
+
+    public String getPinnedExpeditionContractTargetId() {
+        return pinnedExpeditionContractTargetId;
+    }
+
+    public boolean isPinnedExpeditionContractCompleted() {
+        return pinnedExpeditionContractCompleted;
     }
 
     public long getCurrencyBalance() {
@@ -411,6 +441,30 @@ public class SaveFile {
 
     public void setCurrentZoneId(String currentZoneId) {
         this.currentZoneId = currentZoneId;
+    }
+
+    public void setPinnedExpeditionContractTitle(String pinnedExpeditionContractTitle) {
+        this.pinnedExpeditionContractTitle = pinnedExpeditionContractTitle;
+    }
+
+    public void setPinnedExpeditionContractText(String pinnedExpeditionContractText) {
+        this.pinnedExpeditionContractText = pinnedExpeditionContractText;
+    }
+
+    public void setPinnedExpeditionContractZoneId(String pinnedExpeditionContractZoneId) {
+        this.pinnedExpeditionContractZoneId = pinnedExpeditionContractZoneId;
+    }
+
+    public void setPinnedExpeditionContractKind(String pinnedExpeditionContractKind) {
+        this.pinnedExpeditionContractKind = pinnedExpeditionContractKind;
+    }
+
+    public void setPinnedExpeditionContractTargetId(String pinnedExpeditionContractTargetId) {
+        this.pinnedExpeditionContractTargetId = pinnedExpeditionContractTargetId;
+    }
+
+    public void setPinnedExpeditionContractCompleted(boolean pinnedExpeditionContractCompleted) {
+        this.pinnedExpeditionContractCompleted = pinnedExpeditionContractCompleted;
     }
 
     public void setCurrencyBalance(long currencyBalance) {

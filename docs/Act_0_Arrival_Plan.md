@@ -21,10 +21,16 @@ Core loop Act 0 teaches:
 ### Act
 
 - Act 0
+- player-facing Act 1 if the game chooses to present the tutorial as the first visible act rather than a prologue act
 
 ### Name
 
 - Arrival
+- Tutorial / Arrival
+
+### Time Range
+
+- first 0-2 hours
 
 ### Function
 
@@ -40,26 +46,42 @@ Core loop Act 0 teaches:
 
 During Act 0, the player should learn:
 
+- arrival flow in Ironhaven
 - movement
 - basic combat
+- first combat encounter expectations
+- first quests
+- first zone navigation
 - shops
-- basic quests
-- the first zone
 - banking resources
 
 These are the minimum literacy goals for the rest of the game.
 
 If the player reaches the end of Act 0 and still does not understand one of these, the tutorial phase has failed.
 
+### Target Player Experience
+
+By the end of this phase, the player experience should include:
+
+- arrives at Ironhaven
+- learns movement
+- first combat
+- first quests
+- first zone
+- shops
+- banking resources
+
 ## 4. Unlocks
 
 Act 0 should unlock:
 
+- Ironhaven town
+- Verdant Fields
 - town shops
-- first weapon
+- basic gear
 - first abilities
 - first robot
-- Verdant Fields
+- banking at town
 
 These are not late rewards. They are the minimum starting kit needed to make the first real expedition loop meaningful.
 

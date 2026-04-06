@@ -201,14 +201,17 @@ The main story is structured across four acts and approximately 18 primary story
 
 In addition to the narrative arc, RogueForge should be planned as a staged gameplay-structure arc where each act teaches, reinforces, or expands a different part of the core gameplay loop.
 
+For player-facing labeling, this gameplay structure should begin at Act 1 rather than Act 0.
+The four-act story arc below remains a separate narrative structure and does not need to use the same numbering scheme.
+
 | Act | Focus | Loop Meaning | Major System Unlocks |
 |---|---|---|---|
-| Act 0 | Tutorial / Arrival | Learn the loop safely | Basic combat, town services, first robot, first quest flow |
-| Act 1 | Frontier | Learn risk, travel, and extraction | Frontier exploration, early gathering, banking, first outpost claims |
-| Act 2 | Expansion | Turn returns into growth | Crafting, robot progression depth, stronger expedition prep, settlement upgrades |
-| Act 3 | Industrial | Build specialized power and infrastructure | Fusion, advanced builds, stronger outpost utility, infrastructure specialization |
-| Act 4 | War | Defend what you built | Raids, base defense, defender networks, faction and guild pressure |
-| Act 5 | Endgame | Pursue long-tail mastery and spectacle | Dragon riding, infinite dungeon, high-tier systems, creator/social endgame loops |
+| Act 1 | Tutorial / Arrival | Learn the loop safely | Basic combat, town services, first robot, first quest flow |
+| Act 2 | Frontier | Learn risk, travel, and extraction | Frontier exploration, early gathering, banking, first outpost claims |
+| Act 3 | Expansion | Turn returns into growth | Crafting, robot progression depth, stronger expedition prep, settlement upgrades |
+| Act 4 | Industrial | Build specialized power and infrastructure | Fusion, advanced builds, stronger outpost utility, infrastructure specialization |
+| Act 5 | War | Defend what you built | Raids, base defense, defender networks, faction and guild pressure |
+| Act 6 | Endgame | Pursue long-tail mastery and spectacle | Dragon riding, infinite dungeon, high-tier systems, creator/social endgame loops |
 
 Design rule:
 

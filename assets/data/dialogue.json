@@ -36,11 +36,31 @@
       },
       {
         "speaker": "Bram",
-        "text": "Start by speaking with the people here."
+        "text": "Start by getting your feet under you. Move through Ironhaven with WASD or the arrow keys and get a feel for the town."
       },
       {
         "speaker": "Bram",
-        "text": "See what Ironhaven is holding together, and what it will ask of you."
+        "text": "Once you're steady, speak with the people here and see what Ironhaven is holding together."
+      }
+    ],
+    "setQuestId": "ironhaven_arrival",
+    "setQuestStep": "learn_movement"
+  },
+  {
+    "id": "bram_arrival_movement",
+    "npcId": "bram",
+    "priority": 199,
+    "requiredQuestId": "ironhaven_arrival",
+    "requiredQuestState": "learn_movement",
+    "requiredWorldFlag": "tutorial.town_movement_complete",
+    "lines": [
+      {
+        "speaker": "Bram",
+        "text": "Good. You can move cleanly, which means you're ready to pay attention to the place you're standing in."
+      },
+      {
+        "speaker": "Bram",
+        "text": "Now speak with Mira, Tor, and Edda. Learn what Ironhaven needs before you try to carry any of it."
       }
     ],
     "setQuestId": "ironhaven_arrival",
@@ -135,7 +155,7 @@
       },
       {
         "speaker": "Mira",
-        "text": "Take your crew out there. Hold the line. Come back standing, and then we can talk about what comes next."
+        "text": "Take your Scout frame out there. Use its speed, use its tools, and hold the line. Come back standing, and then we can talk about what comes next."
       }
     ],
     "setQuestId": "first_steps",
@@ -1191,6 +1211,33 @@
     ]
   },
   {
+    "id": "rex_field_from_town",
+    "npcId": "commander_rex_field",
+    "priority": 101,
+    "requiredQuestId": "fortress_command",
+    "requiredQuestState": "speak_rex",
+    "lines": [
+      {
+        "speaker": "Commander Rex",
+        "text": "Bram filled me in."
+      },
+      {
+        "speaker": "Commander Rex",
+        "text": "If the sky route is finally stable, then we stop scavenging the fortress and start commanding it."
+      },
+      {
+        "speaker": "Commander Rex",
+        "text": "Clockwork Sanctum should still be preserving a proper command sigil."
+      },
+      {
+        "speaker": "Commander Rex",
+        "text": "Recover it and we'll reopen the deepest routes."
+      }
+    ],
+    "setQuestId": "fortress_command",
+    "setQuestStep": "recover_sigil"
+  },
+  {
     "id": "rex_start",
     "npcId": "commander_rex_field",
     "priority": 100,
@@ -1295,6 +1342,33 @@
     "setQuestStep": "recover_void_key"
   },
   {
+    "id": "clockmaker_from_town",
+    "npcId": "clockmaker_echo",
+    "priority": 101,
+    "requiredQuestId": "void_key",
+    "requiredQuestState": "speak_clockmaker",
+    "lines": [
+      {
+        "speaker": "Clockmaker Echo",
+        "text": "So Ironhaven finally understands what the command rails woke beneath the clouds."
+      },
+      {
+        "speaker": "Clockmaker Echo",
+        "text": "A final key remains outside the machine's own logic."
+      },
+      {
+        "speaker": "Clockmaker Echo",
+        "text": "Search the Abyssal Rift."
+      },
+      {
+        "speaker": "Clockmaker Echo",
+        "text": "Only the Void Key can separate memory from collapse."
+      }
+    ],
+    "setQuestId": "void_key",
+    "setQuestStep": "recover_void_key"
+  },
+  {
     "id": "clockmaker_mid",
     "npcId": "clockmaker_echo",
     "priority": 90,
@@ -1350,6 +1424,33 @@
     "requiredQuestCompleted": true,
     "requiredQuestState": "NOT_STARTED",
     "lines": [
+      {
+        "speaker": "The Watcher",
+        "text": "You have the key, the route, and the will."
+      },
+      {
+        "speaker": "The Watcher",
+        "text": "Step into the final silence."
+      },
+      {
+        "speaker": "The Watcher",
+        "text": "Memory Lane waits, and beyond it, Origin."
+      }
+    ],
+    "setQuestId": "origin_descent",
+    "setQuestStep": "enter_void"
+  },
+  {
+    "id": "watcher_from_town",
+    "npcId": "the_watcher",
+    "priority": 101,
+    "requiredQuestId": "origin_descent",
+    "requiredQuestState": "speak_watcher",
+    "lines": [
+      {
+        "speaker": "The Watcher",
+        "text": "The route is ready now."
+      },
       {
         "speaker": "The Watcher",
         "text": "You have the key, the route, and the will."
@@ -2150,6 +2251,8 @@
         "text": "Then we'll start building for the frontier, not just surviving it."
       }
     ],
+    "setQuestId": "advanced_alloys",
+    "setQuestStep": "upgrade_alloys",
     "settlementUpgradeId": "advanced_alloys",
     "setWorldFlag": "settlement.advanced_alloys"
   },
@@ -2181,6 +2284,8 @@
         "text": "It's craft."
       }
     ],
+    "setQuestId": "fusion_forge",
+    "setQuestStep": "restore_cradle",
     "settlementUpgradeId": "fusion_forge",
     "setWorldFlag": "settlement.fusion_forge"
   },
@@ -2251,6 +2356,8 @@
         "text": "Your team will feel the difference out in the field."
       }
     ],
+    "setQuestId": "field_kit_supply",
+    "setQuestStep": "stock_kits",
     "settlementUpgradeId": "field_kit_supply",
     "setWorldFlag": "settlement.field_kit_supply"
   },
@@ -2278,6 +2385,8 @@
         "text": "Give me the lab space and I'll prove it."
       }
     ],
+    "setQuestId": "experimental_compounds",
+    "setQuestStep": "fund_compounds",
     "settlementUpgradeId": "experimental_compounds",
     "setWorldFlag": "settlement.experimental_compounds"
   },
@@ -2348,6 +2457,8 @@
         "text": "Then we'll have eyes on every major approach to Ironhaven."
       }
     ],
+    "setQuestId": "relay_expansion",
+    "setQuestStep": "fund_relay",
     "settlementUpgradeId": "relay_expansion",
     "setWorldFlag": "settlement.relay_expansion"
   },
@@ -2375,6 +2486,8 @@
         "text": "Ironhaven stops being a waypoint and becomes a real stronghold."
       }
     ],
+    "setQuestId": "command_hub",
+    "setQuestStep": "build_hub",
     "settlementUpgradeId": "command_hub",
     "setWorldFlag": "settlement.command_hub"
   },
@@ -2395,6 +2508,27 @@
       {
         "speaker": "Commander Rex",
         "text": "That changes what Ironhaven is capable of."
+      }
+    ]
+  },
+  {
+    "id": "rex_town_act3_bridge",
+    "npcId": "commander_rex",
+    "priority": 86,
+    "requiredQuestId": "fortress_command",
+    "requiredQuestState": "speak_rex",
+    "lines": [
+      {
+        "speaker": "Commander Rex",
+        "text": "The air route is real, then."
+      },
+      {
+        "speaker": "Commander Rex",
+        "text": "Good. Meet me at the fortress."
+      },
+      {
+        "speaker": "Commander Rex",
+        "text": "If the old command systems still have a pulse, I'll need you there when we wake them."
       }
     ]
   },
@@ -2449,6 +2583,8 @@
         "text": "I'll turn the noise into knowledge."
       }
     ],
+    "setQuestId": "data_vaults",
+    "setQuestStep": "build_vaults",
     "settlementUpgradeId": "data_vaults",
     "setWorldFlag": "settlement.data_vaults"
   },
@@ -2476,6 +2612,8 @@
         "text": "I'll show you what the frontier was really trying to build before it fell."
       }
     ],
+    "setQuestId": "prototype_lab",
+    "setQuestStep": "build_lab",
     "settlementUpgradeId": "prototype_lab",
     "setWorldFlag": "settlement.prototype_lab"
   },
@@ -2498,6 +2636,88 @@
         "text": "That is either thrilling or deeply alarming."
       }
     ]
+  },
+  {
+    "id": "cogs_void_bridge",
+    "npcId": "professor_cogs",
+    "priority": 86,
+    "requiredQuestId": "void_key",
+    "requiredQuestState": "NOT_STARTED",
+    "requiredWorldFlag": "frontier.command_rails_online",
+    "lines": [
+      {
+        "speaker": "Professor Cogs",
+        "text": "The command rails are carrying a pattern I can't resolve from here."
+      },
+      {
+        "speaker": "Professor Cogs",
+        "text": "Clockmaker Echo might understand it."
+      },
+      {
+        "speaker": "Professor Cogs",
+        "text": "If the sanctum is still speaking in pre-collapse logic, that's the one mind in this world likely to answer back."
+      }
+    ],
+    "setQuestId": "void_key",
+    "setQuestStep": "speak_clockmaker"
+  },
+  {
+    "id": "bram_origin_bridge",
+    "npcId": "bram",
+    "priority": 87,
+    "requiredQuestId": "origin_descent",
+    "requiredQuestState": "NOT_STARTED",
+    "requiredWorldFlag": "frontier.void_gate_stable",
+    "lines": [
+      {
+        "speaker": "Bram",
+        "text": "You've opened every road that used to keep Ironhaven small."
+      },
+      {
+        "speaker": "Bram",
+        "text": "If the final conduit is stable, then this is the last march."
+      },
+      {
+        "speaker": "Bram",
+        "text": "Find the Watcher."
+      },
+      {
+        "speaker": "Bram",
+        "text": "Whatever waits beyond that gate, you won't meet it as some lone drifter this time."
+      }
+    ],
+    "setQuestId": "origin_descent",
+    "setQuestStep": "speak_watcher",
+    "rewardExperience": 90
+  },
+  {
+    "id": "bram_fortress_bridge",
+    "npcId": "bram",
+    "priority": 86,
+    "requiredQuestId": "fortress_command",
+    "requiredQuestState": "NOT_STARTED",
+    "requiredWorldFlag": "frontier.sky_route_mapped",
+    "lines": [
+      {
+        "speaker": "Bram",
+        "text": "Maren's chart changes everything."
+      },
+      {
+        "speaker": "Bram",
+        "text": "The sky isn't a wall anymore. It's a route."
+      },
+      {
+        "speaker": "Bram",
+        "text": "Rex is already preparing to move on the fortress."
+      },
+      {
+        "speaker": "Bram",
+        "text": "Find him and take the next step before the old systems close on us again."
+      }
+    ],
+    "setQuestId": "fortress_command",
+    "setQuestStep": "speak_rex",
+    "rewardExperience": 80
   },
   {
     "id": "bolt_town_idle",

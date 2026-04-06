@@ -135,14 +135,17 @@ The narrative arc should also support a broader gameplay-act structure.
 
 This means the story should not only escalate stakes. It should also steadily unlock new ways for the player to engage the core loop.
 
+For player-facing labeling, this gameplay structure should begin at Act 1 rather than Act 0.
+The story-act structure below remains a separate narrative arc and can keep its own numbering.
+
 | Act | Focus | Narrative Job | Gameplay / System Identity |
 |---|---|---|---|
-| Act 0 | Tutorial / Arrival | Introduce Ironhaven and the Forge Master role | Basic combat, town onboarding, first robot, first quest cycle |
-| Act 1 | Frontier Expansion | Prove the frontier is dangerous but recoverable | Frontier exploration, extraction pressure, early outpost claims, first footholds, first dungeon, early settlement response |
-| Act 2 | Crafting and Robots | Show restoration scaling beyond local survival | Crafting depth, Forge Core upgrades, MK-II robot evolution, recruitment quests, settlement facilities |
-| Act 3 | Industrial | Reveal lost infrastructure and machine legacy | Fusion, advanced builds, specialized outpost utility, industrial-scale systems |
-| Act 4 | War | Turn restoration into active resistance and defense | Raids, base defense, defender networks, territorial and guild pressure |
-| Act 5 | Endgame | Shift from survival and repair into mastery and legacy | Dragon riding, infinite dungeon, high-tier progression, player-authored/social endgame |
+| Act 1 | Tutorial / Arrival | Introduce Ironhaven and the Forge Master role | Basic combat, town onboarding, first robot, first quest cycle |
+| Act 2 | Frontier Expansion | Prove the frontier is dangerous but recoverable | Frontier exploration, extraction pressure, early outpost claims, first footholds, first dungeon, early settlement response |
+| Act 3 | Crafting and Robots | Show restoration scaling beyond local survival | Crafting depth, Forge Core upgrades, MK-II robot evolution, recruitment quests, settlement facilities |
+| Act 4 | Industrial | Reveal lost infrastructure and machine legacy | Fusion, advanced builds, specialized outpost utility, industrial-scale systems |
+| Act 5 | War | Turn restoration into active resistance and defense | Raids, base defense, defender networks, territorial and guild pressure |
+| Act 6 | Endgame | Shift from survival and repair into mastery and legacy | Dragon riding, infinite dungeon, high-tier progression, player-authored/social endgame |
 
 Story content should support these transitions rather than compete with them.
 

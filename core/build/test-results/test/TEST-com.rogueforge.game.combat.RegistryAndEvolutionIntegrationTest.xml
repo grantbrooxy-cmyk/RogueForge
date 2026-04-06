@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.rogueforge.game.combat.RegistryAndEvolutionIntegrationTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-04-04T16:59:42" hostname="Grants-MacBook-Pro.local" time="0.038">
+<testsuite name="com.rogueforge.game.combat.RegistryAndEvolutionIntegrationTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-04-06T06:33:01" hostname="Grants-MacBook-Pro.local" time="0.043">
   <properties/>
-  <testcase name="masteryUnlocksPromoteAbilityAndPreserveProgressionState()" classname="com.rogueforge.game.combat.RegistryAndEvolutionIntegrationTest" time="0.029"/>
-  <testcase name="uniqueSkillIsNotDuplicatedAcrossParty()" classname="com.rogueforge.game.combat.RegistryAndEvolutionIntegrationTest" time="0.003"/>
+  <testcase name="masteryUnlocksPromoteAbilityAndPreserveProgressionState()" classname="com.rogueforge.game.combat.RegistryAndEvolutionIntegrationTest" time="0.032"/>
+  <testcase name="uniqueSkillIsNotDuplicatedAcrossParty()" classname="com.rogueforge.game.combat.RegistryAndEvolutionIntegrationTest" time="0.006"/>
   <testcase name="abilityRegistryLoadsRealDefinitionsAndCreatesProgressedInstances()" classname="com.rogueforge.game.combat.RegistryAndEvolutionIntegrationTest" time="0.003"/>
   <testcase name="uniqueSkillUnlocksWhenNoOtherPartyMemberHasIt()" classname="com.rogueforge.game.combat.RegistryAndEvolutionIntegrationTest" time="0.001"/>
   <system-out><![CDATA[]]></system-out>
