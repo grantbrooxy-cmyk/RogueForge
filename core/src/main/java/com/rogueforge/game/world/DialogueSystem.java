@@ -1,7 +1,7 @@
 package com.rogueforge.game.world;
 
 import com.rogueforge.game.core.GameState;
-import com.rogueforge.game.data.DefinitionJson;
+import com.rogueforge.game.data.DefinitionRegistries;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -13,12 +13,14 @@ public class DialogueSystem {
     private final List<DialogueDefinition> definitions = new ArrayList<>();
 
     public DialogueSystem() {
-        DialogueDefinition[] loaded = DefinitionJson.loadArray("data/dialogue.json", DialogueDefinition[].class);
-        if (loaded != null) {
-            for (DialogueDefinition definition : loaded) {
-                if (definition != null) {
-                    definitions.add(definition);
-                }
+        reloadDefinitions();
+    }
+
+    public void reloadDefinitions() {
+        definitions.clear();
+        for (DialogueDefinition definition : DefinitionRegistries.DIALOGUE.getAll()) {
+            if (definition != null) {
+                definitions.add(definition);
             }
         }
         definitions.sort(Comparator.comparingInt(DialogueDefinition::getPriority).reversed());

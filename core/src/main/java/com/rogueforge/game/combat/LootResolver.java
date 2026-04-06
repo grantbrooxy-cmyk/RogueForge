@@ -2,6 +2,7 @@ package com.rogueforge.game.combat;
 
 import com.rogueforge.game.core.EventBus;
 import com.rogueforge.game.core.EventHandler;
+import com.rogueforge.game.core.EventPriority;
 import com.rogueforge.game.data.MonsterDefinition;
 import com.rogueforge.game.data.EquipmentItem;
 import com.rogueforge.game.economy.RankMultiplier;
@@ -70,7 +71,7 @@ public class LootResolver {
 
         // Fire currency earned event
         CurrencyEarnedEvent currencyEvent = new CurrencyEarnedEvent(totalCurrency, monsterDefinition.getName());
-        eventBus.fire(currencyEvent);
+        eventBus.queue(currencyEvent, EventPriority.NORMAL);
 
         // Check for equipment drops
         rollEquipmentDrop(monsterDefinition);
@@ -113,7 +114,7 @@ public class LootResolver {
 
         // Fire equipment drop event
         EquipmentDropEvent event = new EquipmentDropEvent(droppedItem, monsterDefinition.getName());
-        eventBus.fire(event);
+        eventBus.queue(event, EventPriority.LOW);
     }
 
     /**

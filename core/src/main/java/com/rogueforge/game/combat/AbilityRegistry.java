@@ -1,7 +1,7 @@
 package com.rogueforge.game.combat;
 
+import com.rogueforge.game.data.DefinitionRegistries;
 import com.rogueforge.game.progression.AbilityProgressionState;
-import com.rogueforge.game.data.DefinitionJson;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -30,13 +30,14 @@ public class AbilityRegistry {
     }
 
     private static void loadDefinitions() {
-        AbilityDefinition[] definitions = DefinitionJson.loadArray("data/abilities.json", AbilityDefinition[].class);
-        if (definitions == null) {
-            return;
-        }
-        for (AbilityDefinition definition : definitions) {
+        for (AbilityDefinition definition : DefinitionRegistries.ABILITIES.getAll()) {
             register(definition);
         }
+    }
+
+    public static void reloadDefinitions() {
+        clear();
+        ensureInitialized();
     }
 
     /**

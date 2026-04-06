@@ -1,7 +1,7 @@
 package com.rogueforge.game.world;
 
 import com.rogueforge.game.core.GameState;
-import com.rogueforge.game.data.DefinitionJson;
+import com.rogueforge.game.data.DefinitionRegistries;
 
 /**
  * Manages global world-state flags that gate content and interactions.
@@ -10,10 +10,11 @@ public class WorldStateManager {
     private WorldStateDefinition[] definitions;
 
     public WorldStateManager() {
-        definitions = DefinitionJson.loadArray("data/world_state.json", WorldStateDefinition[].class);
-        if (definitions == null) {
-            definitions = new WorldStateDefinition[0];
-        }
+        reloadDefinitions();
+    }
+
+    public void reloadDefinitions() {
+        definitions = DefinitionRegistries.WORLD_STATE.getAll().toArray(new WorldStateDefinition[0]);
     }
 
     public void initialize(GameState state) {

@@ -15,7 +15,6 @@ public class SaveManager {
 
     public static final int MAX_SLOTS = 3;
     public static final int AUTOSAVE_SLOT = 0;
-    private static final String SAVE_DIR = "saves";
     private static final String SAVE_FILE_PREFIX = "slot_";
     private static final String SAVE_FILE_SUFFIX = ".json";
 
@@ -30,7 +29,7 @@ public class SaveManager {
      * Ensures the save directory exists.
      */
     private void ensureSaveDirectory() {
-        FileHandle saveDir = Gdx.files.local(SAVE_DIR);
+        FileHandle saveDir = Gdx.files.local(PersistencePaths.SAVE_DIR);
         if (!saveDir.exists()) {
             saveDir.mkdirs();
         }
@@ -158,7 +157,7 @@ public class SaveManager {
      */
     private FileHandle getSaveFile(int slot) {
         validateSlot(slot);
-        String filename = SAVE_DIR + "/" + SAVE_FILE_PREFIX + slot + SAVE_FILE_SUFFIX;
+        String filename = PersistencePaths.SAVE_DIR + "/" + SAVE_FILE_PREFIX + slot + SAVE_FILE_SUFFIX;
         return Gdx.files.local(filename);
     }
 

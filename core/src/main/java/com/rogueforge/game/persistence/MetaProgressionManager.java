@@ -9,12 +9,10 @@ import com.rogueforge.game.data.MetaProgressionState;
  * Persists cross-run roguelite progression.
  */
 public class MetaProgressionManager {
-    private static final String META_FILE = "saves/meta_progression.json";
-
     private final Json json = new Json();
 
     public MetaProgressionState load() {
-        FileHandle file = Gdx.files.local(META_FILE);
+        FileHandle file = Gdx.files.local(PersistencePaths.META_PROGRESSION);
         if (!file.exists()) {
             return new MetaProgressionState();
         }
@@ -27,7 +25,7 @@ public class MetaProgressionManager {
     }
 
     public void save(MetaProgressionState state) {
-        FileHandle file = Gdx.files.local(META_FILE);
+        FileHandle file = Gdx.files.local(PersistencePaths.META_PROGRESSION);
         if (!file.parent().exists()) {
             file.parent().mkdirs();
         }

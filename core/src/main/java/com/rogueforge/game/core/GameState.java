@@ -235,6 +235,10 @@ public class GameState {
         equipmentCatalog.add(item);
     }
 
+    public void clearEquipmentCatalog() {
+        equipmentCatalog.clear();
+    }
+
     public List<String> getOwnedEquipmentIds() {
         return new ArrayList<>(ownedEquipmentIds);
     }

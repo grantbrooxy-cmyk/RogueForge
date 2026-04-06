@@ -30,6 +30,12 @@ public class EnemyActor extends OverworldActor {
     private final CombatStatsComponent combatStats = new CombatStatsComponent();
     private final MotionComponent motion = new MotionComponent();
 
+    public EnemyActor() {
+        registerComponent(VitalsComponent.class, vitals);
+        registerComponent(CombatStatsComponent.class, combatStats);
+        registerComponent(MotionComponent.class, motion);
+    }
+
     public VitalsComponent vitals() {
         vitals.health = hp;
         vitals.maxHealth = maxHp;
@@ -47,6 +53,7 @@ public class EnemyActor extends OverworldActor {
     }
 
     public MotionComponent motion() {
+        position();
         motion.speed = speed;
         motion.attackCooldown = attackCooldown;
         motion.attackTimer = attackTimer;

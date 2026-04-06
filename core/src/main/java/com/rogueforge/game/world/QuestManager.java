@@ -1,7 +1,7 @@
 package com.rogueforge.game.world;
 
 import com.rogueforge.game.core.GameState;
-import com.rogueforge.game.data.DefinitionJson;
+import com.rogueforge.game.data.DefinitionRegistries;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -23,12 +23,13 @@ public class QuestManager {
         loadDefinitions();
     }
 
+    public void reloadDefinitions() {
+        definitions.clear();
+        loadDefinitions();
+    }
+
     private void loadDefinitions() {
-        QuestDefinition[] loaded = DefinitionJson.loadArray("data/quests.json", QuestDefinition[].class);
-        if (loaded == null) {
-            return;
-        }
-        for (QuestDefinition definition : loaded) {
+        for (QuestDefinition definition : DefinitionRegistries.QUESTS.getAll()) {
             if (definition != null && definition.getId() != null) {
                 definitions.put(definition.getId(), definition);
             }

@@ -5,8 +5,11 @@ import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Vector2;
+import com.rogueforge.game.entity.component.InventoryComponent;
+import com.rogueforge.game.entity.component.PositionComponent;
+import com.rogueforge.game.entity.component.StatsComponent;
 
-public class PlayerEntity {
+public class PlayerEntity extends GameEntity {
     public enum AnimationState {
         IDLE, WALK, ATTACK, HIT, DEAD
     }
@@ -20,8 +23,15 @@ public class PlayerEntity {
     private AnimationState previousState;
     private float stateTimer;
     private TextureRegion currentFrame;
+    private final PositionComponent positionComponent = new PositionComponent();
+    private final StatsComponent statsComponent = new StatsComponent();
+    private final InventoryComponent inventoryComponent = new InventoryComponent();
 
     public PlayerEntity(Vector2 startPosition) {
+        super("player");
+        registerComponent(PositionComponent.class, positionComponent);
+        registerComponent(StatsComponent.class, statsComponent);
+        registerComponent(InventoryComponent.class, inventoryComponent);
         this.position = new Vector2(startPosition);
         this.velocity = new Vector2(0, 0);
         this.speed = 200f;
@@ -30,6 +40,7 @@ public class PlayerEntity {
         this.currentState = AnimationState.IDLE;
         this.previousState = AnimationState.IDLE;
         this.stateTimer = 0f;
+        syncComponents();
     }
 
     public void handleInput() {
@@ -99,6 +110,7 @@ public class PlayerEntity {
                 setAnimationState(AnimationState.IDLE);
             }
         }
+        syncComponents();
     }
 
     public void render(SpriteBatch batch) {
@@ -134,11 +146,35 @@ public class PlayerEntity {
         if (currentHealth <= 0) {
             setAnimationState(AnimationState.DEAD);
         }
+        syncComponents();
     }
 
     public void heal(float amount) {
         currentHealth += amount;
         currentHealth = Math.min(maxHealth, currentHealth);
+        syncComponents();
+    }
+
+    public PositionComponent position() {
+        syncComponents();
+        return positionComponent;
+    }
+
+    public StatsComponent stats() {
+        syncComponents();
+        return statsComponent;
+    }
+
+    public InventoryComponent inventory() {
+        return inventoryComponent;
+    }
+
+    private void syncComponents() {
+        positionComponent.position = position;
+        positionComponent.velocity = velocity;
+        statsComponent.currentHealth = currentHealth;
+        statsComponent.maxHealth = maxHealth;
+        statsComponent.speed = speed;
     }
 
     public Vector2 getPosition() {

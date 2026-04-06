@@ -9,6 +9,7 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,6 +23,10 @@ public class EventBus {
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
     private static final Map<Class<?>, List<HandlerDefinition>> HANDLER_CACHE = new HashMap<>();
     private final Map<Class<?>, ListenerBucket> listeners = new HashMap<>();
+    private final List<QueuedEvent> queuedEvents = new ArrayList<>();
+    private long nextQueuedSequence;
+    private int deferredDepth;
+    private boolean processingQueue;
 
     /**
      * Subscribes an object to listen for events.
@@ -80,6 +85,89 @@ public class EventBus {
         if (event == null) {
             return;
         }
+        synchronized (this) {
+            if (deferredDepth > 0 || processingQueue) {
+                enqueue(event, EventPriority.NORMAL);
+                return;
+            }
+        }
+        dispatch(event);
+    }
+
+    /**
+     * Queues an event for deferred processing.
+     *
+     * @param event The event to queue
+     */
+    public synchronized void queue(Object event) {
+        queue(event, EventPriority.NORMAL);
+    }
+
+    /**
+     * Queues an event for deferred processing with a simple priority band.
+     *
+     * @param event The event to queue
+     * @param priority Lower values dispatch first
+     */
+    public synchronized void queue(Object event, int priority) {
+        enqueue(event, priority);
+    }
+
+    /**
+     * Runs a block with deferred event processing enabled, then flushes once the
+     * outermost deferred scope completes.
+     *
+     * @param action Code that should batch its events
+     */
+    public void defer(Runnable action) {
+        if (action == null) {
+            return;
+        }
+        synchronized (this) {
+            deferredDepth++;
+        }
+        try {
+            action.run();
+        } finally {
+            boolean shouldFlush;
+            synchronized (this) {
+                deferredDepth--;
+                shouldFlush = deferredDepth == 0;
+            }
+            if (shouldFlush) {
+                processQueuedEvents();
+            }
+        }
+    }
+
+    /**
+     * Flushes queued events in priority order.
+     */
+    public void processQueuedEvents() {
+        while (true) {
+            List<QueuedEvent> batch;
+            synchronized (this) {
+                if (queuedEvents.isEmpty()) {
+                    processingQueue = false;
+                    return;
+                }
+                processingQueue = true;
+                batch = new ArrayList<>(queuedEvents);
+                queuedEvents.clear();
+            }
+            batch.sort(Comparator
+                .comparingInt((QueuedEvent event) -> event.priority)
+                .thenComparingLong(event -> event.sequence));
+            for (QueuedEvent queuedEvent : batch) {
+                dispatch(queuedEvent.event);
+            }
+        }
+    }
+
+    private void dispatch(Object event) {
+        if (event == null) {
+            return;
+        }
 
         EventListener[] snapshot;
         synchronized (this) {
@@ -97,6 +185,13 @@ public class EventBus {
                 e.printStackTrace();
             }
         }
+    }
+
+    private synchronized void enqueue(Object event, int priority) {
+        if (event == null) {
+            return;
+        }
+        queuedEvents.add(new QueuedEvent(event, priority, nextQueuedSequence++));
     }
 
     /**
@@ -160,6 +255,18 @@ public class EventBus {
 
         private void refreshSnapshot() {
             snapshot = listeners.toArray(new EventListener[0]);
+        }
+    }
+
+    private static class QueuedEvent {
+        final Object event;
+        final int priority;
+        final long sequence;
+
+        QueuedEvent(Object event, int priority, long sequence) {
+            this.event = event;
+            this.priority = priority;
+            this.sequence = sequence;
         }
     }
 

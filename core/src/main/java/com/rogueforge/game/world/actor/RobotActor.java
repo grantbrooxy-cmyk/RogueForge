@@ -18,6 +18,12 @@ public class RobotActor extends OverworldActor {
     private final CombatStatsComponent combatStats = new CombatStatsComponent();
     private final MotionComponent motion = new MotionComponent();
 
+    public RobotActor() {
+        registerComponent(VitalsComponent.class, vitals);
+        registerComponent(CombatStatsComponent.class, combatStats);
+        registerComponent(MotionComponent.class, motion);
+    }
+
     public VitalsComponent vitals() {
         vitals.health = health;
         vitals.maxHealth = maxHealth;
@@ -34,6 +40,7 @@ public class RobotActor extends OverworldActor {
     }
 
     public MotionComponent motion() {
+        position();
         motion.attackTimer = attackTimer;
         motion.angleDeg = angleDeg;
         return motion;

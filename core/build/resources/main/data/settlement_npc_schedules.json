@@ -1,0 +1,110 @@
+[
+  {
+    "npcId": "quartermaster",
+    "homeOffsetX": 0,
+    "homeOffsetY": 0,
+    "dayOffsetX": 0,
+    "dayOffsetY": 0,
+    "eveningOffsetX": 46,
+    "eveningOffsetY": -18
+  },
+  {
+    "npcId": "master_silas",
+    "homeOffsetX": 0,
+    "homeOffsetY": 0,
+    "dayOffsetX": 0,
+    "dayOffsetY": 0,
+    "eveningOffsetX": 46,
+    "eveningOffsetY": -18
+  },
+  {
+    "npcId": "dispatcher",
+    "homeOffsetX": 0,
+    "homeOffsetY": 0,
+    "dayOffsetX": 0,
+    "dayOffsetY": 0,
+    "eveningOffsetX": 46,
+    "eveningOffsetY": -18
+  },
+  {
+    "npcId": "innkeeper_tamsin",
+    "homeOffsetX": -32,
+    "homeOffsetY": -24,
+    "dayOffsetX": 0,
+    "dayOffsetY": 0,
+    "eveningOffsetX": 18,
+    "eveningOffsetY": 12
+  },
+  {
+    "npcId": "lookout",
+    "homeOffsetX": 0,
+    "homeOffsetY": -24,
+    "dayOffsetX": 0,
+    "dayOffsetY": 0,
+    "eveningOffsetX": 28,
+    "eveningOffsetY": 26
+  },
+  {
+    "npcId": "commander_rex",
+    "homeOffsetX": 0,
+    "homeOffsetY": -24,
+    "dayOffsetX": 0,
+    "dayOffsetY": 0,
+    "eveningOffsetX": 28,
+    "eveningOffsetY": 26
+  },
+  {
+    "npcId": "professor_cogs",
+    "homeOffsetX": -20,
+    "homeOffsetY": 18,
+    "dayOffsetX": 0,
+    "dayOffsetY": 0,
+    "eveningOffsetX": -42,
+    "eveningOffsetY": -10
+  },
+  {
+    "npcId": "coda",
+    "homeOffsetX": -20,
+    "homeOffsetY": 18,
+    "dayOffsetX": 0,
+    "dayOffsetY": 0,
+    "eveningOffsetX": -42,
+    "eveningOffsetY": -10
+  },
+  {
+    "npcId": "elena_apothecary",
+    "homeOffsetX": 0,
+    "homeOffsetY": 0,
+    "dayOffsetX": 24,
+    "dayOffsetY": 0,
+    "eveningOffsetX": -16,
+    "eveningOffsetY": -18
+  },
+  {
+    "npcId": "hale",
+    "homeOffsetX": 0,
+    "homeOffsetY": 0,
+    "dayOffsetX": 24,
+    "dayOffsetY": 0,
+    "eveningOffsetX": -16,
+    "eveningOffsetY": -18
+  },
+  {
+    "npcId": "vesa",
+    "homeOffsetX": 0,
+    "homeOffsetY": 0,
+    "dayOffsetX": 24,
+    "dayOffsetY": 0,
+    "eveningOffsetX": -16,
+    "eveningOffsetY": -18
+  },
+  {
+    "npcId": "hangar_keeper",
+    "homeOffsetX": 0,
+    "homeOffsetY": 0,
+    "dayOffsetX": 24,
+    "dayOffsetY": 0,
+    "eveningOffsetX": -16,
+    "eveningOffsetY": -18
+  }
+]

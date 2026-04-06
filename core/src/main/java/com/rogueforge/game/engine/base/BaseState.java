@@ -176,4 +176,12 @@ public class BaseState {
     public BaseRaidState getRaidState() {
         return raidState;
     }
+
+    public void shiftWorld(float dx, float dy) {
+        for (PlacedStructure structure : placedStructures) {
+            if (structure != null) {
+                structure.shiftWorld(dx, dy);
+            }
+        }
+    }
 }

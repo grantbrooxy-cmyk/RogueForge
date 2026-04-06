@@ -1,9 +1,11 @@
 package com.rogueforge.game.combat;
 
 import com.rogueforge.game.core.EventBus;
+import com.rogueforge.game.core.EventPriority;
 import com.rogueforge.game.event.DamageDealtEvent;
 import com.rogueforge.game.event.EntityKilledEvent;
 
+import java.util.List;
 import java.util.List;
 
 /**
@@ -14,9 +16,16 @@ public class CombatResolver {
     private static final float DEFENSE_REDUCTION_FACTOR = 0.5f;
 
     private final EventBus eventBus;
+    private final AbilityEffectPipeline abilityEffectPipeline;
 
     public CombatResolver(EventBus eventBus) {
         this.eventBus = eventBus;
+        this.abilityEffectPipeline = new AbilityEffectPipeline(List.of(
+            new OverdriveLinkEffectStep(),
+            new ElementalBreakEffectStep(),
+            new ElementalMultiplierEffectStep(),
+            new AbilityDamageTakenEffectStep()
+        ));
     }
 
     /**
@@ -78,31 +87,19 @@ public class CombatResolver {
             * Math.max(1f, proficiencyMultiplier)
             * Math.max(1f, offense)
             / Math.max(1f, target.getEffectiveStamina());
-        if (caster.hasUniqueBoost("OVERDRIVE_LINK") && caster.getHealth() >= (caster.getMaxHealth() * 0.7f)) {
-            baseDamage *= 1.15f;
-        }
 
-        // Register this elemental hit and check for Elemental Break.
-        // registerElementalHit returns the current consecutive-hit streak.
-        // A break fires at 3 consecutive hits of the same element.
-        Element element = ability.getElement();
-        boolean breakTriggered = false;
-        if (element != null && element != Element.NONE) {
-            int streak = target.registerElementalHit(element);
-            breakTriggered = (streak == 3); // exactly 3 triggers the break; subsequent hits are already broken
-        }
-
-        float multiplier = ElementalSystem.getMultiplier(element, target);
-        if (multiplier < 0f) {
+        AbilityEffectContext context = abilityEffectPipeline.apply(
+            new AbilityEffectContext(caster, target, ability, proficiencyMultiplier, baseDamage)
+        );
+        if (context.isAbsorbed()) {
             // Absorb: heals the target instead of damaging.
-            int healing = Math.max(1, Math.round(Math.abs(baseDamage)));
+            int healing = Math.max(1, Math.round(Math.abs(context.getBaseDamage())));
             target.heal(healing);
-            return new DamageResult(-healing, breakTriggered);
+            return new DamageResult(-healing, context.isElementalBreak());
         }
-        float finalDamage = Math.max(MIN_DAMAGE, applyVariance(baseDamage * multiplier));
-        finalDamage *= target.getStatusEffectManager().getAbilityDamageTakenMultiplier();
+        float finalDamage = Math.max(MIN_DAMAGE, applyVariance(context.getBaseDamage() * context.getMultiplier()));
         int damage = Math.max(1, Math.round(finalDamage));
-        return new DamageResult(damage, breakTriggered);
+        return new DamageResult(damage, context.isElementalBreak());
     }
 
     public int resolveHealing(BattleCombatant caster, AbilityDefinition ability) {
@@ -144,10 +141,12 @@ public class CombatResolver {
         }
         boolean wasAlive = defender.isAlive();
         defender.applyDirectDamage(damage);
-        fireDamageEvent(resolveEventReference(attacker), resolveEventReference(defender), damage);
-        if (wasAlive && !defender.isAlive()) {
-            fireEntityKilledEvent(resolveEventReference(defender));
-        }
+        eventBus.defer(() -> {
+            queueDamageEvent(resolveEventReference(attacker), resolveEventReference(defender), damage);
+            if (wasAlive && !defender.isAlive()) {
+                queueEntityKilledEvent(resolveEventReference(defender));
+            }
+        });
         return damage;
     }
 
@@ -213,7 +212,7 @@ public class CombatResolver {
     public void checkDeath(CombatStats stats, Object entity) {
         if (!stats.isAlive()) {
             EntityKilledEvent event = new EntityKilledEvent(entity);
-            eventBus.fire(event);
+            eventBus.queue(event, EventPriority.HIGH);
         }
     }
 
@@ -239,8 +238,12 @@ public class CombatResolver {
         eventBus.fire(new DamageDealtEvent(source, target, damage));
     }
 
-    private void fireEntityKilledEvent(Object entity) {
-        eventBus.fire(new EntityKilledEvent(entity));
+    private void queueDamageEvent(Object source, Object target, float damage) {
+        eventBus.queue(new DamageDealtEvent(source, target, damage), EventPriority.HIGH);
+    }
+
+    private void queueEntityKilledEvent(Object entity) {
+        eventBus.queue(new EntityKilledEvent(entity), EventPriority.NORMAL);
     }
 
     private Object resolveEventReference(BattleCombatant combatant) {

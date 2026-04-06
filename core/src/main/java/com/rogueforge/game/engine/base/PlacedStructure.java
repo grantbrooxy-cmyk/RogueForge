@@ -65,4 +65,9 @@ public class PlacedStructure {
     public void setActive(boolean active) {
         this.active = active;
     }
+
+    public void shiftWorld(float dx, float dy) {
+        bounds.x -= dx;
+        bounds.y -= dy;
+    }
 }

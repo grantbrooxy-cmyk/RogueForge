@@ -5,6 +5,7 @@ import com.rogueforge.game.event.EntityKilledEvent;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class EventBusTest {
 
@@ -58,6 +59,43 @@ class EventBusTest {
         assertEquals(damage, subscriber.lastDamage);
     }
 
+    @Test
+    void deferredEventsFlushInPriorityOrder() {
+        EventBus bus = new EventBus();
+        OrderingSubscriber subscriber = new OrderingSubscriber();
+
+        bus.subscribe(DamageDealtEvent.class, event -> subscriber.order.add("damage"));
+        bus.subscribe(EntityKilledEvent.class, event -> subscriber.order.add("killed"));
+
+        bus.defer(() -> {
+            bus.queue(new EntityKilledEvent("target"), EventPriority.NORMAL);
+            bus.queue(new DamageDealtEvent("attacker", "target", 8f), EventPriority.HIGH);
+        });
+
+        assertEquals(2, subscriber.order.size());
+        assertEquals("damage", subscriber.order.get(0));
+        assertEquals("killed", subscriber.order.get(1));
+    }
+
+    @Test
+    void nestedFireDuringDeferredProcessingIsQueuedUntilCurrentBatchFinishes() {
+        EventBus bus = new EventBus();
+        OrderingSubscriber subscriber = new OrderingSubscriber();
+        bus.subscribe(DamageDealtEvent.class, event -> {
+            subscriber.order.add("damage");
+            bus.fire(new EntityKilledEvent("target"));
+        });
+        bus.subscribe(EntityKilledEvent.class, event -> subscriber.order.add("killed"));
+
+        bus.queue(new DamageDealtEvent("attacker", "target", 4f));
+        bus.processQueuedEvents();
+
+        assertEquals(2, subscriber.order.size());
+        assertEquals("damage", subscriber.order.get(0));
+        assertEquals("killed", subscriber.order.get(1));
+        assertTrue(bus.getListenerCount(EntityKilledEvent.class) > 0);
+    }
+
     private static class RecordingSubscriber {
         private DamageDealtEvent lastDamage;
         private EntityKilledEvent lastKilled;
@@ -78,5 +116,9 @@ class EventBusTest {
         void handleDamage(DamageDealtEvent event) {
             this.lastDamage = event;
         }
+    }
+
+    private static class OrderingSubscriber {
+        private final java.util.List<String> order = new java.util.ArrayList<>();
     }
 }

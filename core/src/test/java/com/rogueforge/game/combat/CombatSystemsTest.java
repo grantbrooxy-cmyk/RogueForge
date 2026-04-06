@@ -165,6 +165,7 @@ class CombatSystemsTest {
 
         CombatStats doomed = new CombatStats(2f, 0f, 1f);
         resolver.applyRawDamage(10f, doomed, "hazard");
+        eventBus.processQueuedEvents();
         assertEquals("hazard", subscriber.rawDamageEvent.getSource());
         assertEquals(null, subscriber.rawDamageEvent.getTarget());
         assertEquals(null, subscriber.killedEvent.getEntity());

@@ -30,6 +30,8 @@ public class FrontierTerrainSampler {
     }
 
     private final long worldSeed;
+    private float worldOriginOffsetX;
+    private float worldOriginOffsetY;
 
     public FrontierTerrainSampler(long worldSeed) {
         this.worldSeed = worldSeed != 0L ? worldSeed : 1L;
@@ -43,9 +45,14 @@ public class FrontierTerrainSampler {
     }
 
     public TerrainSample sampleWorld(float worldX, float worldY, int tileWidth, int tileHeight) {
-        int tileX = Math.max(0, (int) Math.floor(worldX / Math.max(1, tileWidth)));
-        int tileY = Math.max(0, (int) Math.floor(worldY / Math.max(1, tileHeight)));
+        int tileX = Math.max(0, (int) Math.floor((worldX + worldOriginOffsetX) / Math.max(1, tileWidth)));
+        int tileY = Math.max(0, (int) Math.floor((worldY + worldOriginOffsetY) / Math.max(1, tileHeight)));
         return sample(tileX, tileY);
+    }
+
+    public void setWorldOriginOffset(float worldOriginOffsetX, float worldOriginOffsetY) {
+        this.worldOriginOffsetX = worldOriginOffsetX;
+        this.worldOriginOffsetY = worldOriginOffsetY;
     }
 
     public boolean isPreferredResourceTerrain(String resourceId, TerrainType terrainType) {

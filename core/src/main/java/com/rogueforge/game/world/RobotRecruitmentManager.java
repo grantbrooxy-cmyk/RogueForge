@@ -1,7 +1,7 @@
 package com.rogueforge.game.world;
 
 import com.rogueforge.game.core.GameState;
-import com.rogueforge.game.data.DefinitionJson;
+import com.rogueforge.game.data.DefinitionRegistries;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -13,12 +13,14 @@ public class RobotRecruitmentManager {
     private final Map<String, RecruitmentDefinition> definitions = new HashMap<>();
 
     public RobotRecruitmentManager() {
-        RecruitmentDefinition[] loaded = DefinitionJson.loadArray("data/recruitment.json", RecruitmentDefinition[].class);
-        if (loaded != null) {
-            for (RecruitmentDefinition definition : loaded) {
-                if (definition != null && definition.getEventId() != null) {
-                    definitions.put(definition.getEventId(), definition);
-                }
+        reloadDefinitions();
+    }
+
+    public void reloadDefinitions() {
+        definitions.clear();
+        for (RecruitmentDefinition definition : DefinitionRegistries.RECRUITMENT.getAll()) {
+            if (definition != null && definition.getEventId() != null) {
+                definitions.put(definition.getEventId(), definition);
             }
         }
     }

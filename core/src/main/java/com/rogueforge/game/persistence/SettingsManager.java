@@ -10,9 +10,6 @@ import com.rogueforge.game.data.SettingsConfig;
  * Loads, saves, and applies user preferences.
  */
 public class SettingsManager {
-
-    private static final String SETTINGS_FILE = "settings.json";
-
     private SettingsConfig currentConfig;
     private Json json;
 
@@ -25,7 +22,7 @@ public class SettingsManager {
      * Loads settings from file, or creates defaults if file doesn't exist.
      */
     public void load() {
-        FileHandle settingsFile = Gdx.files.local(SETTINGS_FILE);
+        FileHandle settingsFile = Gdx.files.local(PersistencePaths.SETTINGS);
 
         if (settingsFile.exists()) {
             try {
@@ -46,7 +43,7 @@ public class SettingsManager {
      * Saves current settings to file.
      */
     public void save() {
-        FileHandle settingsFile = Gdx.files.local(SETTINGS_FILE);
+        FileHandle settingsFile = Gdx.files.local(PersistencePaths.SETTINGS);
         String jsonData = json.prettyPrint(currentConfig);
         settingsFile.writeString(jsonData, false);
     }

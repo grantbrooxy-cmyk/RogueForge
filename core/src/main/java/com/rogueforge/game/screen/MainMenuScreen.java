@@ -13,6 +13,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.Texture.TextureFilter;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.rogueforge.game.core.GameContext;
 import com.rogueforge.game.core.RogueForgeGame;
 import com.rogueforge.game.core.ScreenManager;
 import com.rogueforge.game.data.SaveFile;
@@ -24,10 +25,11 @@ import com.rogueforge.game.persistence.SettingsManager;
  * Uses ShapeRenderer for button backgrounds and BitmapFont for text.
  */
 public class MainMenuScreen implements Screen {
-    private static final String BACKGROUND_TEXTURE_PATH = "Backgrounds/background 1/orig_big.png";
+    static final String BACKGROUND_TEXTURE_PATH = "Backgrounds/background 1/orig_big.png";
     private static final String[] DIFFICULTY_OPTIONS = {"Easy", "Normal", "Hard", "Hell"};
     private static final float BACK_W = 180f;
     private static final float BACK_H = 44f;
+    private final GameContext context;
     private final RogueForgeGame game;
     private final ScreenManager screenManager;
     private final SpriteBatch batch;
@@ -52,16 +54,20 @@ public class MainMenuScreen implements Screen {
     private boolean selectingDifficulty = false;
 
     public MainMenuScreen(RogueForgeGame game, ScreenManager screenManager) {
-        this.game = game;
-        this.screenManager = screenManager;
+        this(game.getContext());
+    }
+
+    public MainMenuScreen(GameContext context) {
+        this.context = context;
+        this.game = context.getGame();
+        this.screenManager = context.getScreenManager();
         this.batch = new SpriteBatch();
         this.shapeRenderer = new ShapeRenderer();
         this.camera = new OrthographicCamera();
         this.camera.setToOrtho(false, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         this.layout = new GlyphLayout();
-        this.saveManager = new SaveManager();
-        this.settingsManager = new SettingsManager();
-        this.settingsManager.load();
+        this.saveManager = context.getSaveManager();
+        this.settingsManager = context.getSettingsManager();
         this.backgroundTexture = loadTexture(BACKGROUND_TEXTURE_PATH);
         this.uiTexture = createUiTexture();
 
@@ -217,10 +223,10 @@ public class MainMenuScreen implements Screen {
                 break;
             case 1: // Continue
                 SaveFile saveFile = saveManager.loadLatestSave();
-                screenManager.replace(new GameScreen(game, screenManager, saveFile));
+                screenManager.replace(new GameScreen(context, saveFile));
                 break;
             case 2: // Options
-                screenManager.push(new OptionsScreen(game, screenManager));
+                screenManager.push(new OptionsScreen(context));
                 break;
             case 3: // Quit
                 Gdx.app.exit();
@@ -233,7 +239,7 @@ public class MainMenuScreen implements Screen {
         settingsManager.save();
         settingsManager.applySettings();
         selectingDifficulty = false;
-        screenManager.replace(new GameScreen(game, screenManager));
+        screenManager.replace(new GameScreen(context));
     }
 
     @Override

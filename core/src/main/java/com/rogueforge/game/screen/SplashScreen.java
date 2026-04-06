@@ -10,6 +10,7 @@ import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.rogueforge.game.core.GameContext;
 import com.rogueforge.game.core.RogueForgeGame;
 import com.rogueforge.game.core.ScreenManager;
 
@@ -17,9 +18,10 @@ import com.rogueforge.game.core.ScreenManager;
  * Splash screen — shows game title with a fade-in effect, then transitions to main menu.
  */
 public class SplashScreen implements Screen {
+    static final String BACKGROUND_TEXTURE_PATH = "Backgrounds/background 1/orig_big.png";
+    private final GameContext context;
     private final RogueForgeGame game;
     private final ScreenManager screenManager;
-    private static final String BACKGROUND_TEXTURE_PATH = "Backgrounds/background 1/orig_big.png";
     private final SpriteBatch batch;
     private final BitmapFont titleFont;
     private final BitmapFont subtitleFont;
@@ -32,8 +34,13 @@ public class SplashScreen implements Screen {
     private static final float SPLASH_DURATION = 3f;
 
     public SplashScreen(RogueForgeGame game, ScreenManager screenManager) {
-        this.game = game;
-        this.screenManager = screenManager;
+        this(game.getContext());
+    }
+
+    public SplashScreen(GameContext context) {
+        this.context = context;
+        this.game = context.getGame();
+        this.screenManager = context.getScreenManager();
         this.batch = new SpriteBatch();
         this.shapeRenderer = new ShapeRenderer();
         this.camera = new OrthographicCamera();
@@ -117,7 +124,7 @@ public class SplashScreen implements Screen {
 
         // Transition
         if (elapsedTime >= SPLASH_DURATION) {
-            screenManager.replace(new MainMenuScreen(game, screenManager));
+            screenManager.replace(new MainMenuScreen(context));
         }
     }
 

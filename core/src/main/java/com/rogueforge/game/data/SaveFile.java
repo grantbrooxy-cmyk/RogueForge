@@ -12,13 +12,18 @@ import java.util.Map;
  * Contains all player, robot, and progression data for a save game.
  */
 public class SaveFile {
-    private int version = 7;
+    private int version = 8;
 
     private String playerName;
     private int playerHp;
     private int playerMaxHp;
     private float playerX;
     private float playerY;
+    private Float playerWorldX;
+    private Float playerWorldY;
+    private Float floatingOriginX;
+    private Float floatingOriginY;
+    private Float settlementTimeOfDayHours;
     private String currentZoneId;
     private long currencyBalance;
     private long worldSeed;
@@ -190,6 +195,26 @@ public class SaveFile {
 
     public float getPlayerY() {
         return playerY;
+    }
+
+    public Float getPlayerWorldX() {
+        return playerWorldX;
+    }
+
+    public Float getPlayerWorldY() {
+        return playerWorldY;
+    }
+
+    public Float getFloatingOriginX() {
+        return floatingOriginX;
+    }
+
+    public Float getFloatingOriginY() {
+        return floatingOriginY;
+    }
+
+    public Float getSettlementTimeOfDayHours() {
+        return settlementTimeOfDayHours;
     }
 
     public String getCurrentZoneId() {
@@ -521,6 +546,26 @@ public class SaveFile {
 
     public void setPlayerY(float playerY) {
         this.playerY = playerY;
+    }
+
+    public void setPlayerWorldX(Float playerWorldX) {
+        this.playerWorldX = playerWorldX;
+    }
+
+    public void setPlayerWorldY(Float playerWorldY) {
+        this.playerWorldY = playerWorldY;
+    }
+
+    public void setFloatingOriginX(Float floatingOriginX) {
+        this.floatingOriginX = floatingOriginX;
+    }
+
+    public void setFloatingOriginY(Float floatingOriginY) {
+        this.floatingOriginY = floatingOriginY;
+    }
+
+    public void setSettlementTimeOfDayHours(Float settlementTimeOfDayHours) {
+        this.settlementTimeOfDayHours = settlementTimeOfDayHours;
     }
 
     public void setCurrentZoneId(String currentZoneId) {

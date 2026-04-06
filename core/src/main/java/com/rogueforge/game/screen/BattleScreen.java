@@ -2,6 +2,8 @@ package com.rogueforge.game.screen;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
+import com.badlogic.gdx.InputAdapter;
+import com.badlogic.gdx.InputMultiplexer;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
@@ -10,6 +12,8 @@ import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.rogueforge.game.combat.AbilityDefinition;
 import com.rogueforge.game.combat.AbilityInstance;
 import com.rogueforge.game.combat.BattleCombatant;
@@ -28,6 +32,8 @@ import com.rogueforge.game.combat.WeaponType;
 import com.rogueforge.game.core.RogueForgeGame;
 import com.rogueforge.game.core.ScreenManager;
 import com.rogueforge.game.progression.ProficiencyTracker;
+import com.rogueforge.game.ui.BattleTimelinePanel;
+import com.rogueforge.game.ui.DebugOverlay;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.ArrayList;
@@ -73,6 +79,16 @@ public class BattleScreen implements Screen {
     private final Map<String, Integer> weaponXpGains = new LinkedHashMap<>();
     private final List<String> masteryUnlocks = new ArrayList<>();
     private final Map<String, Integer> bossPhases = new HashMap<>();
+    private final Stage hudStage;
+    private final BattleTimelinePanel timelinePanel;
+    private final DebugOverlay debugOverlay;
+    private final InputAdapter battleInputProcessor = new InputAdapter() {
+        @Override
+        public boolean keyDown(int keycode) {
+            return handleBattleInput(keycode);
+        }
+    };
+    private InputMultiplexer inputMultiplexer;
 
     private Mode mode = Mode.ROOT;
     private int selectedIndex;
@@ -100,6 +116,10 @@ public class BattleScreen implements Screen {
         this.titleFont.getData().setScale(2.2f);
         this.bodyFont.getData().setScale(1.1f);
         this.smallFont.getData().setScale(0.95f);
+        this.hudStage = new Stage(new ScreenViewport());
+        this.timelinePanel = new BattleTimelinePanel(bodyFont, smallFont);
+        this.hudStage.addActor(timelinePanel);
+        this.debugOverlay = new DebugOverlay(this::buildDebugOverlayLines);
         this.combatResolver = new CombatResolver(game.getEventBus());
         this.healingPotions = encounter.healingPotions;
         this.bestiaryManager.importData(gameScreen.getBestiaryScanLevels());
@@ -207,7 +227,11 @@ public class BattleScreen implements Screen {
 
     @Override
     public void show() {
-        Gdx.input.setInputProcessor(null);
+        inputMultiplexer = new InputMultiplexer();
+        inputMultiplexer.addProcessor(debugOverlay.getInputProcessor());
+        inputMultiplexer.addProcessor(hudStage);
+        inputMultiplexer.addProcessor(battleInputProcessor);
+        Gdx.input.setInputProcessor(inputMultiplexer);
     }
 
     @Override
@@ -228,10 +252,12 @@ public class BattleScreen implements Screen {
         drawBattleAtmosphere(w, h);
         drawPanels(w, h);
         drawCombatants(w, h);
-        drawTimeline(w, h);
         drawActionPanel(w, h);
         drawBattleLog(w, h);
-        handleInput();
+        updateTimelinePanel(w, h);
+        hudStage.act(delta);
+        hudStage.draw();
+        debugOverlay.render();
     }
 
     /**
@@ -350,31 +376,42 @@ public class BattleScreen implements Screen {
         }
     }
 
-    private void handleInput() {
+    private boolean handleBattleInput(int keycode) {
         if (actionDelay > 0f || activeActor == null || !activeActor.isAlive() || !activeActor.isAlly()) {
-            return;
+            return false;
         }
-        if (Gdx.input.isKeyJustPressed(Input.Keys.UP)) {
+        if (keycode == Input.Keys.UP) {
             selectedIndex = Math.max(0, selectedIndex - 1);
-        } else if (Gdx.input.isKeyJustPressed(Input.Keys.DOWN)) {
+            return true;
+        } else if (keycode == Input.Keys.DOWN) {
             selectedIndex = Math.min(getCurrentOptions().length - 1, selectedIndex + 1);
-        } else if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+            return true;
+        } else if (keycode == Input.Keys.ESCAPE) {
             goBack();
-        } else if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER) || Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
+            return true;
+        } else if (keycode == Input.Keys.ENTER || keycode == Input.Keys.SPACE) {
             confirmSelection();
-        } else if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_1)) {
+            return true;
+        } else if (keycode == Input.Keys.NUM_1) {
             chooseDirect(0);
-        } else if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_2)) {
+            return true;
+        } else if (keycode == Input.Keys.NUM_2) {
             chooseDirect(1);
-        } else if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_3)) {
+            return true;
+        } else if (keycode == Input.Keys.NUM_3) {
             chooseDirect(2);
-        } else if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_4)) {
+            return true;
+        } else if (keycode == Input.Keys.NUM_4) {
             chooseDirect(3);
-        } else if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_5)) {
+            return true;
+        } else if (keycode == Input.Keys.NUM_5) {
             chooseDirect(4);
-        } else if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_6)) {
+            return true;
+        } else if (keycode == Input.Keys.NUM_6) {
             chooseDirect(5);
+            return true;
         }
+        return false;
     }
 
     private void chooseDirect(int index) {
@@ -1560,17 +1597,21 @@ public class BattleScreen implements Screen {
         return combatant.getStatusEffectManager().getActiveEffects().get(0).getType().name();
     }
 
-    private void drawTimeline(float w, float h) {
-        batch.begin();
-        bodyFont.setColor(Color.WHITE);
-        bodyFont.draw(batch, "Timeline", w - 235f, h - 56f);
+    private void updateTimelinePanel(float w, float h) {
         List<BattleCombatant> turns = battleState.getTurnTimeline().getNextTurns(battleState.getCombatants(), 8);
-        for (int i = 0; i < turns.size(); i++) {
-            BattleCombatant combatant = turns.get(i);
-            smallFont.setColor(combatant.isAlly() ? new Color(0.71f, 0.9f, 1f, 1f) : new Color(1f, 0.78f, 0.74f, 1f));
-            smallFont.draw(batch, (i + 1) + ". " + combatant.getName(), w - 235f, h - 82f - (i * 18f));
-        }
-        batch.end();
+        timelinePanel.updateTimeline(turns);
+        timelinePanel.setPosition(w - 235f, h - 62f);
+    }
+
+    private List<String> buildDebugOverlayLines() {
+        List<String> lines = new ArrayList<>();
+        lines.add("FPS: " + Gdx.graphics.getFramesPerSecond());
+        lines.add("Zone: " + gameScreen.getCurrentZoneId());
+        lines.add("Seed: " + gameScreen.getWorldSeed());
+        lines.add("Allies: " + livingAllies().size() + "  Enemies: " + livingEnemies().size());
+        lines.add("Mode: " + mode.name() + "  Selected: " + selectedIndex);
+        lines.add("Action delay: " + String.format("%.2f", actionDelay));
+        return lines;
     }
 
     private void drawActionPanel(float w, float h) {
@@ -1615,6 +1656,8 @@ public class BattleScreen implements Screen {
     @Override
     public void resize(int width, int height) {
         camera.setToOrtho(false, width, height);
+        hudStage.getViewport().update(width, height, true);
+        debugOverlay.resize(width, height);
     }
 
     @Override public void pause() {}
@@ -1628,6 +1671,8 @@ public class BattleScreen implements Screen {
         titleFont.dispose();
         bodyFont.dispose();
         smallFont.dispose();
+        hudStage.dispose();
+        debugOverlay.dispose();
     }
 
     public static class Encounter {

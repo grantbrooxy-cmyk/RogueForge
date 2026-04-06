@@ -13,6 +13,7 @@ import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.rogueforge.game.core.GameContext;
 import com.rogueforge.game.core.RogueForgeGame;
 import com.rogueforge.game.core.ScreenManager;
 import com.rogueforge.game.persistence.SaveManager;
@@ -24,7 +25,8 @@ import com.rogueforge.game.data.SaveFile;
  * Does not clear the screen beneath, allowing the game to show through.
  */
 public class PauseMenuScreen implements Screen {
-    private static final String BACKGROUND_TEXTURE_PATH = "Backgrounds/background 2/orig_big.png";
+    static final String BACKGROUND_TEXTURE_PATH = "Backgrounds/background 2/orig_big.png";
+    private final GameContext context;
     private final RogueForgeGame game;
     private final ScreenManager screenManager;
     private final GameScreen gameScreen;
@@ -57,10 +59,15 @@ public class PauseMenuScreen implements Screen {
     private float closeInputBlockTimer;
 
     public PauseMenuScreen(RogueForgeGame game, ScreenManager screenManager, GameScreen gameScreen) {
-        this.game = game;
-        this.screenManager = screenManager;
+        this(game.getContext(), gameScreen);
+    }
+
+    public PauseMenuScreen(GameContext context, GameScreen gameScreen) {
+        this.context = context;
+        this.game = context.getGame();
+        this.screenManager = context.getScreenManager();
         this.gameScreen = gameScreen;
-        this.saveManager = new SaveManager();
+        this.saveManager = context.getSaveManager();
         this.batch = new SpriteBatch();
         this.shapeRenderer = new ShapeRenderer();
         this.camera = new OrthographicCamera();
@@ -304,10 +311,10 @@ public class PauseMenuScreen implements Screen {
                 onSave();
                 break;
             case 2: // Options
-                screenManager.push(new OptionsScreen(game, screenManager));
+                screenManager.push(new OptionsScreen(context));
                 break;
             case 3: // Quit to Menu
-                screenManager.replace(new MainMenuScreen(game, screenManager));
+                screenManager.replace(new MainMenuScreen(context));
                 break;
         }
     }

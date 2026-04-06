@@ -3,11 +3,13 @@ package com.rogueforge.game.entity;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
-import com.rogueforge.game.data.MonsterDefinition;
 import com.rogueforge.game.core.EventBus;
+import com.rogueforge.game.data.MonsterDefinition;
+import com.rogueforge.game.entity.component.PositionComponent;
+import com.rogueforge.game.entity.component.StatsComponent;
 import com.rogueforge.game.event.LootDropEvent;
 
-public class MonsterEntity {
+public class MonsterEntity extends GameEntity {
     public enum AIProfile {
         PATROL, AGGRO, RANGED, BOSS
     }
@@ -28,12 +30,17 @@ public class MonsterEntity {
     private float attackCooldownTimer;
     private boolean hasDroppedLoot;
     private EventBus eventBus;
+    private final PositionComponent positionComponent = new PositionComponent();
+    private final StatsComponent statsComponent = new StatsComponent();
 
     public MonsterEntity(MonsterDefinition definition, Vector2 startPosition) {
         this(definition, startPosition, null);
     }
 
     public MonsterEntity(MonsterDefinition definition, Vector2 startPosition, EventBus eventBus) {
+        super(definition != null ? definition.getId() : null);
+        registerComponent(PositionComponent.class, positionComponent);
+        registerComponent(StatsComponent.class, statsComponent);
         this.definition = definition;
         this.position = new Vector2(startPosition);
         this.velocity = new Vector2(0, 0);
@@ -46,6 +53,7 @@ public class MonsterEntity {
         this.attackCooldownTimer = 0f;
         this.hasDroppedLoot = false;
         this.eventBus = eventBus;
+        syncComponents();
     }
 
     public void update(float delta, Vector2 playerPos) {
@@ -74,6 +82,7 @@ public class MonsterEntity {
 
         // Dampen velocity
         velocity.scl(0.95f);
+        syncComponents();
     }
 
     private void updatePatrol(float delta) {
@@ -201,6 +210,27 @@ public class MonsterEntity {
         if (!isAlive() && !hasDroppedLoot) {
             dropLoot();
         }
+        syncComponents();
+    }
+
+    public PositionComponent position() {
+        syncComponents();
+        return positionComponent;
+    }
+
+    public StatsComponent stats() {
+        syncComponents();
+        return statsComponent;
+    }
+
+    private void syncComponents() {
+        positionComponent.position = position;
+        positionComponent.velocity = velocity;
+        statsComponent.currentHealth = currentHp;
+        statsComponent.maxHealth = definition != null ? definition.getHp() : currentHp;
+        statsComponent.speed = speed;
+        statsComponent.attack = definition != null ? definition.getAttack() : 0f;
+        statsComponent.defense = definition != null ? definition.getDefense() : 0f;
     }
 
     private void dropLoot() {

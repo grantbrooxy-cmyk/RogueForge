@@ -11,6 +11,7 @@ import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.rogueforge.game.core.GameContext;
 import com.rogueforge.game.core.RogueForgeGame;
 import com.rogueforge.game.core.ScreenManager;
 import com.rogueforge.game.persistence.SettingsManager;
@@ -21,8 +22,9 @@ import com.rogueforge.game.persistence.SettingsManager;
  * Displays music volume, SFX volume, and fullscreen toggle as text with placeholder controls.
  */
 public class OptionsScreen implements Screen {
-    private static final String BACKGROUND_TEXTURE_PATH = "Backgrounds/background 2/orig_big.png";
+    static final String BACKGROUND_TEXTURE_PATH = "Backgrounds/background 2/orig_big.png";
     private static final String[] DIFFICULTY_MODES = {"EASY", "NORMAL", "HARD", "HELL"};
+    private final GameContext context;
     private final RogueForgeGame game;
     private final ScreenManager screenManager;
     private final SettingsManager settingsManager;
@@ -47,10 +49,14 @@ public class OptionsScreen implements Screen {
     private int hoveredButton = -1;
 
     public OptionsScreen(RogueForgeGame game, ScreenManager screenManager) {
-        this.game = game;
-        this.screenManager = screenManager;
-        this.settingsManager = new SettingsManager();
-        this.settingsManager.load();
+        this(game.getContext());
+    }
+
+    public OptionsScreen(GameContext context) {
+        this.context = context;
+        this.game = context.getGame();
+        this.screenManager = context.getScreenManager();
+        this.settingsManager = context.getSettingsManager();
         this.batch = new SpriteBatch();
         this.shapeRenderer = new ShapeRenderer();
         this.camera = new OrthographicCamera();

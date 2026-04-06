@@ -1,15 +1,20 @@
 package com.rogueforge.game.world;
 
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 
 public class CameraController {
-    private OrthographicCamera camera;
-    private Vector2 targetPosition;
-    private Vector2 currentPosition;
-    private float mapWidth;
-    private float mapHeight;
+    private final OrthographicCamera camera;
+    private final Vector2 targetPosition;
+    private final Vector2 currentPosition;
+    private final Rectangle mapBounds = new Rectangle();
+    private final Vector2 floatingOrigin = new Vector2();
+    private final Vector2 pendingWorldShift = new Vector2();
     private static final float LERP_SPEED = 5f;
+    private boolean floatingOriginEnabled;
+    private float floatingOriginThreshold = 4096f;
+    private float floatingOriginSnap = 2048f;
 
     // Screen shake
     private float shakeIntensity;
@@ -20,8 +25,7 @@ public class CameraController {
         this.camera = camera;
         this.currentPosition = new Vector2(camera.position.x, camera.position.y);
         this.targetPosition = new Vector2(currentPosition);
-        this.mapWidth = 100f;
-        this.mapHeight = 100f;
+        this.mapBounds.set(0f, 0f, 100f, 100f);
         this.shakeIntensity = 0f;
         this.shakeDuration = 0f;
         this.shakeTimer = 0f;
@@ -32,8 +36,20 @@ public class CameraController {
     }
 
     public void setMapBounds(float width, float height) {
-        this.mapWidth = width;
-        this.mapHeight = height;
+        this.mapBounds.set(0f, 0f, width, height);
+    }
+
+    public void setMapBounds(float x, float y, float width, float height) {
+        this.mapBounds.set(x, y, width, height);
+    }
+
+    public void enableFloatingOrigin(boolean enabled) {
+        this.floatingOriginEnabled = enabled;
+    }
+
+    public void configureFloatingOrigin(float threshold, float snap) {
+        this.floatingOriginThreshold = Math.max(512f, threshold);
+        this.floatingOriginSnap = Math.max(256f, Math.min(this.floatingOriginThreshold, snap));
     }
 
     public void shake(float intensity, float duration) {
@@ -42,7 +58,10 @@ public class CameraController {
         this.shakeTimer = duration;
     }
 
-    public void update(float delta) {
+    public Vector2 update(float delta) {
+        pendingWorldShift.setZero();
+        maybeShiftFloatingOrigin();
+
         // Lerp toward target
         float lerpFactor = LERP_SPEED * delta;
         currentPosition.lerp(targetPosition, lerpFactor);
@@ -51,8 +70,12 @@ public class CameraController {
         float halfWidth = camera.viewportWidth / 2f;
         float halfHeight = camera.viewportHeight / 2f;
 
-        currentPosition.x = Math.max(halfWidth, Math.min(mapWidth - halfWidth, currentPosition.x));
-        currentPosition.y = Math.max(halfHeight, Math.min(mapHeight - halfHeight, currentPosition.y));
+        if (mapBounds.width > 0f) {
+            currentPosition.x = Math.max(mapBounds.x + halfWidth, Math.min(mapBounds.x + mapBounds.width - halfWidth, currentPosition.x));
+        }
+        if (mapBounds.height > 0f) {
+            currentPosition.y = Math.max(mapBounds.y + halfHeight, Math.min(mapBounds.y + mapBounds.height - halfHeight, currentPosition.y));
+        }
 
         // Apply screen shake
         float shakeX = 0f;
@@ -69,6 +92,34 @@ public class CameraController {
 
         camera.position.set(currentPosition.x + shakeX, currentPosition.y + shakeY, 0);
         camera.update();
+        return new Vector2(pendingWorldShift);
+    }
+
+    private void maybeShiftFloatingOrigin() {
+        if (!floatingOriginEnabled) {
+            return;
+        }
+        float shiftX = computeAxisShift(targetPosition.x);
+        float shiftY = computeAxisShift(targetPosition.y);
+        if (shiftX == 0f && shiftY == 0f) {
+            return;
+        }
+        pendingWorldShift.set(shiftX, shiftY);
+        floatingOrigin.add(shiftX, shiftY);
+        targetPosition.sub(shiftX, shiftY);
+        currentPosition.sub(shiftX, shiftY);
+        mapBounds.x -= shiftX;
+        mapBounds.y -= shiftY;
+    }
+
+    private float computeAxisShift(float coordinate) {
+        if (Math.abs(coordinate) <= floatingOriginThreshold) {
+            return 0f;
+        }
+        float direction = Math.signum(coordinate);
+        float magnitude = Math.max(floatingOriginSnap,
+            (float) Math.floor(Math.abs(coordinate) / floatingOriginSnap) * floatingOriginSnap);
+        return direction * magnitude;
     }
 
     public void resize(int width, int height) {
@@ -87,6 +138,10 @@ public class CameraController {
 
     public OrthographicCamera getCamera() {
         return camera;
+    }
+
+    public Vector2 getFloatingOrigin() {
+        return new Vector2(floatingOrigin);
     }
 
     public boolean isShaking() {

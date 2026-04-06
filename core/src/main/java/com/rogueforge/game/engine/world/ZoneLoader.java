@@ -21,11 +21,18 @@ public class ZoneLoader {
     }
 
     public LoadedZoneContent load(ZoneDefinition definition) {
+        return load(definition, 0L, null);
+    }
+
+    public LoadedZoneContent load(ZoneDefinition definition, long worldSeed, FrontierZoneGenerator frontierZoneGenerator) {
         if (definition == null) {
             throw new IllegalArgumentException("Zone definition is required");
         }
 
         TmxWorldLoader.LoadedZone loadedZone = worldLoader.load(definition);
+        if (definition.isExpansiveFrontier() && frontierZoneGenerator != null) {
+            loadedZone = frontierZoneGenerator.generate(definition, loadedZone, worldSeed);
+        }
         String tilemapPath = definition.getTilemapPath();
         TiledMap tiledMap = null;
         if (tilemapPath != null && !tilemapPath.isEmpty()) {

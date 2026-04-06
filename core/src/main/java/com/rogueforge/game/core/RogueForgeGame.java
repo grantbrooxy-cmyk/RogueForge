@@ -8,7 +8,11 @@ import com.badlogic.gdx.maps.tiled.TiledMap;
 import com.badlogic.gdx.maps.tiled.TmxMapLoader;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.Texture.TextureFilter;
-import com.rogueforge.game.screen.SplashScreen;
+import com.rogueforge.game.engine.GameEngineServices;
+import com.rogueforge.game.persistence.MetaProgressionManager;
+import com.rogueforge.game.persistence.SaveManager;
+import com.rogueforge.game.persistence.SettingsManager;
+import com.rogueforge.game.screen.AssetLoadingScreen;
 
 /**
  * Main game class for Rogue Forge.
@@ -18,6 +22,7 @@ public class RogueForgeGame implements ApplicationListener {
     private AssetManager assetManager;
     private ScreenManager screenManager;
     private final EventBus eventBus;
+    private GameContext context;
 
     public RogueForgeGame() {
         this(new EventBus());
@@ -32,8 +37,19 @@ public class RogueForgeGame implements ApplicationListener {
         assetManager = new AssetManager();
         assetManager.setLoader(TiledMap.class, new TmxMapLoader(new InternalFileHandleResolver()));
         screenManager = new ScreenManager();
-
-        screenManager.push(new SplashScreen(this, screenManager));
+        SettingsManager settingsManager = new SettingsManager();
+        settingsManager.load();
+        context = new GameContext(
+            this,
+            assetManager,
+            screenManager,
+            eventBus,
+            new GameEngineServices(),
+            new SaveManager(),
+            settingsManager,
+            new MetaProgressionManager()
+        );
+        screenManager.push(new AssetLoadingScreen(context));
     }
 
     @Override
@@ -75,7 +91,14 @@ public class RogueForgeGame implements ApplicationListener {
         return eventBus;
     }
 
+    public GameContext getContext() {
+        return context;
+    }
+
     public synchronized <T> T loadAsset(String path, Class<T> assetType) {
+        if (context != null) {
+            return context.loadAsset(path, assetType);
+        }
         if (!assetManager.isLoaded(path, assetType)) {
             assetManager.load(path, assetType);
             assetManager.finishLoadingAsset(path);
@@ -84,20 +107,25 @@ public class RogueForgeGame implements ApplicationListener {
     }
 
     public synchronized <T> T getAsset(String path, Class<T> assetType) {
-        return assetManager.get(path, assetType);
+        return context != null ? context.getAsset(path, assetType) : assetManager.get(path, assetType);
     }
 
     public synchronized <T> boolean isAssetLoaded(String path, Class<T> assetType) {
-        return assetManager.isLoaded(path, assetType);
+        return context != null ? context.isAssetLoaded(path, assetType) : assetManager.isLoaded(path, assetType);
     }
 
     public synchronized void unloadAsset(String path) {
-        if (assetManager.isLoaded(path)) {
+        if (context != null) {
+            context.unloadAsset(path);
+        } else if (assetManager.isLoaded(path)) {
             assetManager.unload(path);
         }
     }
 
     public synchronized Texture loadTexture(String path) {
+        if (context != null) {
+            return context.loadTexture(path);
+        }
         Texture texture = loadAsset(path, Texture.class);
         texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
         return texture;

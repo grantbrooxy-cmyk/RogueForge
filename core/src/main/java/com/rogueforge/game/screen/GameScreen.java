@@ -2,6 +2,7 @@ package com.rogueforge.game.screen;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
+import com.badlogic.gdx.InputMultiplexer;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
@@ -21,6 +22,7 @@ import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
+import com.rogueforge.game.core.GameContext;
 import com.rogueforge.game.core.RogueForgeGame;
 import com.rogueforge.game.core.ScreenManager;
 import com.rogueforge.game.core.GameLoop;
@@ -56,6 +58,7 @@ import com.rogueforge.game.engine.social.PermissionSet;
 import com.rogueforge.game.engine.world.FrontierTerrainSampler;
 import com.rogueforge.game.engine.world.FrontierBiomeCatalog;
 import com.rogueforge.game.engine.world.FrontierBiomeDefinition;
+import com.rogueforge.game.engine.world.FrontierChunkManager;
 import com.rogueforge.game.engine.world.FrontierZoneGenerator;
 import com.rogueforge.game.engine.world.InfiniteDungeonLayoutGenerator;
 import com.rogueforge.game.engine.world.TmxWorldLoader;
@@ -65,7 +68,8 @@ import com.rogueforge.game.combat.AbilityRegistry;
 import com.rogueforge.game.combat.WeaponType;
 import com.rogueforge.game.data.EquipmentItem;
 import com.rogueforge.game.data.BlueprintFragmentDefinition;
-import com.rogueforge.game.data.DefinitionJson;
+import com.rogueforge.game.data.DefinitionRegistry;
+import com.rogueforge.game.data.DefinitionRegistries;
 import com.rogueforge.game.data.ForgeComponentDefinition;
 import com.rogueforge.game.data.ForgeIngredientDefinition;
 import com.rogueforge.game.data.ForgeRecipeDefinition;
@@ -90,10 +94,13 @@ import com.rogueforge.game.progression.WeaponProficiencyTracker;
 import com.rogueforge.game.robot.RobotDefinition;
 import com.rogueforge.game.world.DialogueSystem;
 import com.rogueforge.game.world.ActTwoSupportDirector;
+import com.rogueforge.game.world.CameraController;
 import com.rogueforge.game.world.QuestManager;
 import com.rogueforge.game.world.RobotRecruitmentManager;
 import com.rogueforge.game.world.SettlementManager;
+import com.rogueforge.game.world.SettlementNpcScheduleDefinition;
 import com.rogueforge.game.world.SettlementState;
+import com.rogueforge.game.world.SettlementTimeManager;
 import com.rogueforge.game.world.SettlementUpgradeDefinition;
 import com.rogueforge.game.world.WarPhaseManager;
 import com.rogueforge.game.world.WarPhaseSnapshot;
@@ -101,6 +108,7 @@ import com.rogueforge.game.world.WorldStateManager;
 import com.rogueforge.game.world.ZoneAccessPolicy;
 import com.rogueforge.game.world.actor.Enemy;
 import com.rogueforge.game.world.actor.RobotCompanion;
+import com.rogueforge.game.ui.DebugOverlay;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -120,11 +128,13 @@ public class GameScreen implements Screen {
     private static final float WORLD_VIEW_WIDTH = 1280f;
     private static final float WORLD_VIEW_HEIGHT = 720f;
 
+    private final GameContext context;
     private final RogueForgeGame game;
     private final ScreenManager screenManager;
     private final GameLoop gameLoop;
     private final OrthographicCamera gameCamera;
     private final OrthographicCamera uiCamera;
+    private final CameraController cameraController;
     private final Viewport gameViewport;
     private final Viewport uiViewport;
     private final HUDOverlay hudOverlay;
@@ -244,25 +254,25 @@ public class GameScreen implements Screen {
     private final Map<String, BlueprintFragmentDefinition> blueprintFragmentDefinitions = new HashMap<>();
     private final List<ForgeRecipeDefinition> forgeRecipes = new ArrayList<>();
     private final List<StoryEventDefinition> storyEvents = new ArrayList<>();
-    private final GameEngineServices engineServices = new GameEngineServices();
-    private final BaseBuildingEngine baseBuildingEngine = engineServices.getBaseBuildingEngine();
-    private final BaseDefenseDirector baseDefenseDirector = engineServices.getBaseDefenseDirector();
-    private final CyberneticEnhancementEngine cyberneticEnhancementEngine = engineServices.getCyberneticEnhancementEngine();
+    private final GameEngineServices engineServices;
+    private final BaseBuildingEngine baseBuildingEngine;
+    private final BaseDefenseDirector baseDefenseDirector;
+    private final CyberneticEnhancementEngine cyberneticEnhancementEngine;
     private final ForgeLegacyEngine forgeLegacyEngine = new ForgeLegacyEngine();
-    private final GuildPermissionsEngine guildPermissionsEngine = engineServices.getGuildPermissionsEngine();
-    private final TmxWorldLoader worldLoader = engineServices.getWorldLoader();
+    private final GuildPermissionsEngine guildPermissionsEngine;
+    private final TmxWorldLoader worldLoader;
     private final ZoneLoader zoneLoader;
-    private final InfiniteDungeonLayoutGenerator infiniteDungeonLayoutGenerator = engineServices.getInfiniteDungeonLayoutGenerator();
-    private final FrontierZoneGenerator frontierZoneGenerator = engineServices.getFrontierZoneGenerator();
-    private final SettingsManager settingsManager = engineServices.getSettingsManager();
-    private final SaveManager saveManager = engineServices.getSaveManager();
-    private final MetaProgressionManager metaProgressionManager = new MetaProgressionManager();
-    private final QuestManager questManager = engineServices.getQuestManager();
-    private final DialogueSystem dialogueSystem = engineServices.getDialogueSystem();
-    private final WorldStateManager worldStateManager = engineServices.getWorldStateManager();
-    private final RobotRecruitmentManager recruitmentManager = engineServices.getRecruitmentManager();
-    private final SettlementManager settlementManager = engineServices.getSettlementManager();
-    private final WarPhaseManager warPhaseManager = engineServices.getWarPhaseManager();
+    private final InfiniteDungeonLayoutGenerator infiniteDungeonLayoutGenerator;
+    private final FrontierZoneGenerator frontierZoneGenerator;
+    private final SettingsManager settingsManager;
+    private final SaveManager saveManager;
+    private final MetaProgressionManager metaProgressionManager;
+    private final QuestManager questManager;
+    private final DialogueSystem dialogueSystem;
+    private final WorldStateManager worldStateManager;
+    private final RobotRecruitmentManager recruitmentManager;
+    private final SettlementManager settlementManager;
+    private final WarPhaseManager warPhaseManager;
     private final Map<String, Boolean> openedChestStates = new HashMap<>();
     private final List<String> harvestedFrontierFeatureIds = new ArrayList<>();
     private final List<String> claimedFrontierBaseSiteIds = new ArrayList<>();
@@ -274,6 +284,10 @@ public class GameScreen implements Screen {
     private ZoneDefinition currentZoneDefinition;
     private FrontierTerrainSampler frontierTerrainSampler;
     private FrontierBiomeCatalog frontierBiomeCatalog;
+    private final FrontierChunkManager frontierChunkManager = new FrontierChunkManager();
+    private final SettlementTimeManager settlementTimeManager = new SettlementTimeManager();
+    private final Vector2 floatingOriginOffset = new Vector2();
+    private final Rectangle localWorldBounds = new Rectangle();
     private String difficultyMode = "NORMAL";
     private final MetaProgressionState metaProgressionState;
 
@@ -339,28 +353,57 @@ public class GameScreen implements Screen {
     private boolean isPaused = false;
     private boolean battleActive = false;
     private GameInputProcessor gameInputProcessor;
+    private InputMultiplexer inputMultiplexer;
+    private final DebugOverlay debugOverlay;
 
     public GameScreen(RogueForgeGame game, ScreenManager screenManager) {
-        this(game, screenManager, null);
+        this(game.getContext(), null);
     }
 
     public GameScreen(RogueForgeGame game, ScreenManager screenManager, SaveFile saveFile) {
-        this.game = game;
-        this.screenManager = screenManager;
+        this(game.getContext(), saveFile);
+    }
+
+    public GameScreen(GameContext context) {
+        this(context, null);
+    }
+
+    public GameScreen(GameContext context, SaveFile saveFile) {
+        this.context = context;
+        this.game = context.getGame();
+        this.screenManager = context.getScreenManager();
+        this.engineServices = context.getEngineServices();
+        this.baseBuildingEngine = engineServices.getBaseBuildingEngine();
+        this.baseDefenseDirector = engineServices.getBaseDefenseDirector();
+        this.cyberneticEnhancementEngine = engineServices.getCyberneticEnhancementEngine();
+        this.guildPermissionsEngine = engineServices.getGuildPermissionsEngine();
+        this.worldLoader = engineServices.getWorldLoader();
+        this.infiniteDungeonLayoutGenerator = engineServices.getInfiniteDungeonLayoutGenerator();
+        this.frontierZoneGenerator = engineServices.getFrontierZoneGenerator();
+        this.settingsManager = context.getSettingsManager();
+        this.saveManager = context.getSaveManager();
+        this.metaProgressionManager = context.getMetaProgressionManager();
+        this.questManager = engineServices.getQuestManager();
+        this.dialogueSystem = engineServices.getDialogueSystem();
+        this.worldStateManager = engineServices.getWorldStateManager();
+        this.recruitmentManager = engineServices.getRecruitmentManager();
+        this.settlementManager = engineServices.getSettlementManager();
+        this.warPhaseManager = engineServices.getWarPhaseManager();
         this.gameLoop = new GameLoop();
         this.gameCamera = new OrthographicCamera();
         this.uiCamera = new OrthographicCamera();
+        this.cameraController = new CameraController(gameCamera);
         this.gameViewport = new FitViewport(WORLD_VIEW_WIDTH, WORLD_VIEW_HEIGHT, gameCamera);
         this.uiViewport = new ScreenViewport(uiCamera);
         this.gameViewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
         this.uiViewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
         this.hudOverlay = new HUDOverlay(game);
+        this.debugOverlay = new DebugOverlay(this::buildDebugOverlayLines);
         this.batch = new SpriteBatch();
         this.shapeRenderer = new ShapeRenderer();
         this.font = new BitmapFont();
         this.font.getData().setScale(1.2f);
         this.zoneLoader = new ZoneLoader(game, worldLoader);
-        this.settingsManager.load();
         this.difficultyMode = settingsManager.getSettings().getDifficultyMode();
         loadVisualAssets();
         this.playerName = saveFile != null && saveFile.getPlayerName() != null
@@ -457,7 +500,13 @@ public class GameScreen implements Screen {
         if (gameInputProcessor == null) {
             gameInputProcessor = new GameInputProcessor(this);
         }
-        Gdx.input.setInputProcessor(gameInputProcessor);
+        if (inputMultiplexer == null) {
+            inputMultiplexer = new InputMultiplexer();
+        }
+        inputMultiplexer.clear();
+        inputMultiplexer.addProcessor(debugOverlay.getInputProcessor());
+        inputMultiplexer.addProcessor(gameInputProcessor);
+        Gdx.input.setInputProcessor(inputMultiplexer);
     }
 
     private void loadVisualAssets() {
@@ -525,6 +574,8 @@ public class GameScreen implements Screen {
 
     @Override
     public void render(float delta) {
+        handleDefinitionReloadShortcut();
+
         if (!isPaused && !battleActive) {
             if (questMenuOpen) {
                 if (Gdx.input.isKeyJustPressed(Input.Keys.Q) || Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
@@ -657,8 +708,10 @@ public class GameScreen implements Screen {
             updateRobots(delta);
             updateBaseDefenders(delta);
             updateEnemies(delta);
+            updateNpcSchedules(delta);
             updateAttackEffects(delta);
             updateGoldPopups(delta);
+            settlementTimeManager.update(delta);
             survivalTime += delta;
 
             // Check player death
@@ -670,10 +723,19 @@ public class GameScreen implements Screen {
 
         // Camera follows player
         gameViewport.apply();
-        gameCamera.position.set(playerPos.x, playerPos.y, 0);
-        gameCamera.update();
+        cameraController.setTarget(playerPos);
+        Vector2 worldShift = cameraController.update(delta);
+        if (!worldShift.isZero()) {
+            applyFloatingOriginShift(worldShift);
+            cameraController.setTarget(playerPos);
+            cameraController.update(0f);
+        }
+        if (shouldUseFrontierStreaming() && currentZone != null) {
+            frontierChunkManager.update(playerPos, currentZone.tileWidth, currentZone.tileHeight);
+        }
 
-        Gdx.gl.glClearColor(0.12f, 0.14f, 0.1f, 1f);
+        float daylight = settlementTimeManager.getDaylightStrength();
+        Gdx.gl.glClearColor(0.04f + (0.08f * daylight), 0.05f + (0.09f * daylight), 0.07f + (0.03f * daylight), 1f);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
         drawGroundTiles();
@@ -703,6 +765,7 @@ public class GameScreen implements Screen {
         drawExpeditionBoardOverlayExpanded();
         drawGuildOverlay();
         drawBuildOverlay();
+        debugOverlay.render();
 
         robotAttackLines.clear();
     }
@@ -1574,12 +1637,15 @@ public class GameScreen implements Screen {
         float tileSize = currentZone != null ? currentZone.tileWidth : 48f;
         float halfW = (gameCamera.viewportWidth * gameCamera.zoom) / 2f + tileSize;
         float halfH = (gameCamera.viewportHeight * gameCamera.zoom) / 2f + tileSize;
-        float maxWidth = currentZone != null ? currentZone.pixelWidth : playerPos.x + halfW;
-        float maxHeight = currentZone != null ? currentZone.pixelHeight : playerPos.y + halfH;
-        int startX = Math.max(0, (int) Math.floor((playerPos.x - halfW) / tileSize) - 1);
-        int endX = Math.min((int) Math.ceil(maxWidth / tileSize), (int) Math.ceil((playerPos.x + halfW) / tileSize) + 1);
-        int startY = Math.max(0, (int) Math.floor((playerPos.y - halfH) / tileSize) - 1);
-        int endY = Math.min((int) Math.ceil(maxHeight / tileSize), (int) Math.ceil((playerPos.y + halfH) / tileSize) + 1);
+        Rectangle activeBounds = shouldUseFrontierStreaming()
+            ? frontierChunkManager.getActiveWorldBounds()
+            : new Rectangle(localWorldBounds);
+        float maxWidth = activeBounds.width > 0f ? activeBounds.x + activeBounds.width : playerPos.x + halfW;
+        float maxHeight = activeBounds.height > 0f ? activeBounds.y + activeBounds.height : playerPos.y + halfH;
+        int startX = (int) Math.floor((Math.max(activeBounds.x, playerPos.x - halfW)) / tileSize) - 1;
+        int endX = (int) Math.ceil((Math.min(maxWidth, playerPos.x + halfW)) / tileSize) + 1;
+        int startY = (int) Math.floor((Math.max(activeBounds.y, playerPos.y - halfH)) / tileSize) - 1;
+        int endY = (int) Math.ceil((Math.min(maxHeight, playerPos.y + halfH)) / tileSize) + 1;
 
         String groundStyle = currentZone != null ? currentZone.groundStyle : "";
         boolean isVillage = "village".equals(groundStyle);
@@ -1678,11 +1744,18 @@ public class GameScreen implements Screen {
     }
 
     private void applyExpansiveFrontierTint(int gx, int gy, boolean primaryTile) {
-        FrontierTerrainSampler.TerrainSample sample = frontierTerrainSampler.sample(gx, gy);
+        int tileWidth = currentZone != null ? currentZone.tileWidth : 48;
+        int tileHeight = currentZone != null ? currentZone.tileHeight : 48;
+        FrontierTerrainSampler.TerrainSample sample = frontierTerrainSampler.sample(
+            toAbsoluteTileX(gx, tileWidth),
+            toAbsoluteTileY(gy, tileHeight)
+        );
         FrontierBiomeDefinition biome = frontierBiomeCatalog != null
             ? frontierBiomeCatalog.resolve(sample.type)
             : new FrontierBiomeCatalog().resolve(sample.type);
         Color tint = primaryTile ? biome.getPrimaryTint() : biome.getSecondaryTint();
+        float daylight = settlementTimeManager.getDaylightStrength();
+        tint = lerpColor(new Color(0.08f, 0.1f, 0.16f, 1f), tint, 0.35f + (0.65f * daylight));
 
         if (sample.moisture > 0.44f) {
             tint = lerpColor(tint, biome.getMoistureTint(), 0.2f);
@@ -1850,6 +1923,10 @@ public class GameScreen implements Screen {
 
         for (Enemy enemy : enemies) {
             if (!enemy.alive) continue;
+            if (shouldUseFrontierStreaming() && !isWithinActiveFrontierWorld(enemy.pos)) {
+                allDead = false;
+                continue;
+            }
             allDead = false;
 
             // Update attack timer
@@ -1972,7 +2049,7 @@ public class GameScreen implements Screen {
             return null;
         }
         for (Enemy enemy : enemies) {
-            if (enemy == null || !enemy.alive) {
+            if (enemy == null || !enemy.alive || (shouldUseFrontierStreaming() && !isWithinActiveFrontierWorld(enemy.pos))) {
                 continue;
             }
             float distance = defender.getPosition().dst(enemy.pos);
@@ -2218,6 +2295,9 @@ public class GameScreen implements Screen {
             if (defender == null || !defender.isActive()) {
                 continue;
             }
+            if (shouldUseFrontierStreaming() && !isWithinActiveFrontierWorld(defender.getPosition())) {
+                continue;
+            }
             if (defender.getAttackTimer() > 0f) {
                 defender.setAttackTimer(defender.getAttackTimer() - delta);
             }
@@ -2265,7 +2345,7 @@ public class GameScreen implements Screen {
         batch.setProjectionMatrix(gameCamera.combined);
         batch.begin();
         for (Enemy enemy : enemies) {
-            if (!enemy.alive) continue;
+            if (!enemy.alive || (shouldUseFrontierStreaming() && !isWithinActiveFrontierWorld(enemy.pos))) continue;
             drawShadow(enemy.pos.x, enemy.pos.y, enemy.size + 18f, 18f, 0.45f);
             TextureRegion sprite = getAnimatedFrame(
                 enemyAnimations[enemy.spriteIndex % enemyAnimations.length],
@@ -2280,7 +2360,7 @@ public class GameScreen implements Screen {
         shapeRenderer.setProjectionMatrix(gameCamera.combined);
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
         for (Enemy enemy : enemies) {
-            if (!enemy.alive) continue;
+            if (!enemy.alive || (shouldUseFrontierStreaming() && !isWithinActiveFrontierWorld(enemy.pos))) continue;
             // Draw HP bar above enemy
             float barWidth = enemy.size;
             float barHeight = 2f;
@@ -2579,6 +2659,10 @@ public class GameScreen implements Screen {
         batch.begin();
         int npcIndex = 0;
         for (Npc npc : npcs) {
+            if (shouldUseFrontierStreaming() && !isWithinActiveFrontierWorld(npc.pos)) {
+                npcIndex++;
+                continue;
+            }
             drawShadow(npc.pos.x, npc.pos.y, 42f, 16f, 0.4f);
             TextureRegion sprite = getAnimatedFrame(npcAnimations[npcIndex % npcAnimations.length], new Vector2(0f, -1f), false, survivalTime);
             drawAnimatedSprite(sprite, new Vector2(-1f, 0f), npc.pos.x - 22f, npc.pos.y - 22f, 44f, 44f);
@@ -7038,6 +7122,7 @@ public class GameScreen implements Screen {
         gameViewport.update(width, height, true);
         uiViewport.update(width, height, true);
         hudOverlay.resize(width, height);
+        debugOverlay.resize(width, height);
     }
 
     @Override public void pause() {}
@@ -7047,6 +7132,7 @@ public class GameScreen implements Screen {
     @Override
     public void dispose() {
         hudOverlay.dispose();
+        debugOverlay.dispose();
         batch.dispose();
         shapeRenderer.dispose();
         font.dispose();
@@ -7101,6 +7187,41 @@ public class GameScreen implements Screen {
     public boolean isPaused() { return isPaused; }
     public GameLoop getGameLoop() { return gameLoop; }
     public HUDOverlay getHUDOverlay() { return hudOverlay; }
+    public String getCurrentZoneId() { return currentZoneId; }
+    public long getWorldSeed() { return worldSeed; }
+
+    private List<String> buildDebugOverlayLines() {
+        List<String> lines = new ArrayList<>();
+        lines.add("FPS: " + Gdx.graphics.getFramesPerSecond());
+        lines.add("Zone: " + (currentZoneId != null ? currentZoneId : "none"));
+        lines.add("Seed: " + worldSeed);
+        lines.add("Player: (" + (int) playerPos.x + ", " + (int) playerPos.y + ")");
+        lines.add("Floating origin: (" + (int) floatingOriginOffset.x + ", " + (int) floatingOriginOffset.y + ")");
+        lines.add("Active enemies: " + countAliveEnemies() + "/" + enemies.size());
+        lines.add("NPCs: " + npcs.size() + "  Robots: " + countAliveRobots());
+        lines.add("Battle active: " + battleActive + "  Build mode: " + buildModeOpen);
+        return lines;
+    }
+
+    private int countAliveEnemies() {
+        int count = 0;
+        for (Enemy enemy : enemies) {
+            if (enemy != null && enemy.alive) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private int countAliveRobots() {
+        int count = 0;
+        for (RobotCompanion robot : robots) {
+            if (robot != null && robot.health > 0f) {
+                count++;
+            }
+        }
+        return count;
+    }
 
     private long generateWorldSeed() {
         long seed = System.currentTimeMillis();
@@ -7117,6 +7238,11 @@ public class GameScreen implements Screen {
         sf.setPlayerMaxHp((int) playerMaxHealth);
         sf.setPlayerX(playerPos.x);
         sf.setPlayerY(playerPos.y);
+        sf.setPlayerWorldX(playerPos.x + floatingOriginOffset.x);
+        sf.setPlayerWorldY(playerPos.y + floatingOriginOffset.y);
+        sf.setFloatingOriginX(floatingOriginOffset.x);
+        sf.setFloatingOriginY(floatingOriginOffset.y);
+        sf.setSettlementTimeOfDayHours(settlementTimeManager.getTimeOfDayHours());
         sf.setCurrencyBalance(gameState.getTotalGold());
         sf.setUnbankedCurrencyBalance(gameState.getUnbankedGold());
         sf.setWorldSeed(worldSeed);
@@ -7254,9 +7380,27 @@ public class GameScreen implements Screen {
         syncAct2TownFacilities();
         questManager.syncProgress(gameState, worldStateManager);
         loadZone(currentZoneId, null, true);
+        if (saveFile.getSettlementTimeOfDayHours() != null) {
+            settlementTimeManager.setTimeOfDayHours(saveFile.getSettlementTimeOfDayHours());
+        }
+        if (saveFile.getFloatingOriginX() != null || saveFile.getFloatingOriginY() != null) {
+            Vector2 savedOriginShift = new Vector2(
+                saveFile.getFloatingOriginX() != null ? saveFile.getFloatingOriginX() : 0f,
+                saveFile.getFloatingOriginY() != null ? saveFile.getFloatingOriginY() : 0f
+            );
+            if (!savedOriginShift.isZero()) {
+                applyFloatingOriginShift(savedOriginShift);
+            }
+        }
         playerHealth = saveFile.getPlayerHp();
         playerMaxHealth = saveFile.getPlayerMaxHp() > 0 ? saveFile.getPlayerMaxHp() : playerMaxHealth;
-        playerPos.set(saveFile.getPlayerX(), saveFile.getPlayerY());
+        float savedPlayerX = saveFile.getPlayerX();
+        float savedPlayerY = saveFile.getPlayerY();
+        if (saveFile.getPlayerWorldX() != null && saveFile.getPlayerWorldY() != null) {
+            savedPlayerX = saveFile.getPlayerWorldX() - floatingOriginOffset.x;
+            savedPlayerY = saveFile.getPlayerWorldY() - floatingOriginOffset.y;
+        }
+        playerPos.set(savedPlayerX, savedPlayerY);
         totalGold = saveFile.getCurrencyBalance();
         healingPotions = saveFile.getHealingPotions();
         playerLevel = Math.max(1, saveFile.getPlayerLevel());
@@ -8067,21 +8211,15 @@ public class GameScreen implements Screen {
     }
 
     private void loadZoneDefinitions() {
-        ZoneDefinition[] definitions = DefinitionJson.loadArray("data/zones.json", ZoneDefinition[].class);
-        if (definitions == null) {
-            return;
-        }
-        for (ZoneDefinition definition : definitions) {
+        zoneDefinitions.clear();
+        for (ZoneDefinition definition : DefinitionRegistries.ZONES.getAll()) {
             zoneDefinitions.put(definition.getId(), definition);
         }
     }
 
     private void loadRobotDefinitions() {
-        RobotDefinition[] definitions = DefinitionJson.loadArray("data/robots.json", RobotDefinition[].class);
-        if (definitions == null) {
-            return;
-        }
-        for (RobotDefinition definition : definitions) {
+        robotDefinitions.clear();
+        for (RobotDefinition definition : DefinitionRegistries.ROBOTS.getAll()) {
             if (definition != null && definition.getId() != null) {
                 robotDefinitions.put(definition.getId(), definition);
             }
@@ -8089,21 +8227,15 @@ public class GameScreen implements Screen {
     }
 
     private void loadMonsterDefinitions() {
-        MonsterDefinition[] definitions = DefinitionJson.loadArray("data/monsters.json", MonsterDefinition[].class);
-        if (definitions == null) {
-            return;
-        }
-        for (MonsterDefinition definition : definitions) {
+        monsterDefinitions.clear();
+        for (MonsterDefinition definition : DefinitionRegistries.MONSTERS.getAll()) {
             monsterDefinitions.put(definition.getId(), definition);
         }
     }
 
     private void loadForgeComponentDefinitions() {
-        ForgeComponentDefinition[] definitions = DefinitionJson.loadArray("data/forge_components.json", ForgeComponentDefinition[].class);
-        if (definitions == null) {
-            return;
-        }
-        for (ForgeComponentDefinition definition : definitions) {
+        forgeComponentDefinitions.clear();
+        for (ForgeComponentDefinition definition : DefinitionRegistries.FORGE_COMPONENTS.getAll()) {
             if (definition != null && definition.getId() != null) {
                 forgeComponentDefinitions.put(definition.getId(), definition);
             }
@@ -8111,11 +8243,8 @@ public class GameScreen implements Screen {
     }
 
     private void loadBlueprintFragmentDefinitions() {
-        BlueprintFragmentDefinition[] definitions = DefinitionJson.loadArray("data/blueprint_fragments.json", BlueprintFragmentDefinition[].class);
-        if (definitions == null) {
-            return;
-        }
-        for (BlueprintFragmentDefinition definition : definitions) {
+        blueprintFragmentDefinitions.clear();
+        for (BlueprintFragmentDefinition definition : DefinitionRegistries.BLUEPRINT_FRAGMENTS.getAll()) {
             if (definition != null && definition.getId() != null) {
                 blueprintFragmentDefinitions.put(definition.getId(), definition);
             }
@@ -8123,12 +8252,8 @@ public class GameScreen implements Screen {
     }
 
     private void loadForgeRecipes() {
-        ForgeRecipeDefinition[] definitions = DefinitionJson.loadArray("data/forge_recipes.json", ForgeRecipeDefinition[].class);
-        if (definitions == null) {
-            return;
-        }
         forgeRecipes.clear();
-        for (ForgeRecipeDefinition definition : definitions) {
+        for (ForgeRecipeDefinition definition : DefinitionRegistries.FORGE_RECIPES.getAll()) {
             if (definition != null && definition.getId() != null) {
                 forgeRecipes.add(definition);
             }
@@ -8136,12 +8261,8 @@ public class GameScreen implements Screen {
     }
 
     private void loadStoryEvents() {
-        StoryEventDefinition[] definitions = DefinitionJson.loadArray("data/story_events.json", StoryEventDefinition[].class);
         storyEvents.clear();
-        if (definitions == null) {
-            return;
-        }
-        for (StoryEventDefinition definition : definitions) {
+        for (StoryEventDefinition definition : DefinitionRegistries.STORY_EVENTS.getAll()) {
             if (definition != null && definition.getId() != null) {
                 storyEvents.add(definition);
             }
@@ -8149,12 +8270,9 @@ public class GameScreen implements Screen {
     }
 
     private void loadShopDefinitions() {
-        ShopDefinition[] definitions = DefinitionJson.loadArray("data/shop_inventories.json", ShopDefinition[].class);
-        if (definitions == null) {
-            return;
-        }
+        shopDefinitions.clear();
         shopsByZoneId.clear();
-        for (ShopDefinition definition : definitions) {
+        for (ShopDefinition definition : DefinitionRegistries.SHOPS.getAll()) {
             shopDefinitions.put(definition.getId(), definition);
             if (definition != null && definition.getZoneId() != null && !definition.getZoneId().isEmpty()) {
                 shopsByZoneId.computeIfAbsent(definition.getZoneId(), ignored -> new ArrayList<>()).add(definition);
@@ -8172,19 +8290,29 @@ public class GameScreen implements Screen {
         currentZoneId = zoneId;
         gameState.setCurrentZoneId(zoneId);
         currentZoneDefinition = definition;
+        floatingOriginOffset.setZero();
         disposeCurrentTiledMap();
-        ZoneLoader.LoadedZoneContent loadedZone = zoneLoader.load(definition);
+        ZoneLoader.LoadedZoneContent loadedZone = zoneLoader.load(definition, worldSeed, frontierZoneGenerator);
         applyLoadedZoneMap(loadedZone);
         currentZone = loadedZone.getZone();
         frontierTerrainSampler = definition.isExpansiveFrontier() ? new FrontierTerrainSampler(worldSeed) : null;
+        if (frontierTerrainSampler != null) {
+            frontierTerrainSampler.setWorldOriginOffset(floatingOriginOffset.x, floatingOriginOffset.y);
+        }
         frontierBiomeCatalog = definition.isExpansiveFrontier() ? new FrontierBiomeCatalog() : null;
         if (definition.isExpansiveFrontier()) {
-            currentZone = frontierZoneGenerator.generate(definition, currentZone, worldSeed);
             hydrateSavedBaseStructures(currentZone, definition.getId());
         }
         handleInfiniteDungeonZoneLoad(previousZoneId, spawnId);
         if (isInfiniteDungeonZone()) {
             currentZone = infiniteDungeonLayoutGenerator.generate(currentZone, getInfiniteDungeonCurrentFloor());
+        }
+        localWorldBounds.set(0f, 0f, currentZone.pixelWidth, currentZone.pixelHeight);
+        cameraController.setMapBounds(localWorldBounds.x, localWorldBounds.y, localWorldBounds.width, localWorldBounds.height);
+        cameraController.enableFloatingOrigin(definition.isExpansiveFrontier());
+        cameraController.configureFloatingOrigin(WORLD_VIEW_WIDTH * 2.5f, WORLD_VIEW_WIDTH);
+        if (definition.isExpansiveFrontier()) {
+            frontierChunkManager.update(playerPos, currentZone.tileWidth, currentZone.tileHeight);
         }
         addStarterTownUpgradeChest();
         houses.clear();
@@ -8454,6 +8582,7 @@ public class GameScreen implements Screen {
                 "The Legacy Vault records every collapse and every breakthrough. Bring me shards and I'll turn them into permanence."));
         }
         addPlayerCreatedTownNpcs();
+        applyTownNpcSchedules();
     }
 
     private void addPlayerCreatedTownNpcs() {
@@ -8474,6 +8603,29 @@ public class GameScreen implements Screen {
                 createdNpc.dialog
             ));
         }
+        applyTownNpcSchedules();
+    }
+
+    private void applyTownNpcSchedules() {
+        if (!isHubTownZone()) {
+            return;
+        }
+        for (Npc npc : npcs) {
+            if (npc == null) {
+                continue;
+            }
+            SettlementNpcScheduleDefinition schedule = settlementManager.getNpcSchedule(npc.id);
+            if (schedule != null) {
+                Vector2 base = new Vector2(npc.spawnPos);
+                npc.setSchedule(
+                    new Vector2(base.x + schedule.getHomeOffsetX(), base.y + schedule.getHomeOffsetY()),
+                    new Vector2(base.x + schedule.getDayOffsetX(), base.y + schedule.getDayOffsetY()),
+                    new Vector2(base.x + schedule.getEveningOffsetX(), base.y + schedule.getEveningOffsetY())
+                );
+            } else {
+                npc.setSchedule(new Vector2(npc.spawnPos), new Vector2(npc.spawnPos), new Vector2(npc.spawnPos));
+            }
+        }
     }
 
     private boolean hasTownNpc(String npcId) {
@@ -8486,6 +8638,151 @@ public class GameScreen implements Screen {
             }
         }
         return false;
+    }
+
+    private void updateNpcSchedules(float delta) {
+        if (!isHubTownZone() || npcs.isEmpty()) {
+            return;
+        }
+        for (Npc npc : npcs) {
+            if (npc == null) {
+                continue;
+            }
+            Vector2 scheduleTarget = npc.getScheduledPosition(settlementTimeManager.getTimeOfDayHours());
+            if (scheduleTarget == null) {
+                continue;
+            }
+            Vector2 deltaToTarget = new Vector2(scheduleTarget).sub(npc.pos);
+            if (deltaToTarget.len2() < 4f) {
+                npc.pos.set(scheduleTarget);
+                continue;
+            }
+            deltaToTarget.nor().scl(Math.min(deltaToTarget.len(), 46f * delta));
+            npc.pos.add(deltaToTarget);
+        }
+    }
+
+    private boolean shouldUseFrontierStreaming() {
+        return currentZoneDefinition != null
+            && currentZoneDefinition.isExpansiveFrontier()
+            && currentZone != null
+            && currentZone.tileWidth > 0
+            && currentZone.tileHeight > 0;
+    }
+
+    private boolean isWithinActiveFrontierWorld(Vector2 position) {
+        if (!shouldUseFrontierStreaming() || position == null) {
+            return true;
+        }
+        return frontierChunkManager.isActiveWorldPosition(position.x, position.y, currentZone.tileWidth, currentZone.tileHeight);
+    }
+
+    private int toAbsoluteTileX(int localTileX, int tileWidth) {
+        return Math.max(0, (int) Math.floor((localTileX * Math.max(1, tileWidth) + floatingOriginOffset.x) / Math.max(1, tileWidth)));
+    }
+
+    private int toAbsoluteTileY(int localTileY, int tileHeight) {
+        return Math.max(0, (int) Math.floor((localTileY * Math.max(1, tileHeight) + floatingOriginOffset.y) / Math.max(1, tileHeight)));
+    }
+
+    private void applyFloatingOriginShift(Vector2 shift) {
+        if (shift == null || shift.isZero()) {
+            return;
+        }
+        floatingOriginOffset.add(shift);
+        if (frontierTerrainSampler != null) {
+            frontierTerrainSampler.setWorldOriginOffset(floatingOriginOffset.x, floatingOriginOffset.y);
+        }
+        shiftVector(playerPos, shift);
+        for (RobotCompanion robot : robots) {
+            if (robot != null) {
+                shiftVector(robot.pos, shift);
+            }
+        }
+        for (Enemy enemy : enemies) {
+            if (enemy == null) {
+                continue;
+            }
+            shiftVector(enemy.pos, shift);
+            shiftVector(enemy.patrolTarget, shift);
+        }
+        for (Npc npc : npcs) {
+            if (npc == null) {
+                continue;
+            }
+            shiftVector(npc.pos, shift);
+            shiftVector(npc.homePosition, shift);
+            shiftVector(npc.dayPosition, shift);
+            shiftVector(npc.eveningPosition, shift);
+        }
+        if (currentZone != null) {
+            if (currentZone.safeCenter != null) {
+                shiftVector(currentZone.safeCenter, shift);
+            }
+            for (Rectangle collision : currentZone.collisions) {
+                collision.x -= shift.x;
+                collision.y -= shift.y;
+            }
+            for (TmxWorldLoader.Door door : currentZone.doors) {
+                if (door != null && door.bounds != null) {
+                    door.bounds.x -= shift.x;
+                    door.bounds.y -= shift.y;
+                }
+            }
+            for (Vector2 spawn : currentZone.playerSpawns.values()) {
+                shiftVector(spawn, shift);
+            }
+            for (Vector2 spawn : currentZone.enemySpawns) {
+                shiftVector(spawn, shift);
+            }
+            for (TmxWorldLoader.NpcData npcData : currentZone.npcs) {
+                if (npcData != null) {
+                    shiftVector(npcData.position, shift);
+                }
+            }
+            for (TmxWorldLoader.Feature feature : currentZone.features) {
+                if (feature != null && feature.bounds != null) {
+                    feature.bounds.x -= shift.x;
+                    feature.bounds.y -= shift.y;
+                }
+            }
+            for (TmxWorldLoader.ChestData chest : currentZone.chests) {
+                if (chest != null) {
+                    shiftVector(chest.position, shift);
+                }
+            }
+        }
+        for (House house : houses) {
+            if (house == null) {
+                continue;
+            }
+            house.x -= shift.x;
+            house.y -= shift.y;
+        }
+        for (BaseDefenderUnit defender : activeBaseDefenders) {
+            if (defender != null) {
+                shiftVector(defender.getPosition(), shift);
+                shiftVector(defender.getGuardPosition(), shift);
+                shiftVector(defender.getPatrolPosition(), shift);
+            }
+        }
+        localWorldBounds.x -= shift.x;
+        localWorldBounds.y -= shift.y;
+        cameraController.setMapBounds(localWorldBounds.x, localWorldBounds.y, localWorldBounds.width, localWorldBounds.height);
+        shiftCurrentBaseStateStructures(shift);
+    }
+
+    private void shiftCurrentBaseStateStructures(Vector2 shift) {
+        BaseState baseState = getCurrentBaseState();
+        if (baseState != null) {
+            baseState.shiftWorld(shift.x, shift.y);
+        }
+    }
+
+    private void shiftVector(Vector2 value, Vector2 shift) {
+        if (value != null) {
+            value.sub(shift);
+        }
     }
 
     private House createHouseFromFeature(TmxWorldLoader.Feature feature) {
@@ -9028,13 +9325,42 @@ public class GameScreen implements Screen {
     }
 
     private void initializeEquipmentCatalog() {
-        EquipmentItem[] definitions = DefinitionJson.loadArray("data/equipment.json", EquipmentItem[].class);
-        if (definitions != null) {
-            for (EquipmentItem item : definitions) {
-                addEquipmentToCatalog(item);
-            }
+        equipmentCatalog.clear();
+        gameState.clearEquipmentCatalog();
+        for (EquipmentItem item : DefinitionRegistries.EQUIPMENT.getAll()) {
+            addEquipmentToCatalog(item);
         }
         seedStarterOwnedEquipment();
+    }
+
+    private void handleDefinitionReloadShortcut() {
+        boolean ctrlHeld = Gdx.input.isKeyPressed(Input.Keys.CONTROL_LEFT)
+            || Gdx.input.isKeyPressed(Input.Keys.CONTROL_RIGHT);
+        if (ctrlHeld && Gdx.input.isKeyJustPressed(Input.Keys.R)) {
+            reloadDefinitionData();
+        }
+    }
+
+    private void reloadDefinitionData() {
+        DefinitionRegistry.reloadAll();
+        loadZoneDefinitions();
+        loadRobotDefinitions();
+        loadMonsterDefinitions();
+        loadForgeComponentDefinitions();
+        loadBlueprintFragmentDefinitions();
+        loadForgeRecipes();
+        loadStoryEvents();
+        loadShopDefinitions();
+        initializeEquipmentCatalog();
+        AbilityRegistry.reloadDefinitions();
+        questManager.reloadDefinitions();
+        dialogueSystem.reloadDefinitions();
+        worldStateManager.reloadDefinitions();
+        recruitmentManager.reloadDefinitions();
+        settlementManager.reloadDefinitions();
+        currentZoneDefinition = currentZoneId != null ? zoneDefinitions.get(currentZoneId) : null;
+        applyTownNpcSchedules();
+        showStandaloneDialog("Debug", "Definition data reloaded from assets/data.");
     }
 
     private void addEquipmentToCatalog(EquipmentItem item) {
@@ -13331,12 +13657,36 @@ public class GameScreen implements Screen {
         String name;
         Vector2 pos;
         String dialog;
+        Vector2 spawnPos;
+        Vector2 homePosition;
+        Vector2 dayPosition;
+        Vector2 eveningPosition;
 
         Npc(String id, String name, Vector2 pos, String dialog) {
             this.id = id;
             this.name = name;
             this.pos = pos;
             this.dialog = dialog;
+            this.spawnPos = pos != null ? new Vector2(pos) : new Vector2();
+            this.homePosition = pos != null ? new Vector2(pos) : new Vector2();
+            this.dayPosition = pos != null ? new Vector2(pos) : new Vector2();
+            this.eveningPosition = pos != null ? new Vector2(pos) : new Vector2();
+        }
+
+        void setSchedule(Vector2 homePosition, Vector2 dayPosition, Vector2 eveningPosition) {
+            this.homePosition = homePosition != null ? homePosition : new Vector2(pos);
+            this.dayPosition = dayPosition != null ? dayPosition : new Vector2(pos);
+            this.eveningPosition = eveningPosition != null ? eveningPosition : new Vector2(pos);
+        }
+
+        Vector2 getScheduledPosition(float timeOfDayHours) {
+            if (timeOfDayHours < 8f) {
+                return homePosition;
+            }
+            if (timeOfDayHours < 18f) {
+                return dayPosition;
+            }
+            return eveningPosition;
         }
     }
 

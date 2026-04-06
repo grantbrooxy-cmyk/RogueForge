@@ -11,6 +11,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.utils.Align;
+import com.rogueforge.game.core.GameContext;
 import com.rogueforge.game.core.RogueForgeGame;
 import com.rogueforge.game.core.ScreenManager;
 import com.rogueforge.game.data.MetaProgressionState;
@@ -27,7 +28,8 @@ import java.util.List;
  * Rendered using ShapeRenderer for buttons and BitmapFont for text.
  */
 public class GameOverScreen implements Screen {
-    private static final String BACKGROUND_TEXTURE_PATH = "Backgrounds/background 3/orig_big.png";
+    static final String BACKGROUND_TEXTURE_PATH = "Backgrounds/background 3/orig_big.png";
+    private final GameContext context;
     private final RogueForgeGame game;
     private final ScreenManager screenManager;
     private final SpriteBatch batch;
@@ -70,12 +72,23 @@ public class GameOverScreen implements Screen {
         MetaProgressionManager metaProgressionManager,
         CyberneticEnhancementEngine cyberneticEnhancementEngine
     ) {
-        this.game = game;
-        this.screenManager = screenManager;
+        this(game.getContext(), metaProgressionState, deathDraft, metaProgressionManager, cyberneticEnhancementEngine);
+    }
+
+    public GameOverScreen(
+        GameContext context,
+        MetaProgressionState metaProgressionState,
+        DeathDraftResult deathDraft,
+        MetaProgressionManager metaProgressionManager,
+        CyberneticEnhancementEngine cyberneticEnhancementEngine
+    ) {
+        this.context = context;
+        this.game = context.getGame();
+        this.screenManager = context.getScreenManager();
         this.metaProgressionState = metaProgressionState;
         this.deathDraft = deathDraft;
         this.offeredChoices = deathDraft != null ? new ArrayList<>(deathDraft.getChoices()) : new ArrayList<>();
-        this.metaProgressionManager = metaProgressionManager != null ? metaProgressionManager : new MetaProgressionManager();
+        this.metaProgressionManager = metaProgressionManager != null ? metaProgressionManager : context.getMetaProgressionManager();
         this.cyberneticEnhancementEngine = cyberneticEnhancementEngine != null ? cyberneticEnhancementEngine : new CyberneticEnhancementEngine();
         this.batch = new SpriteBatch();
         this.shapeRenderer = new ShapeRenderer();
@@ -250,7 +263,7 @@ public class GameOverScreen implements Screen {
             cyberneticEnhancementEngine.applyDraftChoice(metaProgressionState, choice);
             metaProgressionManager.save(metaProgressionState);
         }
-        screenManager.replace(new GameScreen(game, screenManager));
+        screenManager.replace(new GameScreen(context));
     }
 
     private Color getChoiceFillColor(DeathDraftChoice choice, boolean hovered) {
