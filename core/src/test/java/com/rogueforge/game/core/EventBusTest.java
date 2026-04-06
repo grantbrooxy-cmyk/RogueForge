@@ -46,6 +46,18 @@ class EventBusTest {
         assertEquals(damage, subscriber.lastDamage);
     }
 
+    @Test
+    void annotationBasedHandlersAreDiscovered() {
+        EventBus bus = new EventBus();
+        AnnotatedSubscriber subscriber = new AnnotatedSubscriber();
+
+        bus.subscribe(subscriber);
+        DamageDealtEvent damage = new DamageDealtEvent("attacker", "target", 5f);
+        bus.fire(damage);
+
+        assertEquals(damage, subscriber.lastDamage);
+    }
+
     private static class RecordingSubscriber {
         private DamageDealtEvent lastDamage;
         private EntityKilledEvent lastKilled;
@@ -56,6 +68,15 @@ class EventBusTest {
 
         void onEntityKilledEvent(EntityKilledEvent event) {
             this.lastKilled = event;
+        }
+    }
+
+    private static class AnnotatedSubscriber {
+        private DamageDealtEvent lastDamage;
+
+        @EventHandler
+        void handleDamage(DamageDealtEvent event) {
+            this.lastDamage = event;
         }
     }
 }

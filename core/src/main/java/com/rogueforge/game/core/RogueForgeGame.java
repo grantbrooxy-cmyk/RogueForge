@@ -6,6 +6,8 @@ import com.badlogic.gdx.assets.AssetManager;
 import com.badlogic.gdx.assets.loaders.resolvers.InternalFileHandleResolver;
 import com.badlogic.gdx.maps.tiled.TiledMap;
 import com.badlogic.gdx.maps.tiled.TmxMapLoader;
+import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.Texture.TextureFilter;
 import com.rogueforge.game.screen.SplashScreen;
 
 /**
@@ -15,13 +17,20 @@ import com.rogueforge.game.screen.SplashScreen;
 public class RogueForgeGame implements ApplicationListener {
     private AssetManager assetManager;
     private ScreenManager screenManager;
-    private static EventBus eventBus;
+    private final EventBus eventBus;
+
+    public RogueForgeGame() {
+        this(new EventBus());
+    }
+
+    public RogueForgeGame(EventBus eventBus) {
+        this.eventBus = eventBus != null ? eventBus : new EventBus();
+    }
 
     @Override
     public void create() {
         assetManager = new AssetManager();
         assetManager.setLoader(TiledMap.class, new TmxMapLoader(new InternalFileHandleResolver()));
-        eventBus = new EventBus();
         screenManager = new ScreenManager();
 
         screenManager.push(new SplashScreen(this, screenManager));
@@ -62,8 +71,7 @@ public class RogueForgeGame implements ApplicationListener {
         if (assetManager != null) assetManager.dispose();
     }
 
-    public static EventBus getEventBus() {
-        if (eventBus == null) eventBus = new EventBus();
+    public EventBus getEventBus() {
         return eventBus;
     }
 
@@ -87,6 +95,16 @@ public class RogueForgeGame implements ApplicationListener {
         if (assetManager.isLoaded(path)) {
             assetManager.unload(path);
         }
+    }
+
+    public synchronized Texture loadTexture(String path) {
+        Texture texture = loadAsset(path, Texture.class);
+        texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
+        return texture;
+    }
+
+    public synchronized void unloadTexture(String path) {
+        unloadAsset(path);
     }
 
     public AssetManager getAssets() { return assetManager; }

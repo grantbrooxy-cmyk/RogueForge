@@ -24,6 +24,7 @@ import com.rogueforge.game.data.SaveFile;
  * Does not clear the screen beneath, allowing the game to show through.
  */
 public class PauseMenuScreen implements Screen {
+    private static final String BACKGROUND_TEXTURE_PATH = "Backgrounds/background 2/orig_big.png";
     private final RogueForgeGame game;
     private final ScreenManager screenManager;
     private final GameScreen gameScreen;
@@ -65,7 +66,7 @@ public class PauseMenuScreen implements Screen {
         this.camera = new OrthographicCamera();
         this.camera.setToOrtho(false, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         this.layout = new GlyphLayout();
-        this.backgroundTexture = loadTexture("Backgrounds/background 2/orig_big.png");
+        this.backgroundTexture = loadTexture(BACKGROUND_TEXTURE_PATH);
         this.uiTexture = createUiTexture();
 
         // Create semi-transparent overlay texture
@@ -86,9 +87,7 @@ public class PauseMenuScreen implements Screen {
     }
 
     private Texture loadTexture(String relativePath) {
-        Texture texture = new Texture(Gdx.files.internal(relativePath));
-        texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
-        return texture;
+        return game.loadTexture(relativePath);
     }
 
     private Texture createUiTexture() {
@@ -351,7 +350,7 @@ public class PauseMenuScreen implements Screen {
         if (overlayTexture != null) {
             overlayTexture.dispose();
         }
-        backgroundTexture.dispose();
+        game.unloadTexture(BACKGROUND_TEXTURE_PATH);
         uiTexture.dispose();
     }
 }

@@ -9,14 +9,15 @@ import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.Texture.TextureFilter;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Vector2;
 import com.rogueforge.game.core.RogueForgeGame;
 import com.rogueforge.game.core.ScreenManager;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Lightweight interior map for houses, NPC conversation, and chest looting.
@@ -45,6 +46,7 @@ public class HouseInteriorScreen implements Screen {
     private final Texture shadowTexture;
     private final TextureRegion playerSprite;
     private final TextureRegion[] npcSprites;
+    private final Set<String> managedTexturePaths = new LinkedHashSet<>();
 
     private String activeSpeaker;
     private String activeDialog;
@@ -92,9 +94,8 @@ public class HouseInteriorScreen implements Screen {
     }
 
     private Texture loadTexture(String relativePath) {
-        Texture texture = new Texture(Gdx.files.internal(relativePath));
-        texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
-        return texture;
+        managedTexturePaths.add(relativePath);
+        return game.loadTexture(relativePath);
     }
 
     private TextureRegion loadStripFrame(String relativePath, int frameWidth, int frameHeight) {
@@ -542,15 +543,10 @@ public class HouseInteriorScreen implements Screen {
 
     @Override
     public void dispose() {
-        floorTile.dispose();
-        wallTile.dispose();
-        doorTexture.dispose();
-        chestTexture.dispose();
-        shadowTexture.dispose();
-        playerSprite.getTexture().dispose();
-        for (TextureRegion npcSprite : npcSprites) {
-            npcSprite.getTexture().dispose();
+        for (String path : managedTexturePaths) {
+            game.unloadTexture(path);
         }
+        managedTexturePaths.clear();
         batch.dispose();
         shapeRenderer.dispose();
         font.dispose();

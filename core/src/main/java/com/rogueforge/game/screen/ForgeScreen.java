@@ -23,6 +23,7 @@ import java.util.List;
  * and for fusing same-tier same-slot items into the next tier.
  */
 public class ForgeScreen implements Screen {
+    private static final String BACKGROUND_TEXTURE_PATH = "Backgrounds/background 2/orig_big.png";
     private static final float EXIT_W = 140f;
     private static final float EXIT_H = 42f;
 
@@ -32,6 +33,7 @@ public class ForgeScreen implements Screen {
     private static final float TAB_H = 42f;
     private static final float TAB_GAP = 10f;
 
+    private final RogueForgeGame game;
     private final ScreenManager screenManager;
     private final GameScreen gameScreen;
     private final SpriteBatch batch;
@@ -61,6 +63,7 @@ public class ForgeScreen implements Screen {
     private boolean hoveredFuseButton = false;
 
     public ForgeScreen(RogueForgeGame game, ScreenManager screenManager, GameScreen gameScreen) {
+        this.game = game;
         this.screenManager = screenManager;
         this.gameScreen = gameScreen;
         this.batch = new SpriteBatch();
@@ -70,7 +73,7 @@ public class ForgeScreen implements Screen {
         this.layout = new GlyphLayout();
         this.camera = new OrthographicCamera();
         this.camera.setToOrtho(false, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-        this.backgroundTexture = loadTexture("Backgrounds/background 2/orig_big.png");
+        this.backgroundTexture = loadTexture(BACKGROUND_TEXTURE_PATH);
         this.uiTexture = createUiTexture();
         this.titleFont.getData().setScale(3f);
         this.bodyFont.getData().setScale(1.2f);
@@ -78,9 +81,7 @@ public class ForgeScreen implements Screen {
     }
 
     private Texture loadTexture(String relativePath) {
-        Texture texture = new Texture(Gdx.files.internal(relativePath));
-        texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
-        return texture;
+        return game.loadTexture(relativePath);
     }
 
     private Texture createUiTexture() {
@@ -617,7 +618,7 @@ public class ForgeScreen implements Screen {
         titleFont.dispose();
         bodyFont.dispose();
         buttonFont.dispose();
-        backgroundTexture.dispose();
+        game.unloadTexture(BACKGROUND_TEXTURE_PATH);
         uiTexture.dispose();
     }
 }

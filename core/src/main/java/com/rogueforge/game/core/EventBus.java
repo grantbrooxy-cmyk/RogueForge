@@ -6,36 +6,38 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Method;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 /**
  * Simple event bus for decoupled communication between game systems.
- * Subscribers can register listeners and receive events based on method annotations.
+ * This implementation is intended for single-threaded LibGDX gameplay code.
  */
 public class EventBus {
-    private final Map<Class<?>, List<EventListener>> listeners = new HashMap<>();
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
+    private static final Map<Class<?>, List<HandlerDefinition>> HANDLER_CACHE = new HashMap<>();
+    private final Map<Class<?>, ListenerBucket> listeners = new HashMap<>();
 
     /**
      * Subscribes an object to listen for events.
-     * The object's methods will be scanned for EventHandler annotations.
+     * Methods marked with {@link EventHandler} are preferred; legacy {@code onXxx(Event)}
+     * single-argument methods are also supported as a fallback.
      *
      * @param subscriber The object that wants to listen for events
      */
-    public void subscribe(Object subscriber) {
-        Class<?> clazz = subscriber.getClass();
-
-        // Scan all methods for @EventHandler annotation
-        for (Method method : clazz.getDeclaredMethods()) {
-            // Check if method has EventHandler annotation (if we were using annotations)
-            // For now, use naming convention: onEventName(EventType event)
-            if (method.getName().startsWith("on") && method.getParameterCount() == 1) {
-                Class<?> eventType = method.getParameterTypes()[0];
-                Consumer<Object> handler = createHandler(subscriber, method, eventType);
-                listeners.computeIfAbsent(eventType, k -> new ArrayList<>())
-                    .add(new EventListener(subscriber, handler));
-            }
+    public synchronized void subscribe(Object subscriber) {
+        if (subscriber == null) {
+            return;
+        }
+        for (HandlerDefinition definition : getHandlerDefinitions(subscriber.getClass())) {
+            Consumer<Object> handler = createHandler(subscriber, definition.method, definition.eventType);
+            listeners.computeIfAbsent(definition.eventType, ignored -> new ListenerBucket())
+                .add(new EventListener(subscriber, handler));
         }
     }
 
@@ -46,11 +48,11 @@ public class EventBus {
      * @param listener The event consumer
      * @param <T> The event type
      */
-    public <T> void subscribe(Class<T> eventType, Consumer<? super T> listener) {
+    public synchronized <T> void subscribe(Class<T> eventType, Consumer<? super T> listener) {
         if (eventType == null || listener == null) {
             return;
         }
-        listeners.computeIfAbsent(eventType, k -> new ArrayList<>())
+        listeners.computeIfAbsent(eventType, ignored -> new ListenerBucket())
             .add(new EventListener(listener, event -> listener.accept(eventType.cast(event))));
     }
 
@@ -59,10 +61,14 @@ public class EventBus {
      *
      * @param subscriber The object to unsubscribe
      */
-    public void unsubscribe(Object subscriber) {
-        for (List<EventListener> eventListeners : listeners.values()) {
-            eventListeners.removeIf(listener -> listener.subscriber == subscriber);
+    public synchronized void unsubscribe(Object subscriber) {
+        if (subscriber == null) {
+            return;
         }
+        listeners.values().removeIf(bucket -> {
+            bucket.removeSubscriber(subscriber);
+            return bucket.isEmpty();
+        });
     }
 
     /**
@@ -75,17 +81,20 @@ public class EventBus {
             return;
         }
 
-        Class<?> eventType = event.getClass();
-        List<EventListener> eventListeners = listeners.get(eventType);
-
-        if (eventListeners != null) {
-            for (EventListener listener : List.copyOf(eventListeners)) {
-                try {
-                    listener.handler.accept(event);
-                } catch (Exception e) {
-                    System.err.println("Error firing event: " + e.getMessage());
-                    e.printStackTrace();
-                }
+        EventListener[] snapshot;
+        synchronized (this) {
+            ListenerBucket bucket = listeners.get(event.getClass());
+            snapshot = bucket != null ? bucket.snapshot : null;
+        }
+        if (snapshot == null || snapshot.length == 0) {
+            return;
+        }
+        for (EventListener listener : snapshot) {
+            try {
+                listener.handler.accept(event);
+            } catch (Exception e) {
+                System.err.println("Error firing event: " + e.getMessage());
+                e.printStackTrace();
             }
         }
     }
@@ -96,15 +105,15 @@ public class EventBus {
      * @param eventType The event class
      * @return The number of listeners
      */
-    public int getListenerCount(Class<?> eventType) {
-        List<EventListener> eventListeners = listeners.get(eventType);
-        return eventListeners != null ? eventListeners.size() : 0;
+    public synchronized int getListenerCount(Class<?> eventType) {
+        ListenerBucket bucket = listeners.get(eventType);
+        return bucket != null ? bucket.listeners.size() : 0;
     }
 
     /**
      * Clears all listeners from the bus.
      */
-    public void clear() {
+    public synchronized void clear() {
         listeners.clear();
     }
 
@@ -112,12 +121,45 @@ public class EventBus {
      * Internal class to hold listener information.
      */
     private static class EventListener {
-        Object subscriber;
-        Consumer<Object> handler;
+        final Object subscriber;
+        final Consumer<Object> handler;
 
         EventListener(Object subscriber, Consumer<Object> handler) {
             this.subscriber = subscriber;
             this.handler = handler;
+        }
+    }
+
+    private static class HandlerDefinition {
+        final Method method;
+        final Class<?> eventType;
+
+        HandlerDefinition(Method method, Class<?> eventType) {
+            this.method = method;
+            this.eventType = eventType;
+        }
+    }
+
+    private static class ListenerBucket {
+        final List<EventListener> listeners = new ArrayList<>();
+        EventListener[] snapshot = new EventListener[0];
+
+        void add(EventListener listener) {
+            listeners.add(listener);
+            refreshSnapshot();
+        }
+
+        void removeSubscriber(Object subscriber) {
+            listeners.removeIf(listener -> listener.subscriber == subscriber);
+            refreshSnapshot();
+        }
+
+        boolean isEmpty() {
+            return listeners.isEmpty();
+        }
+
+        private void refreshSnapshot() {
+            snapshot = listeners.toArray(new EventListener[0]);
         }
     }
 
@@ -149,5 +191,32 @@ public class EventBus {
                 throwable
             );
         }
+    }
+
+    private static synchronized List<HandlerDefinition> getHandlerDefinitions(Class<?> subscriberClass) {
+        List<HandlerDefinition> cached = HANDLER_CACHE.get(subscriberClass);
+        if (cached != null) {
+            return cached;
+        }
+
+        List<HandlerDefinition> definitions = new ArrayList<>();
+        for (Method method : subscriberClass.getDeclaredMethods()) {
+            if (!isEventHandlerMethod(method)) {
+                continue;
+            }
+            definitions.add(new HandlerDefinition(method, method.getParameterTypes()[0]));
+        }
+
+        List<HandlerDefinition> immutable = Collections.unmodifiableList(definitions);
+        HANDLER_CACHE.put(subscriberClass, immutable);
+        return immutable;
+    }
+
+    private static boolean isEventHandlerMethod(Method method) {
+        if (method.getParameterCount() != 1) {
+            return false;
+        }
+        return method.isAnnotationPresent(EventHandler.class)
+            || method.getName().startsWith("on");
     }
 }

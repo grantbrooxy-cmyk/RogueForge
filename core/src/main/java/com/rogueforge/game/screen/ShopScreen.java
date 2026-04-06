@@ -23,6 +23,7 @@ import java.util.List;
  * Dedicated shop UI with buy and sell tabs.
  */
 public class ShopScreen implements Screen {
+    private static final String BACKGROUND_TEXTURE_PATH = "Backgrounds/background 2/orig_big.png";
     private static final String[] TABS = {"Buy", "Sell"};
     private static final float BACK_W = 140f;
     private static final float BACK_H = 42f;
@@ -60,16 +61,14 @@ public class ShopScreen implements Screen {
         this.titleFont = new BitmapFont();
         this.bodyFont = new BitmapFont();
         this.layout = new GlyphLayout();
-        this.backgroundTexture = loadTexture("Backgrounds/background 2/orig_big.png");
+        this.backgroundTexture = loadTexture(BACKGROUND_TEXTURE_PATH);
         this.uiTexture = createUiTexture();
         this.titleFont.getData().setScale(2.4f);
         this.bodyFont.getData().setScale(1.1f);
     }
 
     private Texture loadTexture(String relativePath) {
-        Texture texture = new Texture(Gdx.files.internal(relativePath));
-        texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
-        return texture;
+        return game.loadTexture(relativePath);
     }
 
     private Texture createUiTexture() {
@@ -294,7 +293,7 @@ public class ShopScreen implements Screen {
         shapeRenderer.dispose();
         titleFont.dispose();
         bodyFont.dispose();
-        backgroundTexture.dispose();
+        game.unloadTexture(BACKGROUND_TEXTURE_PATH);
         uiTexture.dispose();
     }
 }

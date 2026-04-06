@@ -1,6 +1,7 @@
 package com.rogueforge.game.combat;
 
 import com.rogueforge.game.core.EventBus;
+import com.rogueforge.game.core.EventHandler;
 import com.rogueforge.game.event.DamageDealtEvent;
 import com.rogueforge.game.event.EntityKilledEvent;
 import java.util.ArrayList;
@@ -145,7 +146,7 @@ class CombatSystemsTest {
     }
 
     @Test
-    void combatResolverHandlesDeterministicCasesEventsAndBreakEncoding() {
+    void combatResolverHandlesDeterministicCasesEventsAndDamageResults() {
         RecordingSubscriber subscriber = new RecordingSubscriber();
         EventBus eventBus = new EventBus();
         eventBus.subscribe(subscriber);
@@ -203,8 +204,9 @@ class CombatSystemsTest {
         );
         healPulse.setElement(Element.WATER);
 
-        int absorbedResult = resolver.resolveAbilityDamage(caster, absorbed, healPulse);
-        assertTrue(absorbedResult < 0);
+        DamageResult absorbedResult = resolver.resolveAbilityDamage(caster, absorbed, healPulse);
+        assertTrue(absorbedResult.damage() < 0);
+        assertFalse(absorbedResult.elementalBreak());
         assertTrue(absorbed.getHealth() > 20f);
         assertTrue(resolver.resolveHealing(caster, healPulse) > 0);
 
@@ -233,10 +235,10 @@ class CombatSystemsTest {
 
         resolver.resolveAbilityDamage(caster, weakTarget, healPulse);
         resolver.resolveAbilityDamage(caster, weakTarget, healPulse);
-        int breakResult = resolver.resolveAbilityDamage(caster, weakTarget, healPulse);
+        DamageResult breakResult = resolver.resolveAbilityDamage(caster, weakTarget, healPulse);
 
-        assertTrue(CombatResolver.wasElementalBreak(breakResult));
-        assertTrue(CombatResolver.extractBreakDamage(breakResult) > 0);
+        assertTrue(breakResult.elementalBreak());
+        assertTrue(breakResult.damage() > 0);
     }
 
     @Test
@@ -306,6 +308,7 @@ class CombatSystemsTest {
         private DamageDealtEvent rawDamageEvent;
         private EntityKilledEvent killedEvent;
 
+        @EventHandler
         void onDamageDealtEvent(DamageDealtEvent event) {
             if (event.getTarget() == null) {
                 rawDamageEvent = event;
@@ -314,6 +317,7 @@ class CombatSystemsTest {
             }
         }
 
+        @EventHandler
         void onEntityKilledEvent(EntityKilledEvent event) {
             killedEvent = event;
         }

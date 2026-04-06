@@ -1,6 +1,7 @@
 package com.rogueforge.game.combat;
 
 import com.rogueforge.game.core.EventBus;
+import com.rogueforge.game.core.EventHandler;
 import com.rogueforge.game.data.MonsterDefinition;
 import com.rogueforge.game.data.EquipmentItem;
 import com.rogueforge.game.economy.RankMultiplier;
@@ -42,6 +43,7 @@ public class LootResolver {
      *
      * @param event The entity killed event containing the dead entity
      */
+    @EventHandler
     public void onEntityKilledEvent(EntityKilledEvent event) {
         Object entity = event.getEntity();
 

@@ -9,7 +9,6 @@ import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.Texture.TextureFilter;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.utils.Align;
 import com.rogueforge.game.core.RogueForgeGame;
@@ -28,6 +27,7 @@ import java.util.List;
  * Rendered using ShapeRenderer for buttons and BitmapFont for text.
  */
 public class GameOverScreen implements Screen {
+    private static final String BACKGROUND_TEXTURE_PATH = "Backgrounds/background 3/orig_big.png";
     private final RogueForgeGame game;
     private final ScreenManager screenManager;
     private final SpriteBatch batch;
@@ -82,7 +82,7 @@ public class GameOverScreen implements Screen {
         this.camera = new OrthographicCamera();
         this.camera.setToOrtho(false, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         this.layout = new GlyphLayout();
-        this.backgroundTexture = loadTexture("Backgrounds/background 3/orig_big.png");
+        this.backgroundTexture = loadTexture(BACKGROUND_TEXTURE_PATH);
 
         // Setup fonts
         titleFont = new BitmapFont();
@@ -103,9 +103,7 @@ public class GameOverScreen implements Screen {
     }
 
     private Texture loadTexture(String relativePath) {
-        Texture texture = new Texture(Gdx.files.internal(relativePath));
-        texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
-        return texture;
+        return game.loadTexture(relativePath);
     }
 
     /**
@@ -459,6 +457,6 @@ public class GameOverScreen implements Screen {
         statsFont.dispose();
         cardTitleFont.dispose();
         buttonFont.dispose();
-        backgroundTexture.dispose();
+        game.unloadTexture(BACKGROUND_TEXTURE_PATH);
     }
 }

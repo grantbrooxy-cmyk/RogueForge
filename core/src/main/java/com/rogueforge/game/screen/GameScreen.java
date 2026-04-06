@@ -59,6 +59,7 @@ import com.rogueforge.game.engine.world.FrontierBiomeDefinition;
 import com.rogueforge.game.engine.world.FrontierZoneGenerator;
 import com.rogueforge.game.engine.world.InfiniteDungeonLayoutGenerator;
 import com.rogueforge.game.engine.world.TmxWorldLoader;
+import com.rogueforge.game.engine.world.ZoneLoader;
 import com.rogueforge.game.combat.AbilityDefinition;
 import com.rogueforge.game.combat.AbilityRegistry;
 import com.rogueforge.game.combat.WeaponType;
@@ -98,14 +99,18 @@ import com.rogueforge.game.world.WarPhaseManager;
 import com.rogueforge.game.world.WarPhaseSnapshot;
 import com.rogueforge.game.world.WorldStateManager;
 import com.rogueforge.game.world.ZoneAccessPolicy;
+import com.rogueforge.game.world.actor.Enemy;
+import com.rogueforge.game.world.actor.RobotCompanion;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Date;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Main gameplay screen with a moveable player square, robot companions,
@@ -144,6 +149,7 @@ public class GameScreen implements Screen {
     private AnimationSet[] robotAnimations;
     private AnimationSet[] enemyAnimations;
     private AnimationSet[] npcAnimations;
+    private final Set<String> managedTexturePaths = new LinkedHashSet<>();
 
     // Player state
     private final Vector2 playerPos = new Vector2(640, 360);
@@ -245,6 +251,7 @@ public class GameScreen implements Screen {
     private final ForgeLegacyEngine forgeLegacyEngine = new ForgeLegacyEngine();
     private final GuildPermissionsEngine guildPermissionsEngine = engineServices.getGuildPermissionsEngine();
     private final TmxWorldLoader worldLoader = engineServices.getWorldLoader();
+    private final ZoneLoader zoneLoader;
     private final InfiniteDungeonLayoutGenerator infiniteDungeonLayoutGenerator = engineServices.getInfiniteDungeonLayoutGenerator();
     private final FrontierZoneGenerator frontierZoneGenerator = engineServices.getFrontierZoneGenerator();
     private final SettingsManager settingsManager = engineServices.getSettingsManager();
@@ -347,11 +354,12 @@ public class GameScreen implements Screen {
         this.uiViewport = new ScreenViewport(uiCamera);
         this.gameViewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
         this.uiViewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
-        this.hudOverlay = new HUDOverlay();
+        this.hudOverlay = new HUDOverlay(game);
         this.batch = new SpriteBatch();
         this.shapeRenderer = new ShapeRenderer();
         this.font = new BitmapFont();
         this.font.getData().setScale(1.2f);
+        this.zoneLoader = new ZoneLoader(game, worldLoader);
         this.settingsManager.load();
         this.difficultyMode = settingsManager.getSettings().getDifficultyMode();
         loadVisualAssets();
@@ -480,9 +488,8 @@ public class GameScreen implements Screen {
     }
 
     private Texture loadTexture(String relativePath) {
-        Texture texture = new Texture(Gdx.files.internal(relativePath));
-        texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
-        return texture;
+        managedTexturePaths.add(relativePath);
+        return game.loadTexture(relativePath);
     }
 
     private TextureRegion loadStripFrame(String relativePath, int frameWidth, int frameHeight) {
@@ -7044,29 +7051,10 @@ public class GameScreen implements Screen {
         shapeRenderer.dispose();
         font.dispose();
         disposeCurrentTiledMap();
-        groundTileTexture.dispose();
-        wallTileTexture.dispose();
-        if (villageGroundTileTexture != null) villageGroundTileTexture.dispose();
-        if (villageWallTileTexture != null) villageWallTileTexture.dispose();
-        doorTexture.dispose();
-        chestTexture.dispose();
-        shadowTexture.dispose();
-        disposeAnimationSet(playerAnimation);
-        for (AnimationSet animationSet : robotAnimations) {
-            disposeAnimationSet(animationSet);
+        for (String path : managedTexturePaths) {
+            game.unloadTexture(path);
         }
-        for (AnimationSet animationSet : enemyAnimations) {
-            disposeAnimationSet(animationSet);
-        }
-        for (AnimationSet animationSet : npcAnimations) {
-            disposeAnimationSet(animationSet);
-        }
-    }
-
-    private void disposeAnimationSet(AnimationSet animationSet) {
-        for (Texture texture : animationSet.getOwnedTextures()) {
-            texture.dispose();
-        }
+        managedTexturePaths.clear();
     }
 
     public void handlePauseInput() {
@@ -7385,26 +7373,30 @@ public class GameScreen implements Screen {
     private List<SaveFile.EnemyState> buildEnemySaveStates() {
         List<SaveFile.EnemyState> enemyStates = new ArrayList<>();
         for (Enemy enemy : enemies) {
+            var transform = enemy.transform();
+            var vitals = enemy.vitals();
+            var combatStats = enemy.combatStats();
+            var motion = enemy.motion();
             SaveFile.EnemyState enemyState = new SaveFile.EnemyState();
             enemyState.setMonsterId(enemy.monsterId);
-            enemyState.setX(enemy.pos.x);
-            enemyState.setY(enemy.pos.y);
-            enemyState.setHp(enemy.hp);
-            enemyState.setMaxHp(enemy.maxHp);
-            enemyState.setSpeed(enemy.speed);
-            enemyState.setSize(enemy.size);
-            enemyState.setDefense(enemy.defense);
-            enemyState.setAgility(enemy.agility);
-            enemyState.setStrength(enemy.strength);
-            enemyState.setIntelligence(enemy.intelligence);
-            enemyState.setStamina(enemy.stamina);
+            enemyState.setX(transform.position.x);
+            enemyState.setY(transform.position.y);
+            enemyState.setHp(vitals.health);
+            enemyState.setMaxHp(vitals.maxHealth);
+            enemyState.setSpeed(motion.speed);
+            enemyState.setSize(transform.size);
+            enemyState.setDefense(combatStats.defense);
+            enemyState.setAgility(combatStats.agility);
+            enemyState.setStrength(combatStats.strength);
+            enemyState.setIntelligence(combatStats.intelligence);
+            enemyState.setStamina(combatStats.stamina);
             enemyState.setRewardGold(enemy.rewardGold);
             enemyState.setRewardExperience(enemy.rewardExperience);
             enemyState.setName(enemy.name);
-            enemyState.setAlive(enemy.alive);
-            enemyState.setAttackTimer(enemy.attackTimer);
-            enemyState.setPatrolTargetX(enemy.patrolTarget.x);
-            enemyState.setPatrolTargetY(enemy.patrolTarget.y);
+            enemyState.setAlive(vitals.alive);
+            enemyState.setAttackTimer(motion.attackTimer);
+            enemyState.setPatrolTargetX(motion.patrolTarget.x);
+            enemyState.setPatrolTargetY(motion.patrolTarget.y);
             enemyState.setDungeonFloor(enemy.dungeonFloor);
             enemyState.setRaidSpawned(enemy.raidSpawned);
             enemyStates.add(enemyState);
@@ -8180,8 +8172,10 @@ public class GameScreen implements Screen {
         currentZoneId = zoneId;
         gameState.setCurrentZoneId(zoneId);
         currentZoneDefinition = definition;
-        loadZoneVisualMap(definition);
-        currentZone = worldLoader.load(definition);
+        disposeCurrentTiledMap();
+        ZoneLoader.LoadedZoneContent loadedZone = zoneLoader.load(definition);
+        applyLoadedZoneMap(loadedZone);
+        currentZone = loadedZone.getZone();
         frontierTerrainSampler = definition.isExpansiveFrontier() ? new FrontierTerrainSampler(worldSeed) : null;
         frontierBiomeCatalog = definition.isExpansiveFrontier() ? new FrontierBiomeCatalog() : null;
         if (definition.isExpansiveFrontier()) {
@@ -8239,21 +8233,19 @@ public class GameScreen implements Screen {
         autosave();
     }
 
-    private void loadZoneVisualMap(ZoneDefinition definition) {
-        disposeCurrentTiledMap();
-        if (definition == null || definition.getTilemapPath() == null || definition.getTilemapPath().isEmpty()) {
+    private void applyLoadedZoneMap(ZoneLoader.LoadedZoneContent loadedZone) {
+        if (loadedZone == null) {
             return;
         }
-        String tilemapPath = definition.getTilemapPath();
-        try {
-            currentTiledMap = game.loadAsset(tilemapPath, TiledMap.class);
-            currentTiledMapPath = tilemapPath;
-            if (hasRenderableTileLayers(currentTiledMap)) {
-                tiledMapRenderer = new OrthogonalTiledMapRenderer(currentTiledMap, 1f);
-            } else {
-                disposeCurrentTiledMap();
-            }
-        } catch (RuntimeException ignored) {
+        currentTiledMap = loadedZone.getTiledMap();
+        currentTiledMapPath = loadedZone.getTilemapPath();
+        if (currentTiledMap == null) {
+            currentTiledMapPath = null;
+            return;
+        }
+        if (hasRenderableTileLayers(currentTiledMap)) {
+            tiledMapRenderer = new OrthogonalTiledMapRenderer(currentTiledMap, 1f);
+        } else {
             disposeCurrentTiledMap();
         }
     }
@@ -8279,7 +8271,7 @@ public class GameScreen implements Screen {
             currentTiledMap = null;
         }
         if (currentTiledMapPath != null) {
-            game.unloadAsset(currentTiledMapPath);
+            zoneLoader.unload(currentTiledMapPath);
             currentTiledMapPath = null;
         }
     }
@@ -11980,6 +11972,8 @@ public class GameScreen implements Screen {
             return new RobotStatBlock(0f, 0f, 0f, 0f, 0f, 0f);
         }
         RobotCompanion robot = robots[index];
+        var robotVitals = robot.vitals();
+        var robotCombatStats = robot.combatStats();
         RobotProgressionState progressionState = getRobotProgressionStateForPartyIndex(index);
         EquipmentTotals equipmentTotals = getEquipmentTotals(index);
         ForgeLegacyBonuses legacyBonuses = getForgeLegacyBonuses();
@@ -11989,12 +11983,12 @@ public class GameScreen implements Screen {
         float evolutionMultiplier = RobotEvolutionManager.statMultiplier(evolutionTier);
         float maxHealth = getRobotEffectiveMaxHealth(getRobotId(index), progressionState);
         RobotStatBlock block = new RobotStatBlock(
-            robot.health,
+            robotVitals.health,
             maxHealth,
-            (robot.agility + levelBonus) * evolutionMultiplier + equipmentTotals.agilityBonus + legacyBonuses.getRobotSpeedBonus(),
-            (robot.strength + levelBonus) * evolutionMultiplier + equipmentTotals.strengthBonus,
-            (robot.intelligence + levelBonus) * evolutionMultiplier + equipmentTotals.intelligenceBonus,
-            (robot.stamina + levelBonus) * evolutionMultiplier + equipmentTotals.staminaBonus
+            (robotCombatStats.agility + levelBonus) * evolutionMultiplier + equipmentTotals.agilityBonus + legacyBonuses.getRobotSpeedBonus(),
+            (robotCombatStats.strength + levelBonus) * evolutionMultiplier + equipmentTotals.strengthBonus,
+            (robotCombatStats.intelligence + levelBonus) * evolutionMultiplier + equipmentTotals.intelligenceBonus,
+            (robotCombatStats.stamina + levelBonus) * evolutionMultiplier + equipmentTotals.staminaBonus
         );
         applyRobotClassBonuses(block, getRobotClass(index));
         block.currentHealth = Math.min(block.maxHealth, block.currentHealth);
@@ -13237,49 +13231,6 @@ public class GameScreen implements Screen {
     }
 
     /**
-     * Inner class representing an enemy.
-     */
-    private static class Enemy {
-        Vector2 pos;
-        Vector2 facing;
-        float hp, maxHp, speed, size;
-        float defense;
-        float agility;
-        float strength;
-        float intelligence;
-        float stamina;
-        int rewardGold;
-        int rewardExperience;
-        String name;
-        String monsterId;
-        boolean alive;
-        int spriteIndex;
-        float animationTime;
-        float attackCooldown, attackTimer;
-        Vector2 patrolTarget;
-        int dungeonFloor;
-        boolean raidSpawned;
-    }
-
-    /**
-     * Inner class representing an individual robot companion.
-     */
-    private static class RobotCompanion {
-        Vector2 pos;
-        Vector2 facing;
-        String grade;
-        float health;
-        float maxHealth;
-        float attackTimer;
-        float angleDeg;
-        float animationTime;
-        float agility;
-        float strength;
-        float intelligence;
-        float stamina;
-    }
-
-    /**
      * Simple world house footprint.
      */
     static class House {
@@ -13585,25 +13536,5 @@ public class GameScreen implements Screen {
             return moving ? sideWalk : sideIdle;
         }
 
-        Texture[] getOwnedTextures() {
-            List<Texture> textures = new ArrayList<>();
-            appendTexture(textures, downIdle);
-            appendTexture(textures, downWalk);
-            appendTexture(textures, sideIdle);
-            appendTexture(textures, sideWalk);
-            appendTexture(textures, upIdle);
-            appendTexture(textures, upWalk);
-            return textures.toArray(new Texture[0]);
-        }
-
-        private void appendTexture(List<Texture> textures, TextureRegion[] frames) {
-            if (frames.length == 0) {
-                return;
-            }
-            Texture texture = frames[0].getTexture();
-            if (!textures.contains(texture)) {
-                textures.add(texture);
-            }
-        }
     }
 }

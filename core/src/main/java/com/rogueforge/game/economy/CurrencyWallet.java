@@ -1,6 +1,7 @@
 package com.rogueforge.game.economy;
 
 import com.rogueforge.game.core.EventBus;
+import com.rogueforge.game.core.EventHandler;
 import com.rogueforge.game.event.CurrencyEarnedEvent;
 
 /**
@@ -120,6 +121,7 @@ public class CurrencyWallet {
      *
      * @param event The currency earned event
      */
+    @EventHandler
     public void onCurrencyEarned(CurrencyEarnedEvent event) {
         earn(event.getAmount());
     }

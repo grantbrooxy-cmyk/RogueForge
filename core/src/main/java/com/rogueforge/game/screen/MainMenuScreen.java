@@ -24,6 +24,7 @@ import com.rogueforge.game.persistence.SettingsManager;
  * Uses ShapeRenderer for button backgrounds and BitmapFont for text.
  */
 public class MainMenuScreen implements Screen {
+    private static final String BACKGROUND_TEXTURE_PATH = "Backgrounds/background 1/orig_big.png";
     private static final String[] DIFFICULTY_OPTIONS = {"Easy", "Normal", "Hard", "Hell"};
     private static final float BACK_W = 180f;
     private static final float BACK_H = 44f;
@@ -61,7 +62,7 @@ public class MainMenuScreen implements Screen {
         this.saveManager = new SaveManager();
         this.settingsManager = new SettingsManager();
         this.settingsManager.load();
-        this.backgroundTexture = loadTexture("Backgrounds/background 1/orig_big.png");
+        this.backgroundTexture = loadTexture(BACKGROUND_TEXTURE_PATH);
         this.uiTexture = createUiTexture();
 
         titleFont = new BitmapFont();
@@ -74,9 +75,7 @@ public class MainMenuScreen implements Screen {
     }
 
     private Texture loadTexture(String relativePath) {
-        Texture texture = new Texture(Gdx.files.internal(relativePath));
-        texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
-        return texture;
+        return game.loadTexture(relativePath);
     }
 
     private Texture createUiTexture() {
@@ -252,7 +251,7 @@ public class MainMenuScreen implements Screen {
         shapeRenderer.dispose();
         titleFont.dispose();
         buttonFont.dispose();
-        backgroundTexture.dispose();
+        game.unloadTexture(BACKGROUND_TEXTURE_PATH);
         uiTexture.dispose();
     }
 }

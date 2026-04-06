@@ -10,7 +10,6 @@ import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.Texture.TextureFilter;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.rogueforge.game.core.RogueForgeGame;
 import com.rogueforge.game.core.ScreenManager;
@@ -22,6 +21,7 @@ import com.rogueforge.game.persistence.SettingsManager;
  * Displays music volume, SFX volume, and fullscreen toggle as text with placeholder controls.
  */
 public class OptionsScreen implements Screen {
+    private static final String BACKGROUND_TEXTURE_PATH = "Backgrounds/background 2/orig_big.png";
     private static final String[] DIFFICULTY_MODES = {"EASY", "NORMAL", "HARD", "HELL"};
     private final RogueForgeGame game;
     private final ScreenManager screenManager;
@@ -56,7 +56,7 @@ public class OptionsScreen implements Screen {
         this.camera = new OrthographicCamera();
         this.camera.setToOrtho(false, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         this.layout = new GlyphLayout();
-        this.backgroundTexture = loadTexture("Backgrounds/background 2/orig_big.png");
+        this.backgroundTexture = loadTexture(BACKGROUND_TEXTURE_PATH);
         this.musicVolume = settingsManager.getSettings().getMusicVolume();
         this.sfxVolume = settingsManager.getSettings().getSfxVolume();
         this.fullscreen = settingsManager.getSettings().isFullscreen();
@@ -77,9 +77,7 @@ public class OptionsScreen implements Screen {
     }
 
     private Texture loadTexture(String relativePath) {
-        Texture texture = new Texture(Gdx.files.internal(relativePath));
-        texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
-        return texture;
+        return game.loadTexture(relativePath);
     }
 
     @Override
@@ -241,6 +239,6 @@ public class OptionsScreen implements Screen {
         titleFont.dispose();
         labelFont.dispose();
         buttonFont.dispose();
-        backgroundTexture.dispose();
+        game.unloadTexture(BACKGROUND_TEXTURE_PATH);
     }
 }

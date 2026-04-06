@@ -23,6 +23,7 @@ import java.util.Map;
  * In-game roster and equipment menu opened with I.
  */
 public class WorkshopScreen implements Screen {
+    private static final String BACKGROUND_TEXTURE_PATH = "Backgrounds/background 2/orig_big.png";
     private static final String[] TAB_LABELS = {"Roster", "Equipment", "Command", "Archive"};
     private static final float TAB_W = 150f;
     private static final float TAB_H = 42f;
@@ -75,7 +76,7 @@ public class WorkshopScreen implements Screen {
         this.layout = new GlyphLayout();
         this.camera = new OrthographicCamera();
         this.camera.setToOrtho(false, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-        this.backgroundTexture = loadTexture("Backgrounds/background 2/orig_big.png");
+        this.backgroundTexture = loadTexture(BACKGROUND_TEXTURE_PATH);
         this.uiTexture = createUiTexture();
         this.titleFont.getData().setScale(3f);
         this.bodyFont.getData().setScale(1.2f);
@@ -83,9 +84,7 @@ public class WorkshopScreen implements Screen {
     }
 
     private Texture loadTexture(String relativePath) {
-        Texture texture = new Texture(Gdx.files.internal(relativePath));
-        texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
-        return texture;
+        return game.loadTexture(relativePath);
     }
 
     private Texture createUiTexture() {
@@ -880,7 +879,7 @@ public class WorkshopScreen implements Screen {
         titleFont.dispose();
         bodyFont.dispose();
         buttonFont.dispose();
-        backgroundTexture.dispose();
+        game.unloadTexture(BACKGROUND_TEXTURE_PATH);
         uiTexture.dispose();
     }
 }

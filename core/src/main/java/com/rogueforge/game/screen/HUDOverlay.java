@@ -7,16 +7,20 @@ import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.Texture.TextureFilter;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
+import com.rogueforge.game.core.RogueForgeGame;
 
 /**
  * HUD overlay rendered on top of the game screen.
  * Draws health bar, currency, and robot status using ShapeRenderer + BitmapFont (no skin needed).
  */
 public class HUDOverlay {
+    private static final String PANEL_TEXTURE_PATH = "4 GUI/1 Frames/Interface windows.png";
+    private static final String BAR_TEXTURE_PATH = "4 GUI/2 Bars/HealthBar1.png";
+    private static final String ICON_TEXTURE_PATH = "4 GUI/7 Numbers/plus.png";
+    private final RogueForgeGame game;
     private final SpriteBatch batch;
     private final ShapeRenderer shapeRenderer;
     private final BitmapFont font;
@@ -39,7 +43,8 @@ public class HUDOverlay {
     private float[] robotHealth = new float[0];
     private float[] robotMaxHealth = new float[0];
 
-    public HUDOverlay() {
+    public HUDOverlay(RogueForgeGame game) {
+        this.game = game;
         this.batch = new SpriteBatch();
         this.shapeRenderer = new ShapeRenderer();
         this.font = new BitmapFont();
@@ -47,15 +52,13 @@ public class HUDOverlay {
         this.camera = new OrthographicCamera();
         this.viewport = new ScreenViewport(camera);
         this.viewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
-        this.panelTexture = loadTexture("4 GUI/1 Frames/Interface windows.png");
-        this.barTexture = loadTexture("4 GUI/2 Bars/HealthBar1.png");
-        this.iconTexture = loadTexture("4 GUI/7 Numbers/plus.png");
+        this.panelTexture = loadTexture(PANEL_TEXTURE_PATH);
+        this.barTexture = loadTexture(BAR_TEXTURE_PATH);
+        this.iconTexture = loadTexture(ICON_TEXTURE_PATH);
     }
 
     private Texture loadTexture(String relativePath) {
-        Texture texture = new Texture(Gdx.files.internal(relativePath));
-        texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
-        return texture;
+        return game.loadTexture(relativePath);
     }
 
     public void render() {
@@ -162,8 +165,8 @@ public class HUDOverlay {
         batch.dispose();
         shapeRenderer.dispose();
         font.dispose();
-        panelTexture.dispose();
-        barTexture.dispose();
-        iconTexture.dispose();
+        game.unloadTexture(PANEL_TEXTURE_PATH);
+        game.unloadTexture(BAR_TEXTURE_PATH);
+        game.unloadTexture(ICON_TEXTURE_PATH);
     }
 }

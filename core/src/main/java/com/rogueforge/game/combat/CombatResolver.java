@@ -65,32 +65,13 @@ public class CombatResolver {
         return Math.max(1, Math.round(finalDamage));
     }
 
-    public int resolveAbilityDamage(BattleCombatant caster, BattleCombatant target, AbilityDefinition ability) {
+    public DamageResult resolveAbilityDamage(BattleCombatant caster, BattleCombatant target, AbilityDefinition ability) {
         return resolveAbilityDamage(caster, target, ability, 1f);
     }
 
-    /**
-     * Elemental Break sentinel: when the damage return value equals this constant,
-     * the caller knows that an Elemental Break was triggered on this hit and should
-     * display the break notification. The actual damage is encoded as
-     * {@code -(ELEMENTAL_BREAK_FLAG + damage)} — extract with
-     * {@link #extractBreakDamage(int)}.
-     */
-    public static final int ELEMENTAL_BREAK_FLAG = Integer.MIN_VALUE / 2;
-
-    /** Returns true when resolveAbilityDamage encoded a break in its return value. */
-    public static boolean wasElementalBreak(int result) {
-        return result <= ELEMENTAL_BREAK_FLAG;
-    }
-
-    /** Extracts the real damage value from an elemental-break encoded result. */
-    public static int extractBreakDamage(int result) {
-        return -(result - ELEMENTAL_BREAK_FLAG);
-    }
-
-    public int resolveAbilityDamage(BattleCombatant caster, BattleCombatant target, AbilityDefinition ability, float proficiencyMultiplier) {
+    public DamageResult resolveAbilityDamage(BattleCombatant caster, BattleCombatant target, AbilityDefinition ability, float proficiencyMultiplier) {
         if (caster == null || target == null || ability == null) {
-            return 0;
+            return new DamageResult(0, false);
         }
         float offense = (caster.getStrength() * 0.6f) + (caster.getIntelligence() * 0.4f);
         float baseDamage = ability.getPower()
@@ -116,18 +97,12 @@ public class CombatResolver {
             // Absorb: heals the target instead of damaging.
             int healing = Math.max(1, Math.round(Math.abs(baseDamage)));
             target.heal(healing);
-            return -healing;
+            return new DamageResult(-healing, breakTriggered);
         }
         float finalDamage = Math.max(MIN_DAMAGE, applyVariance(baseDamage * multiplier));
         finalDamage *= target.getStatusEffectManager().getAbilityDamageTakenMultiplier();
         int damage = Math.max(1, Math.round(finalDamage));
-
-        // Encode a break notification into the return value so the caller can
-        // display "Elemental Break!" without needing a separate out-param.
-        if (breakTriggered) {
-            return ELEMENTAL_BREAK_FLAG - damage; // caller uses wasElementalBreak() + extractBreakDamage()
-        }
-        return damage;
+        return new DamageResult(damage, breakTriggered);
     }
 
     public int resolveHealing(BattleCombatant caster, AbilityDefinition ability) {
@@ -182,13 +157,11 @@ public class CombatResolver {
         return applyDamage(attacker, defender, damage);
     }
 
-    public int resolveAndApplyAbilityDamage(BattleCombatant caster, BattleCombatant target,
-                                            AbilityDefinition ability, float proficiencyMultiplier) {
-        int damageResult = resolveAbilityDamage(caster, target, ability, proficiencyMultiplier);
-        boolean triggeredBreak = wasElementalBreak(damageResult);
-        int damage = triggeredBreak ? extractBreakDamage(damageResult) : damageResult;
-        int applied = applyDamage(caster, target, damage);
-        return triggeredBreak ? ELEMENTAL_BREAK_FLAG - Math.abs(applied) : applied;
+    public DamageResult resolveAndApplyAbilityDamage(BattleCombatant caster, BattleCombatant target,
+                                                     AbilityDefinition ability, float proficiencyMultiplier) {
+        DamageResult result = resolveAbilityDamage(caster, target, ability, proficiencyMultiplier);
+        int applied = applyDamage(caster, target, result.damage());
+        return new DamageResult(applied, result.elementalBreak());
     }
 
     /**
@@ -211,21 +184,6 @@ public class CombatResolver {
                 effects.remove(i);
             }
         }
-    }
-
-    /**
-     * Box2D contact listener callback for when two entities collide.
-     * This is a placeholder for integration with Box2D physics.
-     *
-     * @param entityA First colliding entity
-     * @param entityB Second colliding entity
-     */
-    public void onContactBegin(Object entityA, Object entityB) {
-        // TODO: Implement Box2D contact listener integration
-        // - Check if either entity is an attacker
-        // - Calculate hit resolution
-        // - Apply damage to defender
-        // - Trigger damage events
     }
 
     /**
@@ -260,7 +218,7 @@ public class CombatResolver {
     }
 
     /**
-     * Convenience overload for distance-based combat (no Box2D needed).
+     * Convenience overload for non-battle damage sources.
      * Takes raw attack/defense values and applies damage to a target's CombatStats.
      *
      * @param attackPower The base attack power value

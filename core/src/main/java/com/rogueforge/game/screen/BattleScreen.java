@@ -18,6 +18,7 @@ import com.rogueforge.game.combat.BattleState;
 import com.rogueforge.game.combat.BestiaryManager;
 import com.rogueforge.game.combat.CombatSystem;
 import com.rogueforge.game.combat.CombatResolver;
+import com.rogueforge.game.combat.DamageResult;
 import com.rogueforge.game.combat.Element;
 import com.rogueforge.game.combat.ElementalSystem;
 import com.rogueforge.game.combat.MonsterCombatant;
@@ -99,7 +100,7 @@ public class BattleScreen implements Screen {
         this.titleFont.getData().setScale(2.2f);
         this.bodyFont.getData().setScale(1.1f);
         this.smallFont.getData().setScale(0.95f);
-        this.combatResolver = new CombatResolver(RogueForgeGame.getEventBus());
+        this.combatResolver = new CombatResolver(game.getEventBus());
         this.healingPotions = encounter.healingPotions;
         this.bestiaryManager.importData(gameScreen.getBestiaryScanLevels());
         List<BattleCombatant> combatants = buildCombatants();
@@ -622,9 +623,9 @@ public class BattleScreen implements Screen {
         }
         switch (definition.getType()) {
             case DAMAGE:
-                int damageResult = combatResolver.resolveAbilityDamage(actor, target, definition, ability.getPowerMultiplier());
-                boolean triggeredBreak = CombatResolver.wasElementalBreak(damageResult);
-                int damage = triggeredBreak ? CombatResolver.extractBreakDamage(damageResult) : damageResult;
+                DamageResult damageResult = combatResolver.resolveAbilityDamage(actor, target, definition, ability.getPowerMultiplier());
+                boolean triggeredBreak = damageResult.elementalBreak();
+                int damage = damageResult.damage();
                 combatResolver.applyDamage(actor, target, damage);
                 handleBossPhaseTransition(target);
                 if (damage < 0) {
@@ -849,7 +850,8 @@ public class BattleScreen implements Screen {
         int speedCost = 80;
         if ("RANGED".equals(actor.getAiProfile()) || "BOSS".equals(actor.getAiProfile())) {
             AbilityDefinition enemyAbility = createEnemyAbility(actor);
-            int damage = combatResolver.resolveAbilityDamage(actor, target, enemyAbility);
+            DamageResult damageResult = combatResolver.resolveAbilityDamage(actor, target, enemyAbility);
+            int damage = damageResult.damage();
             combatResolver.applyDamage(target, damage);
             if (damage < 0) {
                 battleLog.add(target.getName() + " absorbs " + enemyAbility.getName()
