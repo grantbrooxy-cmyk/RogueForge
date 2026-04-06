@@ -3,6 +3,9 @@ package com.rogueforge.game.core;
 import com.badlogic.gdx.ApplicationListener;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.assets.AssetManager;
+import com.badlogic.gdx.assets.loaders.resolvers.InternalFileHandleResolver;
+import com.badlogic.gdx.maps.tiled.TiledMap;
+import com.badlogic.gdx.maps.tiled.TmxMapLoader;
 import com.rogueforge.game.screen.SplashScreen;
 
 /**
@@ -17,10 +20,9 @@ public class RogueForgeGame implements ApplicationListener {
     @Override
     public void create() {
         assetManager = new AssetManager();
+        assetManager.setLoader(TiledMap.class, new TmxMapLoader(new InternalFileHandleResolver()));
         eventBus = new EventBus();
         screenManager = new ScreenManager();
-
-        assetManager.finishLoading();
 
         screenManager.push(new SplashScreen(this, screenManager));
     }
@@ -63,6 +65,28 @@ public class RogueForgeGame implements ApplicationListener {
     public static EventBus getEventBus() {
         if (eventBus == null) eventBus = new EventBus();
         return eventBus;
+    }
+
+    public synchronized <T> T loadAsset(String path, Class<T> assetType) {
+        if (!assetManager.isLoaded(path, assetType)) {
+            assetManager.load(path, assetType);
+            assetManager.finishLoadingAsset(path);
+        }
+        return assetManager.get(path, assetType);
+    }
+
+    public synchronized <T> T getAsset(String path, Class<T> assetType) {
+        return assetManager.get(path, assetType);
+    }
+
+    public synchronized <T> boolean isAssetLoaded(String path, Class<T> assetType) {
+        return assetManager.isLoaded(path, assetType);
+    }
+
+    public synchronized void unloadAsset(String path) {
+        if (assetManager.isLoaded(path)) {
+            assetManager.unload(path);
+        }
     }
 
     public AssetManager getAssets() { return assetManager; }

@@ -1,8 +1,7 @@
 package com.rogueforge.game.combat;
 
-import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.utils.Json;
 import com.rogueforge.game.progression.AbilityProgressionState;
+import com.rogueforge.game.data.DefinitionJson;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -31,11 +30,7 @@ public class AbilityRegistry {
     }
 
     private static void loadDefinitions() {
-        Json json = new Json();
-        AbilityDefinition[] definitions = json.fromJson(
-            AbilityDefinition[].class,
-            Gdx.files.internal("data/abilities.json").readString()
-        );
+        AbilityDefinition[] definitions = DefinitionJson.loadArray("data/abilities.json", AbilityDefinition[].class);
         if (definitions == null) {
             return;
         }

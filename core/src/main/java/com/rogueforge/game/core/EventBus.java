@@ -1,14 +1,21 @@
 package com.rogueforge.game.core;
 
+import java.lang.invoke.CallSite;
+import java.lang.invoke.LambdaMetafactory;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.Method;
 import java.util.*;
+import java.util.function.Consumer;
 
 /**
  * Simple event bus for decoupled communication between game systems.
  * Subscribers can register listeners and receive events based on method annotations.
  */
 public class EventBus {
-    private Map<Class<?>, List<EventListener>> listeners = new HashMap<>();
+    private final Map<Class<?>, List<EventListener>> listeners = new HashMap<>();
+    private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 
     /**
      * Subscribes an object to listen for events.
@@ -25,15 +32,26 @@ public class EventBus {
             // For now, use naming convention: onEventName(EventType event)
             if (method.getName().startsWith("on") && method.getParameterCount() == 1) {
                 Class<?> eventType = method.getParameterTypes()[0];
-
-                // Make method accessible
-                method.setAccessible(true);
-
-                // Add listener
+                Consumer<Object> handler = createHandler(subscriber, method, eventType);
                 listeners.computeIfAbsent(eventType, k -> new ArrayList<>())
-                    .add(new EventListener(subscriber, method));
+                    .add(new EventListener(subscriber, handler));
             }
         }
+    }
+
+    /**
+     * Subscribes a direct listener for one event type without reflective method scanning.
+     *
+     * @param eventType The event class to listen for
+     * @param listener The event consumer
+     * @param <T> The event type
+     */
+    public <T> void subscribe(Class<T> eventType, Consumer<? super T> listener) {
+        if (eventType == null || listener == null) {
+            return;
+        }
+        listeners.computeIfAbsent(eventType, k -> new ArrayList<>())
+            .add(new EventListener(listener, event -> listener.accept(eventType.cast(event))));
     }
 
     /**
@@ -61,9 +79,9 @@ public class EventBus {
         List<EventListener> eventListeners = listeners.get(eventType);
 
         if (eventListeners != null) {
-            for (EventListener listener : eventListeners) {
+            for (EventListener listener : List.copyOf(eventListeners)) {
                 try {
-                    listener.method.invoke(listener.subscriber, event);
+                    listener.handler.accept(event);
                 } catch (Exception e) {
                     System.err.println("Error firing event: " + e.getMessage());
                     e.printStackTrace();
@@ -95,11 +113,41 @@ public class EventBus {
      */
     private static class EventListener {
         Object subscriber;
-        Method method;
+        Consumer<Object> handler;
 
-        EventListener(Object subscriber, Method method) {
+        EventListener(Object subscriber, Consumer<Object> handler) {
             this.subscriber = subscriber;
-            this.method = method;
+            this.handler = handler;
+        }
+    }
+
+    private Consumer<Object> createHandler(Object subscriber, Method method, Class<?> eventType) {
+        try {
+            Class<?> subscriberClass = subscriber.getClass();
+            MethodHandles.Lookup privateLookup = MethodHandles.privateLookupIn(
+                subscriberClass,
+                LOOKUP
+            );
+            MethodHandle methodHandle = privateLookup.unreflect(method);
+            MethodType samMethodType = MethodType.methodType(void.class, Object.class);
+            MethodType instantiatedMethodType = MethodType.methodType(void.class, eventType);
+            CallSite callSite = LambdaMetafactory.metafactory(
+                privateLookup,
+                "accept",
+                MethodType.methodType(Consumer.class, subscriberClass),
+                samMethodType,
+                methodHandle,
+                instantiatedMethodType
+            );
+            @SuppressWarnings("unchecked")
+            Consumer<Object> handler = (Consumer<Object>) callSite.getTarget().invoke(subscriber);
+            return handler;
+        } catch (Throwable throwable) {
+            throw new IllegalStateException(
+                "Failed to register event handler " + method.getName()
+                    + " on " + subscriber.getClass().getName(),
+                throwable
+            );
         }
     }
 }

@@ -16,9 +16,12 @@ import com.rogueforge.game.combat.BattleCombatant;
 import com.rogueforge.game.combat.BattleResultSummary;
 import com.rogueforge.game.combat.BattleState;
 import com.rogueforge.game.combat.BestiaryManager;
+import com.rogueforge.game.combat.CombatSystem;
 import com.rogueforge.game.combat.CombatResolver;
 import com.rogueforge.game.combat.Element;
 import com.rogueforge.game.combat.ElementalSystem;
+import com.rogueforge.game.combat.MonsterCombatant;
+import com.rogueforge.game.combat.PlayerCombatant;
 import com.rogueforge.game.combat.StatusEffectType;
 import com.rogueforge.game.combat.WeaponType;
 import com.rogueforge.game.core.RogueForgeGame;
@@ -61,6 +64,7 @@ public class BattleScreen implements Screen {
     private final GlyphLayout layout;
     private final OrthographicCamera camera;
     private final CombatResolver combatResolver;
+    private final CombatSystem combatSystem;
     private final BestiaryManager bestiaryManager = new BestiaryManager();
     private final BattleState battleState;
     private final List<String> battleLog = new ArrayList<>();
@@ -99,7 +103,8 @@ public class BattleScreen implements Screen {
         this.healingPotions = encounter.healingPotions;
         this.bestiaryManager.importData(gameScreen.getBestiaryScanLevels());
         List<BattleCombatant> combatants = buildCombatants();
-        this.battleState = new BattleState(combatants);
+        this.combatSystem = new CombatSystem(combatants, combatResolver);
+        this.battleState = combatSystem.getBattleState();
         battleLog.add("Encounter! " + join(encounter.enemyNames));
         applyBattleStartUniqueBoosts(combatants);
         initializeBossPhases(combatants);
@@ -107,10 +112,9 @@ public class BattleScreen implements Screen {
 
     private List<BattleCombatant> buildCombatants() {
         List<BattleCombatant> combatants = new ArrayList<>();
-        combatants.add(new BattleCombatant(
+        combatants.add(new PlayerCombatant(
             "player",
             encounter.playerName,
-            true,
             -1,
             "PLAYER",
             "PLAYER",
@@ -135,10 +139,9 @@ public class BattleScreen implements Screen {
                 int partySlot = encounter.robotPartySlots != null && i < encounter.robotPartySlots.length
                     ? encounter.robotPartySlots[i]
                     : i;
-                combatants.add(new BattleCombatant(
+                combatants.add(new PlayerCombatant(
                     "ally_" + i,
                     encounter.robotNames[i],
-                    true,
                     partySlot,
                     "ALLY",
                     "ALLY",
@@ -161,10 +164,9 @@ public class BattleScreen implements Screen {
             }
         }
         for (int i = 0; i < encounter.enemyNames.length; i++) {
-            combatants.add(new BattleCombatant(
+            combatants.add(new MonsterCombatant(
                 encounter.enemyIds != null && i < encounter.enemyIds.length ? encounter.enemyIds[i] : "enemy_" + i,
                 encounter.enemyNames[i],
-                false,
                 i,
                 encounter.enemyRanks != null && i < encounter.enemyRanks.length ? encounter.enemyRanks[i] : "G",
                 encounter.enemyAiProfiles != null && i < encounter.enemyAiProfiles.length ? encounter.enemyAiProfiles[i] : "PATROL",
@@ -557,7 +559,7 @@ public class BattleScreen implements Screen {
         int damage = combatResolver.resolvePhysicalDamage(actor, target, move.multiplier, weaponMultiplier);
         ElementalOutcome elementalOutcome = applyElementalOutcome(target, move.element, damage);
         damage = elementalOutcome.damage;
-        combatResolver.applyDamage(target, damage);
+        combatResolver.applyDamage(actor, target, damage);
         handleBossPhaseTransition(target);
         if (damage < 0) {
             battleLog.add(actor.getName() + " uses " + move.name + " on " + target.getName()
@@ -623,7 +625,7 @@ public class BattleScreen implements Screen {
                 int damageResult = combatResolver.resolveAbilityDamage(actor, target, definition, ability.getPowerMultiplier());
                 boolean triggeredBreak = CombatResolver.wasElementalBreak(damageResult);
                 int damage = triggeredBreak ? CombatResolver.extractBreakDamage(damageResult) : damageResult;
-                combatResolver.applyDamage(target, damage);
+                combatResolver.applyDamage(actor, target, damage);
                 handleBossPhaseTransition(target);
                 if (damage < 0) {
                     battleLog.add(target.getName() + " absorbs " + definition.getName() + " and restores " + Math.abs(damage) + " HP.");

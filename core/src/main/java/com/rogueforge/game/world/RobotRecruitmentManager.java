@@ -1,8 +1,7 @@
 package com.rogueforge.game.world;
 
-import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.utils.Json;
 import com.rogueforge.game.core.GameState;
+import com.rogueforge.game.data.DefinitionJson;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,10 +13,7 @@ public class RobotRecruitmentManager {
     private final Map<String, RecruitmentDefinition> definitions = new HashMap<>();
 
     public RobotRecruitmentManager() {
-        RecruitmentDefinition[] loaded = new Json().fromJson(
-            RecruitmentDefinition[].class,
-            Gdx.files.internal("data/recruitment.json").readString()
-        );
+        RecruitmentDefinition[] loaded = DefinitionJson.loadArray("data/recruitment.json", RecruitmentDefinition[].class);
         if (loaded != null) {
             for (RecruitmentDefinition definition : loaded) {
                 if (definition != null && definition.getEventId() != null) {

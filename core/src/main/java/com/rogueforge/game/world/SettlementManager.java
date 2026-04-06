@@ -1,11 +1,10 @@
 package com.rogueforge.game.world;
 
-import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.utils.Json;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import com.rogueforge.game.data.DefinitionJson;
 
 /**
  * Manages settlement upgrades and their reward payloads.
@@ -14,9 +13,9 @@ public class SettlementManager {
     private final Map<String, SettlementUpgradeDefinition> definitions = new HashMap<>();
 
     public SettlementManager() {
-        SettlementUpgradeDefinition[] loaded = new Json().fromJson(
-            SettlementUpgradeDefinition[].class,
-            Gdx.files.internal("data/settlement_upgrades.json").readString()
+        SettlementUpgradeDefinition[] loaded = DefinitionJson.loadArray(
+            "data/settlement_upgrades.json",
+            SettlementUpgradeDefinition[].class
         );
         if (loaded != null) {
             for (SettlementUpgradeDefinition definition : loaded) {

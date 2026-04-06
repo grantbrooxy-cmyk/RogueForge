@@ -1,8 +1,7 @@
 package com.rogueforge.game.world;
 
-import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.utils.Json;
 import com.rogueforge.game.core.GameState;
+import com.rogueforge.game.data.DefinitionJson;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -14,10 +13,7 @@ public class DialogueSystem {
     private final List<DialogueDefinition> definitions = new ArrayList<>();
 
     public DialogueSystem() {
-        DialogueDefinition[] loaded = new Json().fromJson(
-            DialogueDefinition[].class,
-            Gdx.files.internal("data/dialogue.json").readString()
-        );
+        DialogueDefinition[] loaded = DefinitionJson.loadArray("data/dialogue.json", DialogueDefinition[].class);
         if (loaded != null) {
             for (DialogueDefinition definition : loaded) {
                 if (definition != null) {

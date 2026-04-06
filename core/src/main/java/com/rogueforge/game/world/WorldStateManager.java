@@ -1,8 +1,7 @@
 package com.rogueforge.game.world;
 
-import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.utils.Json;
 import com.rogueforge.game.core.GameState;
+import com.rogueforge.game.data.DefinitionJson;
 
 /**
  * Manages global world-state flags that gate content and interactions.
@@ -11,10 +10,7 @@ public class WorldStateManager {
     private WorldStateDefinition[] definitions;
 
     public WorldStateManager() {
-        definitions = new Json().fromJson(
-            WorldStateDefinition[].class,
-            Gdx.files.internal("data/world_state.json").readString()
-        );
+        definitions = DefinitionJson.loadArray("data/world_state.json", WorldStateDefinition[].class);
         if (definitions == null) {
             definitions = new WorldStateDefinition[0];
         }

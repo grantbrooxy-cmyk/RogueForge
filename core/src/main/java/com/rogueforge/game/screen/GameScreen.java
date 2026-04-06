@@ -16,10 +16,8 @@ import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.maps.tiled.TiledMap;
 import com.badlogic.gdx.maps.tiled.TiledMapTileLayer;
-import com.badlogic.gdx.maps.tiled.TmxMapLoader;
 import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer;
 import com.badlogic.gdx.utils.Array;
-import com.badlogic.gdx.utils.Json;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
@@ -66,6 +64,7 @@ import com.rogueforge.game.combat.AbilityRegistry;
 import com.rogueforge.game.combat.WeaponType;
 import com.rogueforge.game.data.EquipmentItem;
 import com.rogueforge.game.data.BlueprintFragmentDefinition;
+import com.rogueforge.game.data.DefinitionJson;
 import com.rogueforge.game.data.ForgeComponentDefinition;
 import com.rogueforge.game.data.ForgeIngredientDefinition;
 import com.rogueforge.game.data.ForgeRecipeDefinition;
@@ -136,6 +135,7 @@ public class GameScreen implements Screen {
     private Texture villageWallTileTexture;
     // Tiled map renderer — used when the zone TMX has painted tile layers
     private TiledMap currentTiledMap;
+    private String currentTiledMapPath;
     private OrthogonalTiledMapRenderer tiledMapRenderer;
     private Texture doorTexture;
     private Texture chestTexture;
@@ -8075,7 +8075,7 @@ public class GameScreen implements Screen {
     }
 
     private void loadZoneDefinitions() {
-        ZoneDefinition[] definitions = new Json().fromJson(ZoneDefinition[].class, Gdx.files.internal("data/zones.json").readString());
+        ZoneDefinition[] definitions = DefinitionJson.loadArray("data/zones.json", ZoneDefinition[].class);
         if (definitions == null) {
             return;
         }
@@ -8085,7 +8085,7 @@ public class GameScreen implements Screen {
     }
 
     private void loadRobotDefinitions() {
-        RobotDefinition[] definitions = new Json().fromJson(RobotDefinition[].class, Gdx.files.internal("data/robots.json").readString());
+        RobotDefinition[] definitions = DefinitionJson.loadArray("data/robots.json", RobotDefinition[].class);
         if (definitions == null) {
             return;
         }
@@ -8097,7 +8097,7 @@ public class GameScreen implements Screen {
     }
 
     private void loadMonsterDefinitions() {
-        MonsterDefinition[] definitions = new Json().fromJson(MonsterDefinition[].class, Gdx.files.internal("data/monsters.json").readString());
+        MonsterDefinition[] definitions = DefinitionJson.loadArray("data/monsters.json", MonsterDefinition[].class);
         if (definitions == null) {
             return;
         }
@@ -8107,10 +8107,7 @@ public class GameScreen implements Screen {
     }
 
     private void loadForgeComponentDefinitions() {
-        ForgeComponentDefinition[] definitions = new Json().fromJson(
-            ForgeComponentDefinition[].class,
-            Gdx.files.internal("data/forge_components.json").readString()
-        );
+        ForgeComponentDefinition[] definitions = DefinitionJson.loadArray("data/forge_components.json", ForgeComponentDefinition[].class);
         if (definitions == null) {
             return;
         }
@@ -8122,10 +8119,7 @@ public class GameScreen implements Screen {
     }
 
     private void loadBlueprintFragmentDefinitions() {
-        BlueprintFragmentDefinition[] definitions = new Json().fromJson(
-            BlueprintFragmentDefinition[].class,
-            Gdx.files.internal("data/blueprint_fragments.json").readString()
-        );
+        BlueprintFragmentDefinition[] definitions = DefinitionJson.loadArray("data/blueprint_fragments.json", BlueprintFragmentDefinition[].class);
         if (definitions == null) {
             return;
         }
@@ -8137,10 +8131,7 @@ public class GameScreen implements Screen {
     }
 
     private void loadForgeRecipes() {
-        ForgeRecipeDefinition[] definitions = new Json().fromJson(
-            ForgeRecipeDefinition[].class,
-            Gdx.files.internal("data/forge_recipes.json").readString()
-        );
+        ForgeRecipeDefinition[] definitions = DefinitionJson.loadArray("data/forge_recipes.json", ForgeRecipeDefinition[].class);
         if (definitions == null) {
             return;
         }
@@ -8153,10 +8144,7 @@ public class GameScreen implements Screen {
     }
 
     private void loadStoryEvents() {
-        StoryEventDefinition[] definitions = new Json().fromJson(
-            StoryEventDefinition[].class,
-            Gdx.files.internal("data/story_events.json").readString()
-        );
+        StoryEventDefinition[] definitions = DefinitionJson.loadArray("data/story_events.json", StoryEventDefinition[].class);
         storyEvents.clear();
         if (definitions == null) {
             return;
@@ -8169,7 +8157,7 @@ public class GameScreen implements Screen {
     }
 
     private void loadShopDefinitions() {
-        ShopDefinition[] definitions = new Json().fromJson(ShopDefinition[].class, Gdx.files.internal("data/shop_inventories.json").readString());
+        ShopDefinition[] definitions = DefinitionJson.loadArray("data/shop_inventories.json", ShopDefinition[].class);
         if (definitions == null) {
             return;
         }
@@ -8256,8 +8244,10 @@ public class GameScreen implements Screen {
         if (definition == null || definition.getTilemapPath() == null || definition.getTilemapPath().isEmpty()) {
             return;
         }
+        String tilemapPath = definition.getTilemapPath();
         try {
-            currentTiledMap = new TmxMapLoader().load(definition.getTilemapPath());
+            currentTiledMap = game.loadAsset(tilemapPath, TiledMap.class);
+            currentTiledMapPath = tilemapPath;
             if (hasRenderableTileLayers(currentTiledMap)) {
                 tiledMapRenderer = new OrthogonalTiledMapRenderer(currentTiledMap, 1f);
             } else {
@@ -8286,8 +8276,11 @@ public class GameScreen implements Screen {
             tiledMapRenderer = null;
         }
         if (currentTiledMap != null) {
-            currentTiledMap.dispose();
             currentTiledMap = null;
+        }
+        if (currentTiledMapPath != null) {
+            game.unloadAsset(currentTiledMapPath);
+            currentTiledMapPath = null;
         }
     }
 
@@ -9043,10 +9036,7 @@ public class GameScreen implements Screen {
     }
 
     private void initializeEquipmentCatalog() {
-        EquipmentItem[] definitions = new Json().fromJson(
-            EquipmentItem[].class,
-            Gdx.files.internal("data/equipment.json").readString()
-        );
+        EquipmentItem[] definitions = DefinitionJson.loadArray("data/equipment.json", EquipmentItem[].class);
         if (definitions != null) {
             for (EquipmentItem item : definitions) {
                 addEquipmentToCatalog(item);

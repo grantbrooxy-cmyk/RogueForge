@@ -59,10 +59,9 @@ class CombatSystemsTest {
 
     @Test
     void elementalSystemRecognizesWeaknessResistanceAbsorbAndBreak() {
-        BattleCombatant target = new BattleCombatant(
+        BattleCombatant target = new MonsterCombatant(
             "enemy",
             "Drake",
-            false,
             0,
             "B",
             "AGGRO",
@@ -170,10 +169,9 @@ class CombatSystemsTest {
         assertEquals(null, subscriber.killedEvent.getEntity());
 
         BattleCombatant caster = combatant("caster", "Support", 100f, 20f, 16f, 30f, 12f);
-        BattleCombatant absorbed = new BattleCombatant(
+        BattleCombatant absorbed = new MonsterCombatant(
             "absorbed",
             "Absorber",
-            false,
             0,
             "C",
             "AI",
@@ -210,10 +208,9 @@ class CombatSystemsTest {
         assertTrue(absorbed.getHealth() > 20f);
         assertTrue(resolver.resolveHealing(caster, healPulse) > 0);
 
-        BattleCombatant weakTarget = new BattleCombatant(
+        BattleCombatant weakTarget = new MonsterCombatant(
             "weak",
             "Weak Target",
-            false,
             0,
             "C",
             "AI",
@@ -242,12 +239,47 @@ class CombatSystemsTest {
         assertTrue(CombatResolver.extractBreakDamage(breakResult) > 0);
     }
 
+    @Test
+    void combatSystemOwnsBattleStateAndResolver() {
+        BattleCombatant ally = combatant("ally", "Support", 100f, 30f, 20f, 12f, 20f);
+        BattleCombatant enemy = new MonsterCombatant(
+            "enemy",
+            "Enemy",
+            0,
+            "C",
+            "AI",
+            "Enemy",
+            50f,
+            50f,
+            10f,
+            10f,
+            10f,
+            10f,
+            new ArrayList<>(),
+            List.of(),
+            List.of(),
+            List.of(),
+            0,
+            0,
+            null,
+            List.of()
+        );
+
+        CombatResolver resolver = new CombatResolver(new EventBus());
+        CombatSystem combatSystem = new CombatSystem(List.of(ally, enemy), resolver);
+
+        assertEquals(resolver, combatSystem.getCombatResolver());
+        assertEquals(2, combatSystem.getCombatants().size());
+        assertEquals(1, combatSystem.getAllies().size());
+        assertEquals(1, combatSystem.getEnemies().size());
+        assertEquals("ally", combatSystem.getCurrentActor().getId());
+    }
+
     private static BattleCombatant combatant(String id, String combatClass, float hp, float agility,
                                              float strength, float intelligence, float stamina) {
-        return new BattleCombatant(
+        return new PlayerCombatant(
             id,
             id,
-            true,
             0,
             "C",
             "ALLY",

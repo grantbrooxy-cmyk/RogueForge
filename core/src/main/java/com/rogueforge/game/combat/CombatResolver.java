@@ -13,7 +13,7 @@ public class CombatResolver {
     private static final float MIN_DAMAGE = 1.0f;
     private static final float DEFENSE_REDUCTION_FACTOR = 0.5f;
 
-    private EventBus eventBus;
+    private final EventBus eventBus;
 
     public CombatResolver(EventBus eventBus) {
         this.eventBus = eventBus;
@@ -148,15 +148,47 @@ public class CombatResolver {
         return Math.max(1, Math.round(healAmount));
     }
 
-    public void applyDamage(BattleCombatant defender, int damage) {
+    public int applyDamage(BattleCombatant defender, int damage) {
+        return applyDamage(null, defender, damage);
+    }
+
+    public int applyDamage(BattleCombatant attacker, BattleCombatant defender, int damage) {
         if (defender == null || damage == 0) {
-            return;
+            return 0;
         }
         if (damage < 0) {
             defender.heal(Math.abs(damage));
-            return;
+            return damage;
         }
+        return applyResolvedDamage(attacker, defender, damage);
+    }
+
+    public int applyResolvedDamage(BattleCombatant attacker, BattleCombatant defender, int damage) {
+        if (defender == null || damage <= 0) {
+            return 0;
+        }
+        boolean wasAlive = defender.isAlive();
         defender.applyDirectDamage(damage);
+        fireDamageEvent(resolveEventReference(attacker), resolveEventReference(defender), damage);
+        if (wasAlive && !defender.isAlive()) {
+            fireEntityKilledEvent(resolveEventReference(defender));
+        }
+        return damage;
+    }
+
+    public int resolveAndApplyPhysicalDamage(BattleCombatant attacker, BattleCombatant defender,
+                                             float actionMultiplier, float weaponMultiplier) {
+        int damage = resolvePhysicalDamage(attacker, defender, actionMultiplier, weaponMultiplier);
+        return applyDamage(attacker, defender, damage);
+    }
+
+    public int resolveAndApplyAbilityDamage(BattleCombatant caster, BattleCombatant target,
+                                            AbilityDefinition ability, float proficiencyMultiplier) {
+        int damageResult = resolveAbilityDamage(caster, target, ability, proficiencyMultiplier);
+        boolean triggeredBreak = wasElementalBreak(damageResult);
+        int damage = triggeredBreak ? extractBreakDamage(damageResult) : damageResult;
+        int applied = applyDamage(caster, target, damage);
+        return triggeredBreak ? ELEMENTAL_BREAK_FLAG - Math.abs(applied) : applied;
     }
 
     /**
@@ -209,10 +241,7 @@ public class CombatResolver {
     public float applyDamage(CombatStats attacker, CombatStats defender, Object attackerSource, Object defenderSource) {
         float damage = resolveHit(attacker, defender);
         defender.takeDamage(damage);
-
-        DamageDealtEvent event = new DamageDealtEvent(attackerSource, defenderSource, damage);
-        eventBus.fire(event);
-
+        fireDamageEvent(attackerSource, defenderSource, damage);
         checkDeath(defender, defenderSource);
         return damage;
     }
@@ -243,12 +272,24 @@ public class CombatResolver {
         float baseDamage = attackPower - (defender.getDefense() * DEFENSE_REDUCTION_FACTOR);
         float damage = Math.max(baseDamage, MIN_DAMAGE);
         defender.takeDamage(damage);
-
-        DamageDealtEvent event = new DamageDealtEvent(source, null, damage);
-        eventBus.fire(event);
-
+        fireDamageEvent(source, null, damage);
         checkDeath(defender, null);
         return damage;
+    }
+
+    private void fireDamageEvent(Object source, Object target, float damage) {
+        eventBus.fire(new DamageDealtEvent(source, target, damage));
+    }
+
+    private void fireEntityKilledEvent(Object entity) {
+        eventBus.fire(new EntityKilledEvent(entity));
+    }
+
+    private Object resolveEventReference(BattleCombatant combatant) {
+        if (combatant == null) {
+            return null;
+        }
+        return combatant.getSourceReference() != null ? combatant.getSourceReference() : combatant;
     }
 
     private float applyVariance(float value) {

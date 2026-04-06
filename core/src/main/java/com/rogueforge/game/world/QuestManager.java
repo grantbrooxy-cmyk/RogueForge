@@ -1,8 +1,7 @@
 package com.rogueforge.game.world;
 
-import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.utils.Json;
 import com.rogueforge.game.core.GameState;
+import com.rogueforge.game.data.DefinitionJson;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -25,10 +24,7 @@ public class QuestManager {
     }
 
     private void loadDefinitions() {
-        QuestDefinition[] loaded = new Json().fromJson(
-            QuestDefinition[].class,
-            Gdx.files.internal("data/quests.json").readString()
-        );
+        QuestDefinition[] loaded = DefinitionJson.loadArray("data/quests.json", QuestDefinition[].class);
         if (loaded == null) {
             return;
         }
