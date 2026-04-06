@@ -517,6 +517,7 @@
   <object id="27" name="sky_fortress_gate" x="1602" y="320" width="80" height="80">
    <properties>
     <property name="label" value="Sky Fortress" />
+    <property name="requiredWorldFlag" value="frontier.sky_route_mapped" />
     <property name="targetZone" value="sky_fortress" />
     <property name="targetSpawn" value="from_peak" />
     <property name="lockMessage" value="The air rail above the peak climbs toward an ancient fortress in the clouds." />

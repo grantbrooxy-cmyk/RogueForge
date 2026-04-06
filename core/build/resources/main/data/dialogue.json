@@ -166,7 +166,7 @@
     "npcId": "mira",
     "priority": 185,
     "requiredQuestId": "first_steps",
-    "requiredQuestState": "verdant_patrol",
+    "requiredQuestState": "return_mira_intro",
     "requiredWorldFlag": "arrival.first_battle_won",
     "lines": [
       {
@@ -1438,7 +1438,7 @@
       }
     ],
     "setQuestId": "origin_descent",
-    "setQuestStep": "enter_void"
+    "setQuestStep": "speak_watcher"
   },
   {
     "id": "watcher_from_town",

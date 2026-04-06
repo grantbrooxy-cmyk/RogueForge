@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.rogueforge.game.world.FrontierZoneGeneratorTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-04-06T06:33:01" hostname="Grants-MacBook-Pro.local" time="0.031">
-  <properties/>
-  <testcase name="verdantFieldsExpandsIntoLargeFrontierWithStarterSafeRadiusAndResources()" classname="com.rogueforge.game.world.FrontierZoneGeneratorTest" time="0.019"/>
-  <testcase name="frontierGenerationUsesSeedForDeterministicLayout()" classname="com.rogueforge.game.world.FrontierZoneGeneratorTest" time="0.012"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>

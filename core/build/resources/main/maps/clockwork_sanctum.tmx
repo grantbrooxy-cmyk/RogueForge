@@ -519,6 +519,7 @@
   <object id="26" name="abyssal_rift_conduit" x="1560" y="360" width="80" height="80">
    <properties>
     <property name="label" value="Abyssal Rift" />
+    <property name="requiredWorldFlag" value="frontier.command_rails_online" />
     <property name="targetZone" value="abyssal_rift" />
     <property name="targetSpawn" value="from_sanctum" />
     <property name="lockMessage" value="The conduit ahead pulses with unstable logic and rupture energy." />
@@ -527,6 +528,7 @@
   <object id="29" name="the_void_conduit" x="1460" y="300" width="80" height="80">
    <properties>
     <property name="label" value="The Void" />
+    <property name="requiredWorldFlag" value="frontier.void_gate_stable" />
     <property name="targetZone" value="the_void" />
     <property name="targetSpawn" value="from_sanctum" />
     <property name="lockMessage" value="A deeper conduit opens beyond the clockwork rails into the final dimensional breach." />

@@ -158,6 +158,11 @@ public class ForgeScreen implements Screen {
         for (int i = 0; i < TAB_LABELS.length; i++) {
             float tx = 48f + i * (TAB_W + TAB_GAP);
             if (mx >= tx && mx <= tx + TAB_W && my >= h - 140f && my <= h - 140f + TAB_H) {
+                if (i == 1 && !gameScreen.isFusionForgeUnlocked()) {
+                    statusMessage = gameScreen.getFusionForgeLockedReason();
+                    currentTab = 0;
+                    return;
+                }
                 if (currentTab != i) {
                     currentTab = i;
                     statusMessage = null;
@@ -274,7 +279,11 @@ public class ForgeScreen implements Screen {
         for (int i = 0; i < TAB_LABELS.length; i++) {
             float tx = 48f + i * (TAB_W + TAB_GAP);
             layout.setText(buttonFont, TAB_LABELS[i]);
-            buttonFont.setColor(i == currentTab ? new Color(1f, 0.9f, 0.55f, 1f) : Color.WHITE);
+            Color tabColor = i == currentTab ? new Color(1f, 0.9f, 0.55f, 1f) : Color.WHITE;
+            if (i == 1 && !gameScreen.isFusionForgeUnlocked()) {
+                tabColor = new Color(0.72f, 0.72f, 0.72f, 1f);
+            }
+            buttonFont.setColor(tabColor);
             buttonFont.draw(batch, TAB_LABELS[i], tx + (TAB_W - layout.width) / 2f, h - 112f);
         }
 
@@ -364,6 +373,10 @@ public class ForgeScreen implements Screen {
     // ── Drawing: Fuse tab ──────────────────────────────────────────────────────
 
     private void drawFusionContent(float w, float h, float mx, float my) {
+        if (!gameScreen.isFusionForgeUnlocked()) {
+            drawFusionLockedContent(h);
+            return;
+        }
         List<EquipmentItem> owned = gameScreen.getEquipmentCatalog();
         hoveredFusionItem = -1;
         hoveredFuseButton = false;
@@ -488,6 +501,19 @@ public class ForgeScreen implements Screen {
             bodyFont.draw(batch, statusMessage, rX, topY - 330f);
             bodyFont.setColor(Color.WHITE);
         }
+    }
+
+    private void drawFusionLockedContent(float h) {
+        float topY = h - 190f;
+        batch.setColor(new Color(0.12f, 0.14f, 0.2f, 0.96f));
+        batch.draw(uiTexture, 44f, 80f, Gdx.graphics.getWidth() - 88f, h - 260f);
+        batch.setColor(Color.WHITE);
+        bodyFont.setColor(Color.WHITE);
+        bodyFont.draw(batch, "Fusion Station", 56f, topY);
+        bodyFont.setColor(Color.LIGHT_GRAY);
+        bodyFont.draw(batch, gameScreen.getFusionForgeLockedReason(), 56f, topY - 34f);
+        bodyFont.draw(batch, "Speak with Master Silas and complete the Fusion Forge restoration to unlock this tab.", 56f, topY - 68f);
+        bodyFont.setColor(Color.WHITE);
     }
 
     /** Draws a single fusion input slot with item info or an empty placeholder. */

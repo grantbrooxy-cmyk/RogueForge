@@ -620,7 +620,9 @@ public class BattleScreen implements Screen {
         }
         switch (definition.getType()) {
             case DAMAGE:
-                int damage = combatResolver.resolveAbilityDamage(actor, target, definition, ability.getPowerMultiplier());
+                int damageResult = combatResolver.resolveAbilityDamage(actor, target, definition, ability.getPowerMultiplier());
+                boolean triggeredBreak = CombatResolver.wasElementalBreak(damageResult);
+                int damage = triggeredBreak ? CombatResolver.extractBreakDamage(damageResult) : damageResult;
                 combatResolver.applyDamage(target, damage);
                 handleBossPhaseTransition(target);
                 if (damage < 0) {
@@ -667,7 +669,7 @@ public class BattleScreen implements Screen {
                     if (multiplier != 1f) {
                         battleLog.add("Elemental hit: " + ElementalSystem.describeHit(multiplier) + ".");
                     }
-                    if (damage > 0 && maybeTriggerElementalBreak(target, definition.getElement())) {
+                    if (damage > 0 && triggeredBreak) {
                         battleLog.add(target.getName() + "'s " + definition.getElement().name() + " guard breaks.");
                     }
                 }

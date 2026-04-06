@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.rogueforge.game.combat.AbilityRuntimeTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-04-06T06:33:01" hostname="Grants-MacBook-Pro.local" time="0.014">
-  <properties/>
-  <testcase name="abilityInstanceTracksCooldownAndProgressionBonuses()" classname="com.rogueforge.game.combat.AbilityRuntimeTest" time="0.013"/>
-  <testcase name="abilityDefinitionDefaultsAndSecondaryStatusFallbacksWork()" classname="com.rogueforge.game.combat.AbilityRuntimeTest" time="0.001"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>

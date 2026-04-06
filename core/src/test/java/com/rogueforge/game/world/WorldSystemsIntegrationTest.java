@@ -140,6 +140,8 @@ class WorldSystemsIntegrationTest {
         }
 
         world.setFlag(state, "arrival.first_battle_won", true);
+        quests.syncProgress(state, world);
+        assertEquals("return_mira_intro", quests.getQuestState(state, "first_steps"));
         DialogueSystem.DialogueResult afterBattle = dialogue.resolve("mira", "verdant_fields", state, quests, world);
         assertNotNull(afterBattle);
         assertTrue(afterBattle.text.contains("Back in one piece"));

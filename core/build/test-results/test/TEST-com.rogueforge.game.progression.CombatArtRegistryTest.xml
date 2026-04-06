@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.rogueforge.game.progression.CombatArtRegistryTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-04-06T06:33:01" hostname="Grants-MacBook-Pro.local" time="0.001">
-  <properties/>
-  <testcase name="nonCombatWeaponTypeReturnsEmptyValues()" classname="com.rogueforge.game.progression.CombatArtRegistryTest" time="0.001"/>
-  <testcase name="returnsExpectedArtIdsForSwordMilestones()" classname="com.rogueforge.game.progression.CombatArtRegistryTest" time="0.0"/>
-  <testcase name="returnsExpectedUnlockLevelsAndTierLookup()" classname="com.rogueforge.game.progression.CombatArtRegistryTest" time="0.0"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>

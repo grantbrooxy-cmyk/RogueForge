@@ -94,6 +94,51 @@ class ZoneMapIntegrityTest {
         }
     }
 
+    @Test
+    void lateGameDoorsDeclareTheirRequiredWorldFlagsInMapData() {
+        ZoneDefinition[] definitions = new Json().fromJson(
+            ZoneDefinition[].class,
+            Gdx.files.internal("data/zones.json").readString()
+        );
+
+        assertNotNull(definitions);
+        TmxWorldLoader loader = new TmxWorldLoader();
+        Map<String, TmxWorldLoader.LoadedZone> loadedZones = new HashMap<>();
+        for (ZoneDefinition definition : definitions) {
+            loadedZones.put(definition.getId(), loader.load(definition));
+        }
+
+        assertDoorRequiresFlag(loadedZones, "dragon_peak", "sky_fortress_gate", "frontier.sky_route_mapped");
+        assertDoorRequiresFlag(loadedZones, "frozen_vale", "abyssal_rift_gate", "frontier.command_rails_online");
+        assertDoorRequiresFlag(loadedZones, "clockwork_sanctum", "abyssal_rift_conduit", "frontier.command_rails_online");
+        assertDoorRequiresFlag(loadedZones, "clockwork_sanctum", "the_void_conduit", "frontier.void_gate_stable");
+        assertDoorRequiresFlag(loadedZones, "abyssal_rift", "the_void_gate", "frontier.void_gate_stable");
+    }
+
+    private void assertDoorRequiresFlag(
+        Map<String, TmxWorldLoader.LoadedZone> loadedZones,
+        String zoneId,
+        String doorId,
+        String expectedFlag
+    ) {
+        TmxWorldLoader.LoadedZone zone = loadedZones.get(zoneId);
+        assertNotNull(zone, "Missing loaded zone " + zoneId);
+
+        TmxWorldLoader.Door matchingDoor = null;
+        for (TmxWorldLoader.Door door : zone.doors) {
+            if (doorId.equals(door.id)) {
+                matchingDoor = door;
+                break;
+            }
+        }
+
+        assertNotNull(matchingDoor, "Missing door " + zoneId + ":" + doorId);
+        assertTrue(
+            expectedFlag.equals(matchingDoor.requiredWorldFlag),
+            "Door " + zoneId + ":" + doorId + " should require world flag " + expectedFlag
+        );
+    }
+
     private boolean hasAccessibleDoorApproach(TmxWorldLoader.LoadedZone zone, TmxWorldLoader.Door door) {
         float minX = Math.max(0f, door.bounds.x - DOOR_INTERACTION_RANGE - PLAYER_SIZE);
         float maxX = Math.min(zone.pixelWidth, door.bounds.x + door.bounds.width + DOOR_INTERACTION_RANGE + PLAYER_SIZE);

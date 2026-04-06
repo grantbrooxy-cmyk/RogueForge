@@ -97,6 +97,7 @@ import com.rogueforge.game.world.SettlementUpgradeDefinition;
 import com.rogueforge.game.world.WarPhaseManager;
 import com.rogueforge.game.world.WarPhaseSnapshot;
 import com.rogueforge.game.world.WorldStateManager;
+import com.rogueforge.game.world.ZoneAccessPolicy;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -286,6 +287,7 @@ public class GameScreen implements Screen {
     private String pinnedExpeditionContractKind = null;
     private String pinnedExpeditionContractTargetId = null;
     private boolean pinnedExpeditionContractCompleted = false;
+    private int expeditionBoardReputation = 0;
     private int guildMenuSelectionIndex = 0;
     private boolean buildModeOpen = false;
     private int selectedBuildStructureIndex = 0;
@@ -2586,11 +2588,13 @@ public class GameScreen implements Screen {
             lines.add("Outpost banking " + (canBankExpeditionHaulHere() ? "is available from this staging point." : "is unavailable until storage is built and staffed here."));
         }
         lines.add("World event pressure: " + getActiveWorldEventName() + ".");
+        lines.add("Board reputation: " + expeditionBoardReputation + "  |  Contract tier: " + getExpeditionBoardTierLabel() + ".");
+        lines.add("Sponsor status: " + getExpeditionSponsorStatusLine() + ".");
         if (selectedDestination != null) {
             for (int i = 0; i < destinations.size(); i++) {
                 ExpeditionLaunchDestination destination = destinations.get(i);
                 String prefix = i == expeditionBoardSelectionIndex ? "> " : "  ";
-                lines.add(prefix + destination.label + (destination.currentZone ? " [Here]" : ""));
+                lines.add(prefix + destination.label + " [" + destination.contractTierLabel + "]" + (destination.currentZone ? " [Here]" : ""));
             }
             lines.add("Selected deployment: " + selectedDestination.label + ".");
             lines.add(selectedDestination.detail);
@@ -2762,7 +2766,54 @@ public class GameScreen implements Screen {
             addExpeditionLaunchDestination(destinations, "verdant_fields", null, getZoneDisplayName("verdant_fields"),
                 "Deploy through the first frontier gate and begin a fresh scouting push.");
         }
+        addSponsoredExpeditionDestinations(destinations);
         return destinations;
+    }
+
+    private void addSponsoredExpeditionDestinations(List<ExpeditionLaunchDestination> destinations) {
+        if (expeditionBoardReputation >= 4) {
+            if (zoneDefinitions.containsKey("whispering_forest")) {
+                addExpeditionLaunchDestination(destinations, "whispering_forest", null, "Whispering Forest Relay",
+                    "Sponsored relay route. The board has charted a quieter approach into Whispering Forest for silver-tier contracts.");
+            }
+            if (getForgeCoreLevel() >= 2 && zoneDefinitions.containsKey("rusty_quarry")) {
+                addExpeditionLaunchDestination(destinations, "rusty_quarry", null, "Rusty Quarry Survey",
+                    "Sponsored extraction route. Silver board standing unlocks a direct salvage lane into Rusty Quarry.");
+            }
+        }
+        if (expeditionBoardReputation >= 10) {
+            if (getForgeCoreLevel() >= 3 && zoneDefinitions.containsKey("crystal_depths")) {
+                addExpeditionLaunchDestination(destinations, "crystal_depths", null, "Crystal Depths Charter",
+                    "Gold board charter. High-value fragment teams are being routed straight into Crystal Depths.");
+            }
+            if (worldStateManager.isFlagActive(gameState, "frontier.sky_route_mapped") && zoneDefinitions.containsKey("sky_fortress")) {
+                addExpeditionLaunchDestination(destinations, "sky_fortress", null, "Sky Fortress Writ",
+                    "Gold board writ. A rare command flight plan has opened a sponsored strike route to Sky Fortress.");
+            }
+        }
+        addDragonRoostDestinations(destinations);
+    }
+
+    private void addDragonRoostDestinations(List<ExpeditionLaunchDestination> destinations) {
+        if (!worldStateManager.isFlagActive(gameState, "frontier.dragon_roosts_active")) {
+            return;
+        }
+        if (zoneDefinitions.containsKey("scorched_plateau")) {
+            addExpeditionLaunchDestination(destinations, "scorched_plateau", null, "Scorched Plateau Roost",
+                "Dragon roost route. Your drake can drop the crew directly onto the plateau's outer ridge.");
+        }
+        if (zoneDefinitions.containsKey("frozen_vale")) {
+            addExpeditionLaunchDestination(destinations, "frozen_vale", null, "Frozen Vale Roost",
+                "Dragon roost route. Aerial insertion cuts past the cliff road and lands near the frozen cloister.");
+        }
+        if (zoneDefinitions.containsKey("crystal_depths")) {
+            addExpeditionLaunchDestination(destinations, "crystal_depths", null, "Crystal Depths Overflight",
+                "Dragon roost route. A high drop into the crystal shelf reaches the depths faster than the old cave trail.");
+        }
+        if (worldStateManager.isFlagActive(gameState, "frontier.sky_route_mapped") && zoneDefinitions.containsKey("sky_fortress")) {
+            addExpeditionLaunchDestination(destinations, "sky_fortress", null, "Sky Fortress Air Rail",
+                "Dragon-assisted air route. Your mount carries the crew onto the restored sky approach beneath the fortress.");
+        }
     }
 
     private void addExpeditionLaunchDestination(
@@ -2775,12 +2826,23 @@ public class GameScreen implements Screen {
         if (zoneId == null || zoneId.isEmpty() || !zoneDefinitions.containsKey(zoneId)) {
             return;
         }
+        ZoneAccessPolicy.AccessDecision accessDecision = evaluateZoneAccess(zoneId);
+        if (!zoneId.equals(currentZoneId) && !accessDecision.isAllowed()) {
+            return;
+        }
         for (ExpeditionLaunchDestination existing : destinations) {
             if (existing.zoneId.equals(zoneId)) {
                 return;
             }
         }
-        destinations.add(new ExpeditionLaunchDestination(zoneId, spawnId, label, detail, zoneId.equals(currentZoneId)));
+        destinations.add(new ExpeditionLaunchDestination(
+            zoneId,
+            spawnId,
+            label,
+            detail,
+            zoneId.equals(currentZoneId),
+            getDestinationContractTierLabel(zoneId)
+        ));
     }
 
     private void launchSelectedExpeditionDestination() {
@@ -2792,6 +2854,11 @@ public class GameScreen implements Screen {
         }
         clampExpeditionBoardSelection();
         ExpeditionLaunchDestination destination = destinations.get(expeditionBoardSelectionIndex);
+        ZoneAccessPolicy.AccessDecision accessDecision = evaluateZoneAccess(destination.zoneId);
+        if (!accessDecision.isAllowed()) {
+            showStandaloneDialog("Expedition Board", accessDecision.getBlockedReason());
+            return;
+        }
         pinExpeditionContract(destination);
         expeditionBoardOpen = false;
         loadZone(destination.zoneId, destination.spawnId, true);
@@ -2814,6 +2881,54 @@ public class GameScreen implements Screen {
             return definition.getName();
         }
         return formatZoneName(zoneId);
+    }
+
+    private ZoneAccessPolicy.AccessDecision evaluateZoneAccess(String zoneId) {
+        return ZoneAccessPolicy.evaluate(
+            zoneId,
+            gameState.getPlayerLevel(),
+            getUnlockedGrade(),
+            getForgeCoreLevel(),
+            gameState.getWorldStateFlags(),
+            gameState.getQuestStates()
+        );
+    }
+
+    private String getExpeditionBoardTierLabel() {
+        if (expeditionBoardReputation >= 10) {
+            return "Gold";
+        }
+        if (expeditionBoardReputation >= 4) {
+            return "Silver";
+        }
+        return "Bronze";
+    }
+
+    private String getExpeditionSponsorStatusLine() {
+        String silver = worldStateManager.isFlagActive(gameState, "event.board_sponsor_silver_claimed")
+            ? "silver package secured"
+            : "silver package pending";
+        String gold = worldStateManager.isFlagActive(gameState, "event.board_sponsor_gold_claimed")
+            ? "gold package secured"
+            : "gold package pending";
+        return silver + "  |  " + gold;
+    }
+
+    private String getDestinationContractTierLabel(String zoneId) {
+        ZoneDefinition definition = zoneDefinitions.get(zoneId);
+        if ("town".equals(zoneId)) {
+            return getExpeditionBoardTierLabel();
+        }
+        if (definition != null && definition.getBossId() != null && !definition.getBossId().isEmpty()
+            && !gameState.hasDefeatedBoss(definition.getBossId())) {
+            return expeditionBoardReputation >= 10 ? "Gold Bounty" : expeditionBoardReputation >= 4 ? "Silver Bounty" : "Bronze Bounty";
+        }
+        if (getDestinationFragmentId(zoneId) != null) {
+            return expeditionBoardReputation >= 10 ? "Gold Recovery" : expeditionBoardReputation >= 4 ? "Silver Recovery" : "Bronze Recovery";
+        }
+        return definition != null && definition.isExpansiveFrontier()
+            ? (expeditionBoardReputation >= 4 ? "Silver Frontier" : "Bronze Frontier")
+            : getExpeditionBoardTierLabel();
     }
 
     private void pinExpeditionContract(ExpeditionLaunchDestination destination) {
@@ -2856,10 +2971,10 @@ public class GameScreen implements Screen {
         ZoneDefinition definition = zoneDefinitions.get(destination.zoneId);
         if (definition != null && definition.getBossId() != null && !definition.getBossId().isEmpty()
             && !gameState.hasDefeatedBoss(definition.getBossId())) {
-            return "DEFEAT_BOSS";
+            return expeditionBoardReputation >= 10 ? "DEFEAT_BOSS_GOLD" : expeditionBoardReputation >= 4 ? "DEFEAT_BOSS_SILVER" : "DEFEAT_BOSS";
         }
         if (getDestinationFragmentId(destination.zoneId) != null) {
-            return "RECOVER_FRAGMENT";
+            return expeditionBoardReputation >= 10 ? "RECOVER_FRAGMENT_GOLD" : expeditionBoardReputation >= 4 ? "RECOVER_FRAGMENT_SILVER" : "RECOVER_FRAGMENT";
         }
         return "DEPLOY";
     }
@@ -2868,11 +2983,11 @@ public class GameScreen implements Screen {
         if (destination == null) {
             return null;
         }
-        if ("DEFEAT_BOSS".equals(contractKind)) {
+        if (contractKind != null && contractKind.startsWith("DEFEAT_BOSS")) {
             ZoneDefinition definition = zoneDefinitions.get(destination.zoneId);
             return definition != null ? definition.getBossId() : null;
         }
-        if ("RECOVER_FRAGMENT".equals(contractKind)) {
+        if (contractKind != null && contractKind.startsWith("RECOVER_FRAGMENT")) {
             return getDestinationFragmentId(destination.zoneId);
         }
         return destination.zoneId;
@@ -2912,7 +3027,7 @@ public class GameScreen implements Screen {
     }
 
     private void handlePinnedContractFragmentRecovery(String fragmentId, int amount) {
-        if (!"RECOVER_FRAGMENT".equals(pinnedExpeditionContractKind) || pinnedExpeditionContractCompleted) {
+        if ((pinnedExpeditionContractKind == null || !pinnedExpeditionContractKind.startsWith("RECOVER_FRAGMENT")) || pinnedExpeditionContractCompleted) {
             return;
         }
         if (fragmentId == null || amount <= 0) {
@@ -2924,7 +3039,7 @@ public class GameScreen implements Screen {
     }
 
     private void handlePinnedContractBossDefeat(String bossId) {
-        if (!"DEFEAT_BOSS".equals(pinnedExpeditionContractKind) || pinnedExpeditionContractCompleted) {
+        if ((pinnedExpeditionContractKind == null || !pinnedExpeditionContractKind.startsWith("DEFEAT_BOSS")) || pinnedExpeditionContractCompleted) {
             return;
         }
         if (bossId != null && bossId.equals(pinnedExpeditionContractTargetId)) {
@@ -2937,11 +3052,107 @@ public class GameScreen implements Screen {
         if (pinnedExpeditionContractText != null && !pinnedExpeditionContractText.endsWith(" Return to the Expedition Board for the next assignment.")) {
             pinnedExpeditionContractText += " Return to the Expedition Board for the next assignment.";
         }
+        String rewardSummary = applyExpeditionContractRewards();
         refreshHud();
         autosave();
         if (completionMessage != null && !completionMessage.isEmpty()) {
-            showStandaloneDialog("Expedition Board", completionMessage);
+            showStandaloneDialog("Expedition Board",
+                rewardSummary != null && !rewardSummary.isEmpty()
+                    ? completionMessage + " " + rewardSummary
+                    : completionMessage);
         }
+    }
+
+    private String applyExpeditionContractRewards() {
+        int goldReward = 25;
+        int shardReward = 0;
+        int reputationReward = 1;
+        int sponsorPremiumGold = getExpeditionBoardTierBonusGold();
+        if ("CLAIM_SITE".equals(pinnedExpeditionContractKind)) {
+            goldReward = 40;
+        } else if ("BANK_HAUL".equals(pinnedExpeditionContractKind)) {
+            goldReward = 50;
+        } else if ("RECOVER_FRAGMENT".equals(pinnedExpeditionContractKind)) {
+            goldReward = 60;
+            shardReward = 1;
+        } else if ("RECOVER_FRAGMENT_SILVER".equals(pinnedExpeditionContractKind)) {
+            goldReward = 80;
+            shardReward = 1;
+            reputationReward = 2;
+        } else if ("RECOVER_FRAGMENT_GOLD".equals(pinnedExpeditionContractKind)) {
+            goldReward = 110;
+            shardReward = 2;
+            reputationReward = 2;
+        } else if ("DEFEAT_BOSS".equals(pinnedExpeditionContractKind)) {
+            goldReward = 90;
+            shardReward = 2;
+            reputationReward = 2;
+        } else if ("DEFEAT_BOSS_SILVER".equals(pinnedExpeditionContractKind)) {
+            goldReward = 130;
+            shardReward = 3;
+            reputationReward = 2;
+        } else if ("DEFEAT_BOSS_GOLD".equals(pinnedExpeditionContractKind)) {
+            goldReward = 180;
+            shardReward = 4;
+            reputationReward = 3;
+        }
+        goldReward += sponsorPremiumGold;
+
+        if (goldReward > 0) {
+            addGold(goldReward);
+        }
+        if (shardReward > 0) {
+            metaProgressionState.setForgeShards(metaProgressionState.getForgeShards() + shardReward);
+            metaProgressionManager.save(metaProgressionState);
+        }
+        expeditionBoardReputation += reputationReward;
+        String sponsorRewardSummary = maybeGrantExpeditionBoardSponsorReward();
+        autosave();
+
+        List<String> rewards = new ArrayList<>();
+        if (goldReward > 0) {
+            rewards.add("+" + goldReward + " gold");
+        }
+        if (shardReward > 0) {
+            rewards.add("+" + shardReward + " Forge Shard" + (shardReward == 1 ? "" : "s"));
+        }
+        rewards.add("+" + reputationReward + " board reputation");
+        String rewardText = rewards.isEmpty() ? "" : "Reward: " + String.join(", ", rewards) + ".";
+        if (sponsorRewardSummary != null && !sponsorRewardSummary.isEmpty()) {
+            rewardText = rewardText.isEmpty() ? sponsorRewardSummary : rewardText + " " + sponsorRewardSummary;
+        }
+        return rewardText;
+    }
+
+    private int getExpeditionBoardTierBonusGold() {
+        if (expeditionBoardReputation >= 10) {
+            return 35;
+        }
+        if (expeditionBoardReputation >= 4) {
+            return 15;
+        }
+        return 0;
+    }
+
+    private String maybeGrantExpeditionBoardSponsorReward() {
+        List<String> rewards = new ArrayList<>();
+        if (expeditionBoardReputation >= 4 && !worldStateManager.isFlagActive(gameState, "event.board_sponsor_silver_claimed")) {
+            worldStateManager.setFlag(gameState, "event.board_sponsor_silver_claimed", true);
+            addGold(120);
+            addHealingPotions(1);
+            metaProgressionState.setForgeShards(metaProgressionState.getForgeShards() + 1);
+            metaProgressionManager.save(metaProgressionState);
+            rewards.add("Silver sponsor package: +120 gold, +1 field kit, +1 Forge Shard");
+        }
+        if (expeditionBoardReputation >= 10 && !worldStateManager.isFlagActive(gameState, "event.board_sponsor_gold_claimed")) {
+            worldStateManager.setFlag(gameState, "event.board_sponsor_gold_claimed", true);
+            addGold(260);
+            addHealingPotions(2);
+            metaProgressionState.setForgeShards(metaProgressionState.getForgeShards() + 2);
+            metaProgressionManager.save(metaProgressionState);
+            rewards.add("Gold sponsor package: +260 gold, +2 field kits, +2 Forge Shards");
+        }
+        return rewards.isEmpty() ? "" : String.join(". ", rewards) + ".";
     }
 
     private List<String> getExpeditionProjectLines() {
@@ -3641,6 +3852,10 @@ public class GameScreen implements Screen {
 
     public void openForge() {
         if (!isPaused && !battleActive) {
+            if (!isForgeWorkshopUnlocked()) {
+                showStandaloneDialog("Town Forge", "The workshop rail is still dark. Restore Workshop Tools before the forge can reopen.");
+                return;
+            }
             screenManager.push(new ForgeScreen(game, screenManager, this));
         }
     }
@@ -3721,6 +3936,7 @@ public class GameScreen implements Screen {
         sf.setPinnedExpeditionContractKind(pinnedExpeditionContractKind);
         sf.setPinnedExpeditionContractTargetId(pinnedExpeditionContractTargetId);
         sf.setPinnedExpeditionContractCompleted(pinnedExpeditionContractCompleted);
+        sf.setExpeditionBoardReputation(expeditionBoardReputation);
         sf.setCurrentZoneId(gameState.getCurrentZoneId());
         sf.setRobotEquipment(copyRobotEquipment(robotEquipment));
         sf.setCollectedRobotIds(new ArrayList<>(gameState.getCollectedRobotIds()));
@@ -3753,6 +3969,7 @@ public class GameScreen implements Screen {
         pinnedExpeditionContractKind = saveFile.getPinnedExpeditionContractKind();
         pinnedExpeditionContractTargetId = saveFile.getPinnedExpeditionContractTargetId();
         pinnedExpeditionContractCompleted = saveFile.isPinnedExpeditionContractCompleted();
+        expeditionBoardReputation = saveFile.getExpeditionBoardReputation();
         loadBaseStatesFromSave(saveFile);
         gameState.setInfiniteDungeonCurrentFloor(saveFile.getInfiniteDungeonCurrentFloor());
         gameState.setInfiniteDungeonBestFloor(saveFile.getInfiniteDungeonBestFloor());
@@ -5847,6 +6064,11 @@ public class GameScreen implements Screen {
                 return true;
             }
             if (door.targetZoneId != null) {
+                ZoneAccessPolicy.AccessDecision accessDecision = evaluateZoneAccess(door.targetZoneId);
+                if (!accessDecision.isAllowed()) {
+                    showStandaloneDialog("Warning", accessDecision.getBlockedReason());
+                    return true;
+                }
                 if (isInfiniteDungeonZone() && currentZoneId.equals(door.targetZoneId)) {
                     if (!allDungeonEnemiesDefeated()) {
                         showStandaloneDialog("Bolt Simulation", door.lockMessage != null && !door.lockMessage.isEmpty()
@@ -6175,8 +6397,27 @@ public class GameScreen implements Screen {
 
     private List<StructureDefinition> getBuildStructureCatalog() {
         List<StructureDefinition> definitions = baseBuildingEngine.getStructureRegistry().getAll();
+        definitions.removeIf(definition -> definition == null || !isStructureUnlocked(definition));
         definitions.sort((left, right) -> left.getDisplayName().compareToIgnoreCase(right.getDisplayName()));
         return definitions;
+    }
+
+    private boolean isStructureUnlocked(StructureDefinition definition) {
+        if (definition == null || definition.getId() == null) {
+            return false;
+        }
+        switch (definition.getId()) {
+            case "field_fabricator":
+                return isForgeWorkshopUnlocked();
+            case "storm_relay":
+                return worldStateManager.isFlagActive(gameState, "settlement.command_hub");
+            case "fusion_anvil":
+                return isFusionForgeUnlocked();
+            case "dragon_roost_beacon":
+                return worldStateManager.isFlagActive(gameState, "frontier.dragon_roosts_active");
+            default:
+                return true;
+        }
     }
 
     private StructureDefinition getSelectedBuildStructure() {
@@ -8206,6 +8447,9 @@ public class GameScreen implements Screen {
      * @return a player-readable result message
      */
     public String fuseEquipment(String itemId1, String itemId2) {
+        if (!isFusionForgeUnlocked()) {
+            return "Fusion stays offline until Master Silas restores the fusion cradle.";
+        }
         if (itemId1 == null || itemId2 == null || itemId1.equals(itemId2)) {
             return "Select two different items to fuse.";
         }
@@ -8262,7 +8506,33 @@ public class GameScreen implements Screen {
     }
 
     public List<ForgeRecipeDefinition> getForgeRecipes() {
-        return new ArrayList<>(forgeRecipes);
+        List<ForgeRecipeDefinition> visible = new ArrayList<>();
+        for (ForgeRecipeDefinition recipe : forgeRecipes) {
+            if (isForgeRecipeUnlocked(recipe)) {
+                visible.add(recipe);
+            }
+        }
+        return visible;
+    }
+
+    public boolean isForgeWorkshopUnlocked() {
+        return worldStateManager.isFlagActive(gameState, "settlement.workshop_tools");
+    }
+
+    public boolean isFusionForgeUnlocked() {
+        return worldStateManager.isFlagActive(gameState, "settlement.fusion_forge");
+    }
+
+    public boolean isAdvancedCraftingUnlocked() {
+        return worldStateManager.isFlagActive(gameState, "settlement.prototype_lab");
+    }
+
+    public String getFusionForgeLockedReason() {
+        return "Fusion requires the Fusion Forge settlement upgrade.";
+    }
+
+    public String getAdvancedCraftingLockedReason() {
+        return "Tier IV forge patterns require the Prototype Lab.";
     }
 
     public Map<String, Integer> getForgeComponentInventory() {
@@ -8399,6 +8669,9 @@ public class GameScreen implements Screen {
         if (recipe == null || recipe.getResultEquipmentId() == null) {
             return false;
         }
+        if (!isForgeRecipeUnlocked(recipe)) {
+            return false;
+        }
         if (findEquipmentItem(recipe.getResultEquipmentId()) == null) {
             return false;
         }
@@ -8423,6 +8696,9 @@ public class GameScreen implements Screen {
         if (recipe == null) {
             return "";
         }
+        if (!isForgeRecipeUnlocked(recipe)) {
+            return getForgeRecipeUnlockReason(recipe);
+        }
         StringBuilder builder = new StringBuilder();
         builder.append("Gold ").append(recipe.getGoldCost());
         builder.append("  ");
@@ -8443,10 +8719,11 @@ public class GameScreen implements Screen {
     }
 
     public String forgeRecipe(int recipeIndex) {
-        if (recipeIndex < 0 || recipeIndex >= forgeRecipes.size()) {
+        List<ForgeRecipeDefinition> visibleRecipes = getForgeRecipes();
+        if (recipeIndex < 0 || recipeIndex >= visibleRecipes.size()) {
             return "That forge pattern is unavailable.";
         }
-        ForgeRecipeDefinition recipe = forgeRecipes.get(recipeIndex);
+        ForgeRecipeDefinition recipe = visibleRecipes.get(recipeIndex);
         EquipmentItem result = findEquipmentItem(recipe.getResultEquipmentId());
         if (result == null) {
             return "The forge pattern is incomplete.";
@@ -8479,6 +8756,31 @@ public class GameScreen implements Screen {
         }
         unlockEquipment(result.getId());
         return "Forged " + result.getName() + ".";
+    }
+
+    private boolean isForgeRecipeUnlocked(ForgeRecipeDefinition recipe) {
+        if (recipe == null || recipe.getResultEquipmentId() == null || recipe.getResultEquipmentId().isEmpty()) {
+            return false;
+        }
+        if (!isForgeWorkshopUnlocked()) {
+            return false;
+        }
+        EquipmentItem result = findEquipmentItem(recipe.getResultEquipmentId());
+        if (result == null) {
+            return false;
+        }
+        return result.getTier() < 4 || isAdvancedCraftingUnlocked();
+    }
+
+    private String getForgeRecipeUnlockReason(ForgeRecipeDefinition recipe) {
+        if (!isForgeWorkshopUnlocked()) {
+            return "Requires Workshop Tools";
+        }
+        EquipmentItem result = recipe != null ? findEquipmentItem(recipe.getResultEquipmentId()) : null;
+        if (result != null && result.getTier() >= 4 && !isAdvancedCraftingUnlocked()) {
+            return "Requires Prototype Lab";
+        }
+        return "Pattern unavailable";
     }
 
     public long getShardSellValue(String grade) {
@@ -9305,13 +9607,15 @@ public class GameScreen implements Screen {
         final String label;
         final String detail;
         final boolean currentZone;
+        final String contractTierLabel;
 
-        ExpeditionLaunchDestination(String zoneId, String spawnId, String label, String detail, boolean currentZone) {
+        ExpeditionLaunchDestination(String zoneId, String spawnId, String label, String detail, boolean currentZone, String contractTierLabel) {
             this.zoneId = zoneId;
             this.spawnId = spawnId;
             this.label = label;
             this.detail = detail;
             this.currentZone = currentZone;
+            this.contractTierLabel = contractTierLabel;
         }
     }
 

@@ -51,6 +51,7 @@ public class SaveFile {
     private String pinnedExpeditionContractKind;
     private String pinnedExpeditionContractTargetId;
     private boolean pinnedExpeditionContractCompleted;
+    private int expeditionBoardReputation;
 
     // Robot data: robotId -> Map of equipped items (slotType -> equipmentId)
     private Map<String, Map<String, String>> robotEquipment;
@@ -196,6 +197,10 @@ public class SaveFile {
 
     public boolean isPinnedExpeditionContractCompleted() {
         return pinnedExpeditionContractCompleted;
+    }
+
+    public int getExpeditionBoardReputation() {
+        return expeditionBoardReputation;
     }
 
     public long getCurrencyBalance() {
@@ -465,6 +470,10 @@ public class SaveFile {
 
     public void setPinnedExpeditionContractCompleted(boolean pinnedExpeditionContractCompleted) {
         this.pinnedExpeditionContractCompleted = pinnedExpeditionContractCompleted;
+    }
+
+    public void setExpeditionBoardReputation(int expeditionBoardReputation) {
+        this.expeditionBoardReputation = Math.max(0, expeditionBoardReputation);
     }
 
     public void setCurrencyBalance(long currencyBalance) {

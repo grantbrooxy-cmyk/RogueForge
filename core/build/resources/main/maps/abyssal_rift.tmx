@@ -531,6 +531,7 @@
   <object id="29" name="the_void_gate" x="1408" y="402" width="80" height="80">
    <properties>
     <property name="label" value="The Void" />
+    <property name="requiredWorldFlag" value="frontier.void_gate_stable" />
     <property name="targetZone" value="the_void" />
     <property name="targetSpawn" value="from_rift" />
     <property name="lockMessage" value="Past the rift breach lies the final silence beyond the world." />
