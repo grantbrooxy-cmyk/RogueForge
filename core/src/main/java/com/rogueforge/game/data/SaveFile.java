@@ -12,7 +12,7 @@ import java.util.Map;
  * Contains all player, robot, and progression data for a save game.
  */
 public class SaveFile {
-    private int version = 4;
+    private int version = 7;
 
     private String playerName;
     private int playerHp;
@@ -52,6 +52,11 @@ public class SaveFile {
     private String pinnedExpeditionContractTargetId;
     private boolean pinnedExpeditionContractCompleted;
     private int expeditionBoardReputation;
+    private Map<String, Integer> factionInfluenceById;
+    private Map<String, String> activeWorldBossFrontsByZoneId;
+    private Map<String, String> activeRegionalIncidentsByZoneId;
+    private Map<String, String> activeSettlementCrisesByZoneId;
+    private List<PlayerQuestContractData> playerQuestContracts;
 
     // Robot data: robotId -> Map of equipped items (slotType -> equipmentId)
     private Map<String, Map<String, String>> robotEquipment;
@@ -109,6 +114,11 @@ public class SaveFile {
         this.claimedFrontierBaseSiteIds = new ArrayList<>();
         this.baseStates = new ArrayList<>();
         this.guilds = new ArrayList<>();
+        this.factionInfluenceById = new HashMap<>();
+        this.activeWorldBossFrontsByZoneId = new HashMap<>();
+        this.activeRegionalIncidentsByZoneId = new HashMap<>();
+        this.activeSettlementCrisesByZoneId = new HashMap<>();
+        this.playerQuestContracts = new ArrayList<>();
     }
 
     public SaveFile(String playerName, int playerHp, int playerMaxHp, float playerX, float playerY,
@@ -144,6 +154,10 @@ public class SaveFile {
         this.claimedFrontierBaseSiteIds = new ArrayList<>();
         this.baseStates = new ArrayList<>();
         this.guilds = new ArrayList<>();
+        this.factionInfluenceById = new HashMap<>();
+        this.activeWorldBossFrontsByZoneId = new HashMap<>();
+        this.activeRegionalIncidentsByZoneId = new HashMap<>();
+        this.activeSettlementCrisesByZoneId = new HashMap<>();
     }
 
     // Getters
@@ -201,6 +215,41 @@ public class SaveFile {
 
     public int getExpeditionBoardReputation() {
         return expeditionBoardReputation;
+    }
+
+    public Map<String, Integer> getFactionInfluenceById() {
+        if (factionInfluenceById == null) {
+            factionInfluenceById = new HashMap<>();
+        }
+        return factionInfluenceById;
+    }
+
+    public Map<String, String> getActiveWorldBossFrontsByZoneId() {
+        if (activeWorldBossFrontsByZoneId == null) {
+            activeWorldBossFrontsByZoneId = new HashMap<>();
+        }
+        return activeWorldBossFrontsByZoneId;
+    }
+
+    public Map<String, String> getActiveRegionalIncidentsByZoneId() {
+        if (activeRegionalIncidentsByZoneId == null) {
+            activeRegionalIncidentsByZoneId = new HashMap<>();
+        }
+        return activeRegionalIncidentsByZoneId;
+    }
+
+    public Map<String, String> getActiveSettlementCrisesByZoneId() {
+        if (activeSettlementCrisesByZoneId == null) {
+            activeSettlementCrisesByZoneId = new HashMap<>();
+        }
+        return activeSettlementCrisesByZoneId;
+    }
+
+    public List<PlayerQuestContractData> getPlayerQuestContracts() {
+        if (playerQuestContracts == null) {
+            playerQuestContracts = new ArrayList<>();
+        }
+        return playerQuestContracts;
     }
 
     public long getCurrencyBalance() {
@@ -474,6 +523,26 @@ public class SaveFile {
 
     public void setExpeditionBoardReputation(int expeditionBoardReputation) {
         this.expeditionBoardReputation = Math.max(0, expeditionBoardReputation);
+    }
+
+    public void setFactionInfluenceById(Map<String, Integer> factionInfluenceById) {
+        this.factionInfluenceById = factionInfluenceById != null ? factionInfluenceById : new HashMap<>();
+    }
+
+    public void setActiveWorldBossFrontsByZoneId(Map<String, String> activeWorldBossFrontsByZoneId) {
+        this.activeWorldBossFrontsByZoneId = activeWorldBossFrontsByZoneId != null ? activeWorldBossFrontsByZoneId : new HashMap<>();
+    }
+
+    public void setActiveRegionalIncidentsByZoneId(Map<String, String> activeRegionalIncidentsByZoneId) {
+        this.activeRegionalIncidentsByZoneId = activeRegionalIncidentsByZoneId != null ? activeRegionalIncidentsByZoneId : new HashMap<>();
+    }
+
+    public void setActiveSettlementCrisesByZoneId(Map<String, String> activeSettlementCrisesByZoneId) {
+        this.activeSettlementCrisesByZoneId = activeSettlementCrisesByZoneId != null ? activeSettlementCrisesByZoneId : new HashMap<>();
+    }
+
+    public void setPlayerQuestContracts(List<PlayerQuestContractData> playerQuestContracts) {
+        this.playerQuestContracts = playerQuestContracts != null ? playerQuestContracts : new ArrayList<>();
     }
 
     public void setCurrencyBalance(long currencyBalance) {
@@ -1296,6 +1365,90 @@ public class SaveFile {
 
         public void setMemberships(List<GuildMembershipData> memberships) {
             this.memberships = memberships != null ? memberships : new ArrayList<>();
+        }
+    }
+
+    public static class PlayerQuestContractData {
+        private String contractId;
+        private String guildId;
+        private String zoneId;
+        private String kind;
+        private String title;
+        private String description;
+        private String targetId;
+        private String authorPlayerId;
+        private boolean active = true;
+
+        public String getContractId() {
+            return contractId;
+        }
+
+        public void setContractId(String contractId) {
+            this.contractId = contractId;
+        }
+
+        public String getGuildId() {
+            return guildId;
+        }
+
+        public void setGuildId(String guildId) {
+            this.guildId = guildId;
+        }
+
+        public String getZoneId() {
+            return zoneId;
+        }
+
+        public void setZoneId(String zoneId) {
+            this.zoneId = zoneId;
+        }
+
+        public String getKind() {
+            return kind;
+        }
+
+        public void setKind(String kind) {
+            this.kind = kind;
+        }
+
+        public String getTitle() {
+            return title;
+        }
+
+        public void setTitle(String title) {
+            this.title = title;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+
+        public void setDescription(String description) {
+            this.description = description;
+        }
+
+        public String getTargetId() {
+            return targetId;
+        }
+
+        public void setTargetId(String targetId) {
+            this.targetId = targetId;
+        }
+
+        public String getAuthorPlayerId() {
+            return authorPlayerId;
+        }
+
+        public void setAuthorPlayerId(String authorPlayerId) {
+            this.authorPlayerId = authorPlayerId;
+        }
+
+        public boolean isActive() {
+            return active;
+        }
+
+        public void setActive(boolean active) {
+            this.active = active;
         }
     }
 

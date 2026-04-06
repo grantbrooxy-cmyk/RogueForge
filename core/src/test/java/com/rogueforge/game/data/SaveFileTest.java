@@ -34,6 +34,11 @@ class SaveFileTest {
         assertNotNull(saveFile.getClaimedFrontierBaseSiteIds());
         assertNotNull(saveFile.getBaseStates());
         assertNotNull(saveFile.getGuilds());
+        assertNotNull(saveFile.getFactionInfluenceById());
+        assertNotNull(saveFile.getActiveWorldBossFrontsByZoneId());
+        assertNotNull(saveFile.getActiveRegionalIncidentsByZoneId());
+        assertNotNull(saveFile.getActiveSettlementCrisesByZoneId());
+        assertNotNull(saveFile.getPlayerQuestContracts());
         assertEquals(0L, saveFile.getWorldSeed());
         assertEquals(1, saveFile.getForgeCoreLevel());
         assertEquals(0, saveFile.getInfiniteDungeonCurrentFloor());
@@ -61,6 +66,11 @@ class SaveFileTest {
         saveFile.setClaimedFrontierBaseSiteIds(null);
         saveFile.setBaseStates(null);
         saveFile.setGuilds(null);
+        saveFile.setFactionInfluenceById(null);
+        saveFile.setActiveWorldBossFrontsByZoneId(null);
+        saveFile.setActiveRegionalIncidentsByZoneId(null);
+        saveFile.setActiveSettlementCrisesByZoneId(null);
+        saveFile.setPlayerQuestContracts(null);
         saveFile.setActiveClaimGuildId("guild_iron");
         saveFile.setForgeCoreLevel(99);
 
@@ -80,6 +90,11 @@ class SaveFileTest {
         assertEquals(List.of(), saveFile.getClaimedFrontierBaseSiteIds());
         assertEquals(List.of(), saveFile.getBaseStates());
         assertEquals(List.of(), saveFile.getGuilds());
+        assertEquals(Map.of(), saveFile.getFactionInfluenceById());
+        assertEquals(Map.of(), saveFile.getActiveWorldBossFrontsByZoneId());
+        assertEquals(Map.of(), saveFile.getActiveRegionalIncidentsByZoneId());
+        assertEquals(Map.of(), saveFile.getActiveSettlementCrisesByZoneId());
+        assertEquals(List.of(), saveFile.getPlayerQuestContracts());
         assertEquals("guild_iron", saveFile.getActiveClaimGuildId());
         assertEquals(4, saveFile.getForgeCoreLevel());
 
@@ -148,6 +163,16 @@ class SaveFileTest {
         guildData.setHallClaimedSiteId("frontier_base_site_1");
         guildData.setRanks(List.of(guildRankData));
         guildData.setMemberships(List.of(guildMembershipData));
+        SaveFile.PlayerQuestContractData contractData = new SaveFile.PlayerQuestContractData();
+        contractData.setContractId("contract_001");
+        contractData.setGuildId("guild_iron");
+        contractData.setZoneId("verdant_fields");
+        contractData.setKind("SUPPLY");
+        contractData.setTitle("Iron Vanguard Supply Run");
+        contractData.setDescription("Bank a live haul at the hall outpost.");
+        contractData.setTargetId("verdant_fields");
+        contractData.setAuthorPlayerId("Grant");
+        contractData.setActive(true);
 
         saveFile.setOwnedEquipmentIds(List.of("bronze_sword"));
         saveFile.setKeyItems(List.of("workshop_pass"));
@@ -165,6 +190,11 @@ class SaveFileTest {
         saveFile.setBaseStates(List.of(baseStateData));
         saveFile.setGuilds(List.of(guildData));
         saveFile.setActiveClaimGuildId("guild_iron");
+        saveFile.setFactionInfluenceById(Map.of("ironhaven_command", 58, "frontier_hostiles", 32));
+        saveFile.setActiveWorldBossFrontsByZoneId(Map.of("shadow_caves", "rusted_sovereign_c"));
+        saveFile.setActiveRegionalIncidentsByZoneId(Map.of("crystal_depths", "shard_storm"));
+        saveFile.setActiveSettlementCrisesByZoneId(Map.of("verdant_fields", "supply_breakdown"));
+        saveFile.setPlayerQuestContracts(List.of(contractData));
         saveFile.setWorldSeed(987654321L);
         saveFile.setUnbankedCurrencyBalance(145L);
         saveFile.setInfiniteDungeonCurrentFloor(14);
@@ -199,6 +229,12 @@ class SaveFileTest {
         assertEquals("guild_iron", saveFile.getActiveClaimGuildId());
         assertEquals("guild_master", saveFile.getGuilds().get(0).getRanks().get(0).getRankId());
         assertEquals("Grant", saveFile.getGuilds().get(0).getMemberships().get(0).getPlayerId());
+        assertEquals(58, saveFile.getFactionInfluenceById().get("ironhaven_command"));
+        assertEquals("rusted_sovereign_c", saveFile.getActiveWorldBossFrontsByZoneId().get("shadow_caves"));
+        assertEquals("shard_storm", saveFile.getActiveRegionalIncidentsByZoneId().get("crystal_depths"));
+        assertEquals("supply_breakdown", saveFile.getActiveSettlementCrisesByZoneId().get("verdant_fields"));
+        assertEquals("contract_001", saveFile.getPlayerQuestContracts().get(0).getContractId());
+        assertEquals("SUPPLY", saveFile.getPlayerQuestContracts().get(0).getKind());
         assertEquals(987654321L, saveFile.getWorldSeed());
         assertEquals(145L, saveFile.getUnbankedCurrencyBalance());
         assertEquals(14, saveFile.getInfiniteDungeonCurrentFloor());

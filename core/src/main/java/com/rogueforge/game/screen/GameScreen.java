@@ -37,6 +37,7 @@ import com.rogueforge.game.engine.base.BaseState;
 import com.rogueforge.game.engine.base.DefenderAssignment;
 import com.rogueforge.game.engine.base.DefenderRole;
 import com.rogueforge.game.engine.base.PlacedStructure;
+import com.rogueforge.game.engine.base.StructureCategory;
 import com.rogueforge.game.engine.base.StructureDefinition;
 import com.rogueforge.game.engine.GameEngineServices;
 import com.rogueforge.game.engine.meta.CyberneticBonuses;
@@ -175,6 +176,14 @@ public class GameScreen implements Screen {
     );
     private static final String[] LEGENDARY_ROBOT_UNLOCK_IDS = {"scout_mk3", "guardian_mk3", "striker_mk3"};
     private static final String[] LEGENDARY_ROBOT_EVENTS = {"scout_mk3_join", "guardian_mk3_join", "striker_mk3_join"};
+    private static final String ACT4_OPERATION_IRON_LIFELINE = "act4.operation.iron_lifeline";
+    private static final String ACT4_OPERATION_GLOAM_ARCHIVE = "act4.operation.gloam_archive";
+    private static final String ACT4_OPERATION_HELLCLIMB = "act4.operation.hellclimb";
+    private static final String ACT4_OPERATION_LAST_LIGHT = "act4.operation.last_light";
+    private static final String ACT4_CAMPAIGN_EPILOGUE = "act4.campaign.epilogue";
+    private static final String ACT4_SIDEARC_COMMAND_BASTION = "act4.sidearc.command_bastion";
+    private static final String ACT4_SIDEARC_GUILD_ASCENDANCY = "act4.sidearc.guild_ascendancy";
+    private static final String ACT4_SIDEARC_ARCHIVE_RECLAMATION = "act4.sidearc.archive_reclamation";
     private static final float ENEMY_SIZE = 48f;
     private static final float ENEMY_SPAWN_MIN_DISTANCE = 400f;
     private static final float ENEMY_SPAWN_MAX_DISTANCE = 800f;
@@ -278,6 +287,7 @@ public class GameScreen implements Screen {
     private String activeSpeaker = null;
     private boolean questMenuOpen = false;
     private int questMenuTabIndex = 0;
+    private int strategicMapSelectionIndex = 0;
     private boolean guildMenuOpen = false;
     private boolean expeditionBoardOpen = false;
     private int expeditionBoardSelectionIndex = 0;
@@ -288,12 +298,17 @@ public class GameScreen implements Screen {
     private String pinnedExpeditionContractTargetId = null;
     private boolean pinnedExpeditionContractCompleted = false;
     private int expeditionBoardReputation = 0;
+    private final Map<String, Integer> factionInfluenceById = new HashMap<>();
+    private final Map<String, String> activeWorldBossFrontsByZoneId = new HashMap<>();
+    private final Map<String, String> activeRegionalIncidentsByZoneId = new HashMap<>();
+    private final Map<String, String> activeSettlementCrisesByZoneId = new HashMap<>();
+    private final List<PlayerQuestContract> playerQuestContracts = new ArrayList<>();
     private int guildMenuSelectionIndex = 0;
     private boolean buildModeOpen = false;
     private int selectedBuildStructureIndex = 0;
     private String activeClaimGuildId = null;
     private static final String OPENING_HOME_INTRO_FLAG = "intro.player_home_seen";
-    private static final String[] QUEST_MENU_TABS = {"Quests", "Command", "Materials", "Shards", "Blueprints", "Items"};
+    private static final String[] QUEST_MENU_TABS = {"Quests", "Command", "War", "Map", "Materials", "Shards", "Blueprints", "Items"};
     private boolean pendingOpeningCutscene = false;
     private final List<DialogueSystem.DialoguePage> activeDialogueSequence = new ArrayList<>();
     private int activeDialogueSequenceIndex = 0;
@@ -391,6 +406,7 @@ public class GameScreen implements Screen {
             applyMetaEnhancementsToFreshRun();
             pendingOpeningCutscene = true;
         }
+        ensureWarPhaseStateInitialized();
         syncAct5EndgameState(false);
     }
 
@@ -500,6 +516,18 @@ public class GameScreen implements Screen {
                 if (Gdx.input.isKeyJustPressed(Input.Keys.RIGHT) || Gdx.input.isKeyJustPressed(Input.Keys.D) || Gdx.input.isKeyJustPressed(Input.Keys.TAB)) {
                     cycleQuestMenuTab(1);
                 }
+                if (questMenuTabIndex == 3) {
+                    if (Gdx.input.isKeyJustPressed(Input.Keys.UP) || Gdx.input.isKeyJustPressed(Input.Keys.W)) {
+                        cycleStrategicMapSelection(-1);
+                    }
+                    if (Gdx.input.isKeyJustPressed(Input.Keys.DOWN) || Gdx.input.isKeyJustPressed(Input.Keys.S)) {
+                        cycleStrategicMapSelection(1);
+                    }
+                    if (Gdx.input.isKeyJustPressed(Input.Keys.E) || Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) {
+                        launchSelectedStrategicMapDestination();
+                        return;
+                    }
+                }
             } else if (expeditionBoardOpen) {
                 if (Gdx.input.isKeyJustPressed(Input.Keys.P) || Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
                     expeditionBoardOpen = false;
@@ -528,6 +556,10 @@ public class GameScreen implements Screen {
                 }
                 if (Gdx.input.isKeyJustPressed(Input.Keys.C)) {
                     createAndSelectGuild();
+                    return;
+                }
+                if (Gdx.input.isKeyJustPressed(Input.Keys.P)) {
+                    postPlayerQuestForSelectedGuild();
                     return;
                 }
                 if (Gdx.input.isKeyJustPressed(Input.Keys.E) || Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) {
@@ -721,12 +753,632 @@ public class GameScreen implements Screen {
         if (isInfiniteDungeonZone()) {
             applyInfiniteDungeonScaling(enemy);
         }
+        if (isActiveWorldBossFront(currentZoneId) && isWorldBossFrontTarget(enemy.monsterId)) {
+            applyWorldBossFrontScaling(enemy);
+        }
+        applyZoneWarConditionScaling(enemy, currentZoneId);
         enemy.alive = true;
         enemy.attackCooldown = ENEMY_MELEE_COOLDOWN;
         enemy.attackTimer = 0f;
         enemy.spriteIndex = Math.floorMod(index, enemyAnimations.length);
         enemy.patrolTarget = randomPatrolTarget(spawnPoint);
         return enemy;
+    }
+
+    private boolean isWorldBossFrontTarget(String monsterId) {
+        String activeBossId = getActiveWorldBossFrontBossId(currentZoneId);
+        return monsterId != null && activeBossId != null && monsterId.equals(activeBossId);
+    }
+
+    private void applyWorldBossFrontScaling(Enemy enemy) {
+        if (enemy == null) {
+            return;
+        }
+        String behavior = getWorldBossFrontBehavior(currentZoneId);
+        enemy.maxHp *= 1.35f;
+        enemy.hp = enemy.maxHp;
+        enemy.strength *= 1.18f;
+        enemy.defense *= 1.12f;
+        enemy.intelligence *= 1.18f;
+        enemy.stamina *= 1.14f;
+        enemy.agility *= 1.08f;
+        enemy.speed *= 1.06f;
+        enemy.rewardExperience = Math.max(enemy.rewardExperience, Math.round(enemy.rewardExperience * 1.45f));
+        if ("Siege".equals(behavior)) {
+            enemy.maxHp *= 1.12f;
+            enemy.hp = enemy.maxHp;
+            enemy.defense *= 1.15f;
+            enemy.stamina *= 1.12f;
+        } else if ("Hunter-Killer".equals(behavior)) {
+            enemy.strength *= 1.08f;
+            enemy.intelligence *= 1.1f;
+            enemy.agility *= 1.14f;
+            enemy.speed *= 1.12f;
+            enemy.rewardExperience = Math.max(enemy.rewardExperience, Math.round(enemy.rewardExperience * 1.12f));
+        } else if ("Breakthrough".equals(behavior)) {
+            enemy.strength *= 1.14f;
+            enemy.intelligence *= 1.14f;
+        } else if ("Fortified".equals(behavior)) {
+            enemy.maxHp *= 1.08f;
+            enemy.hp = enemy.maxHp;
+            enemy.defense *= 1.14f;
+        }
+        if (enemy.name != null && !enemy.name.contains("Front")) {
+            enemy.name = enemy.name + " " + behavior + " Front";
+        }
+    }
+
+    private boolean isZoneClaimedForWar(String zoneId) {
+        BaseState baseState = zoneId != null ? baseStatesByZoneId.get(zoneId) : null;
+        return baseState != null && !baseState.getClaimedSiteIds().isEmpty();
+    }
+
+    private boolean isGuildHallWarZone(String zoneId) {
+        return getPublishingGuildForZone(zoneId) != null;
+    }
+
+    private int countActiveStructuresByCategory(BaseState baseState, StructureCategory category) {
+        if (baseState == null || category == null) {
+            return 0;
+        }
+        int count = 0;
+        for (PlacedStructure structure : baseState.getPlacedStructures()) {
+            if (structure == null || !structure.isActive() || structure.getCurrentHitPoints() <= 0) {
+                continue;
+            }
+            StructureDefinition definition = baseBuildingEngine.getStructureRegistry().get(structure.getStructureDefinitionId());
+            if (definition != null && definition.getCategory() == category) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private int getZoneInfrastructureSupportScore(String zoneId) {
+        BaseState baseState = zoneId != null ? baseStatesByZoneId.get(zoneId) : null;
+        if (baseState == null) {
+            return 0;
+        }
+        return countActiveStructuresByCategory(baseState, StructureCategory.STORAGE) * 2
+            + countActiveStructuresByCategory(baseState, StructureCategory.DEFENSE) * 2
+            + countActiveStructuresByCategory(baseState, StructureCategory.WALL)
+            + countActiveStructuresByCategory(baseState, StructureCategory.UTILITY)
+            + countActiveStructuresByCategory(baseState, StructureCategory.POWER)
+            + countActiveStructuresByCategory(baseState, StructureCategory.CRAFTING);
+    }
+
+    private String getWorldBossFrontBehavior(String zoneId) {
+        int hostile = factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_FRONTIER_HOSTILES, 0);
+        int command = factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_IRONHAVEN_COMMAND, 0);
+        int guilds = factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_GUILD_COALITION, 0);
+        if (hostile >= 65) {
+            return "Siege";
+        }
+        if (zoneId != null && isGuildHallWarZone(zoneId) && guilds >= 55) {
+            return "Hunter-Killer";
+        }
+        if (zoneId != null && isZoneClaimedForWar(zoneId) && command >= 60) {
+            return "Fortified";
+        }
+        return "Breakthrough";
+    }
+
+    private String getWorldBossFrontVariantName(String zoneId) {
+        String behavior = getWorldBossFrontBehavior(zoneId);
+        if ("sky_fortress".equals(zoneId)) {
+            return "Siege".equals(behavior) ? "Ashen Crown Encirclement"
+                : "Hunter-Killer".equals(behavior) ? "Raptor Lattice Pursuit"
+                : "Fortified".equals(behavior) ? "Bastion Halo Lock"
+                : "Furnace Ascent Break";
+        }
+        if ("shadow_caves".equals(zoneId)) {
+            return "Siege".equals(behavior) ? "Gravesignal Choke"
+                : "Hunter-Killer".equals(behavior) ? "Ghostwire Pursuit"
+                : "Fortified".equals(behavior) ? "Burial Vault Lock"
+                : "Dusk Echo Breach";
+        }
+        if ("crystal_depths".equals(zoneId)) {
+            return "Siege".equals(behavior) ? "Prism Tomb Lockdown"
+                : "Hunter-Killer".equals(behavior) ? "Shardfang Pursuit"
+                : "Fortified".equals(behavior) ? "Cathedral Vein Hold"
+                : "Glassfall Break";
+        }
+        if ("rusty_quarry".equals(zoneId)) {
+            return "Siege".equals(behavior) ? "Iron Pit Encirclement"
+                : "Hunter-Killer".equals(behavior) ? "Scrap Hound Sweep"
+                : "Fortified".equals(behavior) ? "Quarry Bulwark Ring"
+                : "Breaker Line Surge";
+        }
+        return getZoneDisplayName(zoneId) + " " + behavior + " Front";
+    }
+
+    private String getWorldBossFrontVariantBonusText(String zoneId) {
+        if ("sky_fortress".equals(zoneId)) {
+            return "+1 board reputation and superior summit salvage";
+        }
+        if ("shadow_caves".equals(zoneId)) {
+            return "+1 Forge Shard from signal-ghost salvage";
+        }
+        if ("crystal_depths".equals(zoneId)) {
+            return "+25 gold and +1 Forge Shard from crystal war salvage";
+        }
+        if ("rusty_quarry".equals(zoneId)) {
+            return "+25 gold from reclaimed extraction stock";
+        }
+        return "enhanced theater payout";
+    }
+
+    private String getRegionalIncidentName(String zoneId) {
+        String incidentId = zoneId != null ? activeRegionalIncidentsByZoneId.get(zoneId) : null;
+        if ("ghost_signal".equals(incidentId)) {
+            return "Ghost Signal Cascade";
+        }
+        if ("shard_storm".equals(incidentId)) {
+            return "Shard Storm Bloom";
+        }
+        if ("air_raid_siren".equals(incidentId)) {
+            return "Air-Raid Siren Window";
+        }
+        if ("scrap_stampede".equals(incidentId)) {
+            return "Scrap Stampede";
+        }
+        if ("frontier_blackout".equals(incidentId)) {
+            return "Frontier Blackout";
+        }
+        return null;
+    }
+
+    private String getRegionalIncidentSummary(String zoneId) {
+        String incidentId = zoneId != null ? activeRegionalIncidentsByZoneId.get(zoneId) : null;
+        if ("ghost_signal".equals(incidentId)) {
+            return "signal ghosts are confusing recovery teams and drawing scavengers into the cave dark";
+        }
+        if ("shard_storm".equals(incidentId)) {
+            return "crystal weather is weaponizing the shelf and enriching salvage for crews that survive it";
+        }
+        if ("air_raid_siren".equals(incidentId)) {
+            return "sky lanes are briefly open but brutally contested";
+        }
+        if ("scrap_stampede".equals(incidentId)) {
+            return "rogue machine herds are crushing extraction paths and spilling salvage";
+        }
+        if ("frontier_blackout".equals(incidentId)) {
+            return "power loss and dusk-static are degrading route certainty";
+        }
+        return null;
+    }
+
+    private String getSettlementCrisisName(String zoneId) {
+        String crisisId = zoneId != null ? activeSettlementCrisesByZoneId.get(zoneId) : null;
+        if ("frontline_panic".equals(crisisId)) {
+            return "Frontline Panic";
+        }
+        if ("supply_breakdown".equals(crisisId)) {
+            return "Supply Breakdown";
+        }
+        if ("defender_overstretch".equals(crisisId)) {
+            return "Defender Overstretch";
+        }
+        return null;
+    }
+
+    private String getSettlementCrisisSummary(String zoneId) {
+        String crisisId = zoneId != null ? activeSettlementCrisesByZoneId.get(zoneId) : null;
+        if ("frontline_panic".equals(crisisId)) {
+            return "the outpost is too close to the active front and morale is slipping";
+        }
+        if ("supply_breakdown".equals(crisisId)) {
+            return "light infrastructure and repeated pressure are choking route upkeep";
+        }
+        if ("defender_overstretch".equals(crisisId)) {
+            return "reserve bots are covering too much ground and repair cycles are lagging";
+        }
+        return null;
+    }
+
+    private String getRegionalIncidentArrivalText(String zoneId) {
+        String incidentId = zoneId != null ? activeRegionalIncidentsByZoneId.get(zoneId) : null;
+        if ("ghost_signal".equals(incidentId)) {
+            return "Field dispatch: ghost signals are ricocheting through the cave band. Recovery crews are losing bearings and hostile scavengers are moving on the echoes.";
+        }
+        if ("shard_storm".equals(incidentId)) {
+            return "Field dispatch: crystal weather has turned violent. The shelf is shedding shard-fire, but anything you bring out of it will be worth the risk.";
+        }
+        if ("air_raid_siren".equals(incidentId)) {
+            return "Field dispatch: the air-raid window is open. Sky lanes are briefly usable, but every hostile gunline knows it too.";
+        }
+        if ("scrap_stampede".equals(incidentId)) {
+            return "Field dispatch: rogue machine herds are stampeding the quarry lanes and smashing extraction lines apart.";
+        }
+        if ("frontier_blackout".equals(incidentId)) {
+            return "Field dispatch: the region is in blackout. Static, low power, and bad sightlines are making every route feel half-lost.";
+        }
+        return null;
+    }
+
+    private String getSettlementCrisisArrivalText(String zoneId) {
+        String crisisId = zoneId != null ? activeSettlementCrisesByZoneId.get(zoneId) : null;
+        if ("frontline_panic".equals(crisisId)) {
+            return "Outpost dispatch: this settlement is hugging the active front too closely. Morale is buckling and the crews need a visible win fast.";
+        }
+        if ("supply_breakdown".equals(crisisId)) {
+            return "Outpost dispatch: route upkeep has broken down. Storage is thin, relay discipline is worse, and one good delivery could steady the whole line.";
+        }
+        if ("defender_overstretch".equals(crisisId)) {
+            return "Outpost dispatch: reserve bots are stretched across too many approach lanes. The next pressure spike could break the repair cycle.";
+        }
+        return null;
+    }
+
+    private void maybeShowWarArrivalDispatch(String zoneId) {
+        if (zoneId == null || zoneId.isEmpty() || hasActiveDialog()) {
+            return;
+        }
+        String incidentId = activeRegionalIncidentsByZoneId.get(zoneId);
+        if (incidentId != null && !incidentId.isEmpty()) {
+            String flag = "war.dispatch.incident." + zoneId + "." + incidentId;
+            if (!worldStateManager.isFlagActive(gameState, flag)) {
+                worldStateManager.setFlag(gameState, flag, true);
+                showStandaloneDialog("Field Dispatch", getRegionalIncidentArrivalText(zoneId));
+                return;
+            }
+        }
+        String crisisId = activeSettlementCrisesByZoneId.get(zoneId);
+        if (crisisId != null && !crisisId.isEmpty()) {
+            String flag = "war.dispatch.crisis." + zoneId + "." + crisisId;
+            if (!worldStateManager.isFlagActive(gameState, flag)) {
+                worldStateManager.setFlag(gameState, flag, true);
+                showStandaloneDialog("Outpost Dispatch", getSettlementCrisisArrivalText(zoneId));
+            }
+        }
+    }
+
+    private void resolveRegionalIncident(String zoneId) {
+        if (zoneId == null || zoneId.isEmpty()) {
+            return;
+        }
+        String incidentId = activeRegionalIncidentsByZoneId.remove(zoneId);
+        if (incidentId != null && !incidentId.isEmpty()) {
+            worldStateManager.setFlag(gameState, "war.thread.cleared." + zoneId, true);
+        }
+        propagateRegionalIncidentResolution(zoneId, incidentId);
+    }
+
+    private void resolveSettlementCrisis(String zoneId) {
+        if (zoneId == null || zoneId.isEmpty()) {
+            return;
+        }
+        String crisisId = activeSettlementCrisesByZoneId.remove(zoneId);
+        if (crisisId != null && !crisisId.isEmpty()) {
+            worldStateManager.setFlag(gameState, "war.thread.cleared." + zoneId, true);
+        }
+        propagateSettlementCrisisResolution(zoneId, crisisId);
+    }
+
+    private void propagateRegionalIncidentResolution(String zoneId, String incidentId) {
+        if (zoneId == null || zoneId.isEmpty() || incidentId == null || incidentId.isEmpty()) {
+            return;
+        }
+        List<String> adjacentZones = getAdjacentWarZones(zoneId);
+        if (adjacentZones.isEmpty()) {
+            return;
+        }
+        if (factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_IRONHAVEN_COMMAND, 0) >= 60) {
+            for (String adjacentZoneId : adjacentZones) {
+                if (activeSettlementCrisesByZoneId.containsKey(adjacentZoneId)) {
+                    activeSettlementCrisesByZoneId.remove(adjacentZoneId);
+                    worldStateManager.setFlag(gameState, "war.consequence.stabilized." + adjacentZoneId, true);
+                    return;
+                }
+            }
+        }
+        String spillZoneId = getMostVulnerableAdjacentZone(adjacentZones);
+        if (spillZoneId != null
+            && !activeRegionalIncidentsByZoneId.containsKey(spillZoneId)
+            && shouldZoneReceiveRegionalIncident(spillZoneId)
+            && factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_FRONTIER_HOSTILES, 0) >= 55) {
+            activeRegionalIncidentsByZoneId.put(spillZoneId, remapRegionalIncidentForZone(incidentId, spillZoneId));
+            worldStateManager.setFlag(gameState, "war.consequence.spillover." + spillZoneId, true);
+        }
+    }
+
+    private void propagateSettlementCrisisResolution(String zoneId, String crisisId) {
+        if (zoneId == null || zoneId.isEmpty() || crisisId == null || crisisId.isEmpty()) {
+            return;
+        }
+        List<String> adjacentZones = getAdjacentWarZones(zoneId);
+        if (adjacentZones.isEmpty()) {
+            return;
+        }
+        for (String adjacentZoneId : adjacentZones) {
+            if (activeSettlementCrisesByZoneId.containsKey(adjacentZoneId)
+                && getZoneInfrastructureSupportScore(adjacentZoneId) >= 4) {
+                activeSettlementCrisesByZoneId.remove(adjacentZoneId);
+                worldStateManager.setFlag(gameState, "war.consequence.relief." + adjacentZoneId, true);
+                return;
+            }
+        }
+        String spillZoneId = getMostVulnerableAdjacentZone(adjacentZones);
+        if (spillZoneId != null
+            && !activeSettlementCrisesByZoneId.containsKey(spillZoneId)
+            && isZoneClaimedForWar(spillZoneId)
+            && getZoneInfrastructureSupportScore(spillZoneId) <= 3
+            && factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_FRONTIER_HOSTILES, 0) >= 58) {
+            activeSettlementCrisesByZoneId.put(spillZoneId, remapSettlementCrisisForZone(crisisId, spillZoneId));
+            worldStateManager.setFlag(gameState, "war.consequence.chain." + spillZoneId, true);
+        }
+    }
+
+    private List<String> getAdjacentWarZones(String zoneId) {
+        if ("verdant_fields".equals(zoneId)) {
+            return List.of("whispering_forest", "rusty_quarry", "shadow_caves");
+        }
+        if ("whispering_forest".equals(zoneId)) {
+            return List.of("verdant_fields", "shadow_caves");
+        }
+        if ("shadow_caves".equals(zoneId)) {
+            return List.of("whispering_forest", "verdant_fields", "crystal_depths");
+        }
+        if ("rusty_quarry".equals(zoneId)) {
+            return List.of("verdant_fields", "crystal_depths", "sky_fortress");
+        }
+        if ("crystal_depths".equals(zoneId)) {
+            return List.of("shadow_caves", "rusty_quarry", "sky_fortress");
+        }
+        if ("sky_fortress".equals(zoneId)) {
+            return List.of("rusty_quarry", "crystal_depths");
+        }
+        return List.of();
+    }
+
+    private String getMostVulnerableAdjacentZone(List<String> adjacentZones) {
+        String selectedZoneId = null;
+        int lowestSupport = Integer.MAX_VALUE;
+        for (String adjacentZoneId : adjacentZones) {
+            if (adjacentZoneId == null || adjacentZoneId.isEmpty() || !zoneDefinitions.containsKey(adjacentZoneId)) {
+                continue;
+            }
+            int support = getZoneInfrastructureSupportScore(adjacentZoneId);
+            if (!isZoneClaimedForWar(adjacentZoneId)) {
+                support -= 2;
+            }
+            if (support < lowestSupport) {
+                lowestSupport = support;
+                selectedZoneId = adjacentZoneId;
+            }
+        }
+        return selectedZoneId;
+    }
+
+    private String remapRegionalIncidentForZone(String incidentId, String zoneId) {
+        if ("sky_fortress".equals(zoneId)) {
+            return "air_raid_siren";
+        }
+        if ("crystal_depths".equals(zoneId)) {
+            return "shard_storm";
+        }
+        if ("shadow_caves".equals(zoneId)) {
+            return "ghost_signal";
+        }
+        if ("rusty_quarry".equals(zoneId)) {
+            return "scrap_stampede";
+        }
+        return incidentId != null && !incidentId.isEmpty() ? incidentId : "frontier_blackout";
+    }
+
+    private String remapSettlementCrisisForZone(String crisisId, String zoneId) {
+        if (isActiveWorldBossFront(zoneId)) {
+            return "frontline_panic";
+        }
+        if (getZoneInfrastructureSupportScore(zoneId) <= 2) {
+            return "supply_breakdown";
+        }
+        return crisisId != null && !crisisId.isEmpty() ? crisisId : "defender_overstretch";
+    }
+
+    private String getWorldBossFrontEffectSummary(String zoneId) {
+        String behavior = getWorldBossFrontBehavior(zoneId);
+        if ("Siege".equals(behavior)) {
+            return "extra fortress mass, heavier armor, and sustained pressure on owned corridors";
+        }
+        if ("Hunter-Killer".equals(behavior)) {
+            return "faster kill pressure, sharper strikes, and aggressive pursuit";
+        }
+        if ("Fortified".equals(behavior)) {
+            return "reinforced plating, stronger guard posture, and higher defensive endurance";
+        }
+        return "high-tempo breakthrough pressure with elevated attack output";
+    }
+
+    private List<String> getFactionDirectiveLines() {
+        List<String> lines = new ArrayList<>();
+        int command = factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_IRONHAVEN_COMMAND, 0);
+        int guilds = factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_GUILD_COALITION, 0);
+        int hostile = factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_FRONTIER_HOSTILES, 0);
+        if (hostile >= 65) {
+            lines.add("Hostile directive: sabotage outer lanes, force high-pressure raids, and deny safe banking windows.");
+        }
+        if (command >= 55) {
+            lines.add("Command directive: fortify claimed corridors, rotate convoy escorts, and hold front-line logistics intact.");
+        }
+        if (guilds >= 50) {
+            lines.add("Guild directive: monetize stable corridors, post strike orders, and keep contract boards active.");
+        }
+        return lines;
+    }
+
+    private List<String> getWarBulletinLines() {
+        List<String> lines = new ArrayList<>();
+        if (!activeWorldBossFrontsByZoneId.isEmpty()) {
+            for (Map.Entry<String, String> entry : activeWorldBossFrontsByZoneId.entrySet()) {
+                lines.add(buildWarBulletinLine(entry.getKey(), entry.getValue()));
+                if (lines.size() >= 2) {
+                    break;
+                }
+            }
+        }
+        if (lines.size() < 2 && isHostileSabotageProjectActive()) {
+            lines.add("Bulletin: sabotage cells are disrupting calmer routes and raising the value of secured corridors.");
+        }
+        if (lines.size() < 2 && isCoalitionExchangeProjectActive()) {
+            lines.add("Bulletin: coalition brokers are paying premium rates for stabilized deliveries and funded guild lanes.");
+        }
+        if (lines.isEmpty()) {
+            lines.add("Bulletin: no emergency theater update. Frontier command is rotating crews and waiting on the next pressure spike.");
+        }
+        return lines;
+    }
+
+    private String buildWarBulletinLine(String zoneId, String bossId) {
+        String zoneName = getZoneDisplayName(zoneId);
+        String bossName = getMonsterDisplayName(bossId);
+        String behavior = getWorldBossFrontBehavior(zoneId).toLowerCase(Locale.ROOT);
+        if ("shadow_caves".equals(zoneId)) {
+            return "Bulletin: " + zoneName + " is throwing back old signal ghosts; a " + behavior
+                + " front around " + bossName + " is dragging scavenger crews into the dark.";
+        }
+        if ("crystal_depths".equals(zoneId)) {
+            return "Bulletin: " + zoneName + " has entered a twilight surge. " + bossName
+                + " is anchoring a " + behavior + " front through the crystal shelf.";
+        }
+        if ("sky_fortress".equals(zoneId)) {
+            return "Bulletin: " + zoneName + " has become a hardcore ascent lane. " + bossName
+                + " is holding a " + behavior + " front above the restored approach.";
+        }
+        if ("rusty_quarry".equals(zoneId)) {
+            return "Bulletin: " + zoneName + " is grinding crews down by attrition. " + bossName
+                + " now commands a " + behavior + " front over the extraction pits.";
+        }
+        return "Bulletin: " + zoneName + " reports a " + behavior + " front led by " + bossName + ".";
+    }
+
+    private float getZoneRaidPressureMultiplier(String zoneId) {
+        if (zoneId == null || zoneId.isEmpty()) {
+            return 1f;
+        }
+        float multiplier = 1f;
+        int support = getZoneInfrastructureSupportScore(zoneId);
+        int hostile = factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_FRONTIER_HOSTILES, 0);
+        int command = factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_IRONHAVEN_COMMAND, 0);
+        int guilds = factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_GUILD_COALITION, 0);
+        if (support > 0) {
+            multiplier *= Math.max(0.76f, 1f - support * 0.03f);
+        }
+        if (activeSettlementCrisesByZoneId.containsKey(zoneId)) {
+            multiplier *= 1.18f;
+        }
+        if (isZoneClaimedForWar(zoneId) && command >= 60) {
+            multiplier *= 0.72f;
+        }
+        if (isGuildHallWarZone(zoneId) && guilds >= 55) {
+            multiplier *= 0.86f;
+        }
+        if (hostile >= 60) {
+            multiplier *= isZoneClaimedForWar(zoneId) ? 1.16f : 1.08f;
+        }
+        return Math.max(0.55f, Math.min(1.35f, multiplier));
+    }
+
+    private float getZoneRaidCooldownMultiplier(String zoneId) {
+        float pressure = getZoneRaidPressureMultiplier(zoneId);
+        if (activeSettlementCrisesByZoneId.containsKey(zoneId)) {
+            return 0.78f;
+        }
+        if (pressure <= 0.85f) {
+            return 1.2f;
+        }
+        if (pressure >= 1.1f) {
+            return 0.85f;
+        }
+        return 1f;
+    }
+
+    private void applyFactionStructureSupport(BaseState baseState, float delta) {
+        if (baseState == null || delta <= 0f || !hasOperationalBase(baseState)) {
+            return;
+        }
+        String zoneId = baseState.getZoneId();
+        int command = factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_IRONHAVEN_COMMAND, 0);
+        int guilds = factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_GUILD_COALITION, 0);
+        if (!(isZoneClaimedForWar(zoneId) && command >= 60) && !(isGuildHallWarZone(zoneId) && guilds >= 55)) {
+            return;
+        }
+        int repairRate = command >= 60 && guilds >= 55 ? 5 : command >= 60 ? 4 : 3;
+        repairRate += Math.min(3, getZoneInfrastructureSupportScore(zoneId) / 3);
+        int repairAmount = Math.max(1, Math.round(delta * repairRate));
+        for (PlacedStructure structure : baseState.getPlacedStructures()) {
+            if (structure == null || !structure.isActive() || structure.getCurrentHitPoints() <= 0) {
+                continue;
+            }
+            StructureDefinition definition = baseBuildingEngine.getStructureRegistry().get(structure.getStructureDefinitionId());
+            if (definition == null) {
+                continue;
+            }
+            structure.setCurrentHitPoints(Math.min(definition.getMaxHitPoints(), structure.getCurrentHitPoints() + repairAmount));
+        }
+    }
+
+    private String getStructureWarSupportLine(String zoneId) {
+        if (zoneId == null || zoneId.isEmpty()) {
+            return "Structure support: no active theater modifier.";
+        }
+        int support = getZoneInfrastructureSupportScore(zoneId);
+        int command = factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_IRONHAVEN_COMMAND, 0);
+        int guilds = factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_GUILD_COALITION, 0);
+        int hostile = factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_FRONTIER_HOSTILES, 0);
+        if (isZoneClaimedForWar(zoneId) && command >= 60 && isGuildHallWarZone(zoneId) && guilds >= 55) {
+            return "Structure support: command engineers and guild crews are restoring owned structures between attack windows."
+                + (support > 0 ? " Infrastructure support score " + support + "." : "");
+        }
+        if (isZoneClaimedForWar(zoneId) && command >= 60) {
+            return "Structure support: command corridor active. Owned structures auto-reinforce between raids."
+                + (support > 0 ? " Infrastructure support score " + support + "." : "");
+        }
+        if (isGuildHallWarZone(zoneId) && guilds >= 55) {
+            return "Structure support: guild logistics active. Hall structures are being patched and rearmed in the field."
+                + (support > 0 ? " Infrastructure support score " + support + "." : "");
+        }
+        if (hostile >= 60) {
+            return "Structure support: hostile pressure spike. Expect heavier raids and shorter breathing room.";
+        }
+        return "Structure support: standard frontier upkeep only."
+            + (support > 0 ? " Infrastructure support score " + support + "." : "");
+    }
+
+    private void applyZoneWarConditionScaling(Enemy enemy, String zoneId) {
+        if (enemy == null || zoneId == null || zoneId.isEmpty() || "town".equals(zoneId) || INFINITE_DUNGEON_ZONE_ID.equals(zoneId)) {
+            return;
+        }
+        int hostile = factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_FRONTIER_HOSTILES, 0);
+        int command = factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_IRONHAVEN_COMMAND, 0);
+        int guilds = factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_GUILD_COALITION, 0);
+        boolean claimed = isZoneClaimedForWar(zoneId);
+        boolean guildHall = isGuildHallWarZone(zoneId);
+
+        if (!claimed && hostile >= 60) {
+            enemy.maxHp *= 1.12f;
+            enemy.hp = enemy.maxHp;
+            enemy.strength *= 1.08f;
+            enemy.defense *= 1.06f;
+            enemy.rewardExperience = Math.max(enemy.rewardExperience, Math.round(enemy.rewardExperience * 1.1f));
+            if (enemy.name != null && !enemy.name.contains("Raid")) {
+                enemy.name = enemy.name + " Raid";
+            }
+            return;
+        }
+        if (claimed && command >= 60) {
+            enemy.maxHp *= 0.92f;
+            enemy.hp = enemy.maxHp;
+            enemy.strength *= 0.94f;
+            enemy.defense *= 0.95f;
+            enemy.rewardExperience = Math.max(enemy.rewardExperience, Math.round(enemy.rewardExperience * 1.08f));
+        }
+        if (guildHall && guilds >= 55) {
+            enemy.rewardExperience = Math.max(enemy.rewardExperience, Math.round(enemy.rewardExperience * 1.12f));
+            if (enemy.name != null && !enemy.name.contains("Marked")) {
+                enemy.name = enemy.name + " Marked";
+            }
+        }
     }
 
     private int getInfiniteDungeonEnemyCount() {
@@ -1215,8 +1867,10 @@ public class GameScreen implements Screen {
             raidState.setWaveIndex(0);
             return;
         }
+        applyFactionStructureSupport(baseState, delta);
         if (!raidState.isActive()) {
-            float threatGain = delta * BASE_RAID_THREAT_PER_SECOND * Math.max(1, baseState.getPlacedStructures().size());
+            float threatGain = delta * BASE_RAID_THREAT_PER_SECOND * Math.max(1, baseState.getPlacedStructures().size())
+                * getZoneRaidPressureMultiplier(baseState.getZoneId());
             raidState.setThreatLevel(Math.min(BASE_RAID_TRIGGER_THREAT, raidState.getThreatLevel() + threatGain));
             if (raidState.getCooldownSeconds() <= 0f && raidState.getThreatLevel() >= BASE_RAID_TRIGGER_THREAT) {
                 launchBaseRaid(baseState);
@@ -1226,7 +1880,7 @@ public class GameScreen implements Screen {
         if (countLiveRaidEnemies() == 0) {
             raidState.setActive(false);
             raidState.setThreatLevel(0f);
-            raidState.setCooldownSeconds(BASE_RAID_COOLDOWN_SECONDS);
+            raidState.setCooldownSeconds(BASE_RAID_COOLDOWN_SECONDS * getZoneRaidCooldownMultiplier(baseState.getZoneId()));
             showStandaloneDialog("Frontier", "Raid repelled. Your base holds for now.");
         }
     }
@@ -1406,7 +2060,8 @@ public class GameScreen implements Screen {
             return;
         }
         Vector2 center = getStructureCenter(anchor);
-        int spawnCount = Math.min(3 + Math.max(0, raidState.getWaveIndex() - 1), 6);
+        float pressureMultiplier = getZoneRaidPressureMultiplier(baseState.getZoneId());
+        int spawnCount = Math.min(Math.max(2, Math.round((3 + Math.max(0, raidState.getWaveIndex() - 1)) * pressureMultiplier)), 7);
         for (int i = 0; i < spawnCount; i++) {
             Enemy enemy = createZoneEnemy(
                 new Vector2(center.x + 180f + i * 18f, center.y + ((i & 1) == 0 ? 96f : -96f)),
@@ -1416,7 +2071,7 @@ public class GameScreen implements Screen {
             enemy.patrolTarget = new Vector2(center);
             enemies.add(enemy);
         }
-        showStandaloneDialog("Frontier", "Raid detected near your base. Defenders to stations.");
+        showStandaloneDialog("Frontier", "Raid detected near your base. Defenders to stations. " + getStructureWarSupportLine(baseState.getZoneId()));
     }
 
     private void persistDefenderHealth(BaseDefenderUnit defender) {
@@ -2150,7 +2805,8 @@ public class GameScreen implements Screen {
     private void drawQuestMenuTabBackgrounds(float width, float height) {
         float startX = 172f;
         float y = height - 164f;
-        float tabWidth = 150f;
+        float availableWidth = Math.max(780f, width - 344f);
+        float tabWidth = Math.max(96f, Math.min(150f, (availableWidth - (QUEST_MENU_TABS.length - 1) * 10f) / QUEST_MENU_TABS.length));
         for (int i = 0; i < QUEST_MENU_TABS.length; i++) {
             boolean active = i == questMenuTabIndex;
             shapeRenderer.setColor(active ? new Color(0.24f, 0.30f, 0.44f, 0.95f) : new Color(0.10f, 0.12f, 0.18f, 0.92f));
@@ -2161,7 +2817,8 @@ public class GameScreen implements Screen {
     private void drawQuestMenuTabs(SpriteBatch batch, float height) {
         float startX = 172f;
         float y = height - 164f;
-        float tabWidth = 150f;
+        float availableWidth = Math.max(780f, uiViewport.getWorldWidth() - 344f);
+        float tabWidth = Math.max(96f, Math.min(150f, (availableWidth - (QUEST_MENU_TABS.length - 1) * 10f) / QUEST_MENU_TABS.length));
         for (int i = 0; i < QUEST_MENU_TABS.length; i++) {
             boolean active = i == questMenuTabIndex;
             font.setColor(active ? Color.WHITE : Color.LIGHT_GRAY);
@@ -2175,15 +2832,21 @@ public class GameScreen implements Screen {
                 drawQuestMenuListSection(batch, height, getCommandTabHeading(), getCommandTabLines(), "Command data unavailable.");
                 break;
             case 2:
-                drawQuestMenuListSection(batch, height, "Forge Components", getMaterialInventoryLines(), "No forge components collected yet.");
+                drawQuestMenuListSection(batch, height, "War Theater", getWarStatusLines(), "War-state data unavailable.");
                 break;
             case 3:
-                drawQuestMenuListSection(batch, height, "Graded Shards", getShardInventoryLines(), "No graded shards recovered yet.");
+                drawQuestMenuListSection(batch, height, "Strategic Map", getStrategicMapLines(), "Strategic map unavailable.");
                 break;
             case 4:
-                drawQuestMenuListSection(batch, height, "Blueprint Fragments", getBlueprintFragmentInventoryLines(), "No blueprint fragments recovered yet.");
+                drawQuestMenuListSection(batch, height, "Forge Components", getMaterialInventoryLines(), "No forge components collected yet.");
                 break;
             case 5:
+                drawQuestMenuListSection(batch, height, "Graded Shards", getShardInventoryLines(), "No graded shards recovered yet.");
+                break;
+            case 6:
+                drawQuestMenuListSection(batch, height, "Blueprint Fragments", getBlueprintFragmentInventoryLines(), "No blueprint fragments recovered yet.");
+                break;
+            case 7:
                 drawQuestMenuListSection(batch, height, "Items", getItemInventoryLines(), "No usable items carried.");
                 break;
             case 0:
@@ -2408,13 +3071,296 @@ public class GameScreen implements Screen {
     }
 
     private List<String> getActFourCommandLines() {
-        WarPhaseSnapshot snapshot = warPhaseManager.buildSnapshot(
+        return new ArrayList<>(getCurrentWarPhaseSnapshot().getCommandLines());
+    }
+
+    private List<String> getWarStatusLines() {
+        List<String> lines = new ArrayList<>();
+        WarPhaseSnapshot snapshot = getCurrentWarPhaseSnapshot();
+        lines.add("War theater: " + getActiveWorldEventName() + ".");
+        if (!snapshot.isUnlocked()) {
+            lines.add("Act 4 is not online yet. Bring Forge Core Lv4 online, secure the command hub, or push deeper boss progression.");
+            lines.add("Current frontier scale: " + getTotalClaimedTerritories() + " territories, " + getGuildSettlementCount() + " guild settlements.");
+            lines.add("Infinite Dungeon best floor: " + gameState.getInfiniteDungeonBestFloor() + ".");
+            return lines;
+        }
+
+        lines.add("Influence map: territory " + snapshot.getTerritoryInfluence() + "%  |  settlement risk "
+            + snapshot.getSettlementAttackRisk() + "%  |  world fronts " + snapshot.getWorldBossFrontCount() + ".");
+        lines.add("Operations: convoy routes " + snapshot.getConvoyRouteCount() + "  |  large expeditions "
+            + snapshot.getLargeExpeditionCount() + "  |  player quest boards " + snapshot.getPlayerQuestBoardCount() + ".");
+        lines.add("Factions: Command " + factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_IRONHAVEN_COMMAND, 0)
+            + "%  |  Guilds " + factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_GUILD_COALITION, 0)
+            + "%  |  Hostiles " + factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_FRONTIER_HOSTILES, 0) + "%.");
+        lines.addAll(getActFourCampaignStatusLines());
+
+        if (activeWorldBossFrontsByZoneId.isEmpty()) {
+            lines.add("Active fronts: none. Command scouts are rotating for the next breach window.");
+        } else {
+            for (Map.Entry<String, String> entry : activeWorldBossFrontsByZoneId.entrySet()) {
+                lines.add("Front: " + getWorldBossFrontVariantName(entry.getKey()) + " in " + getZoneDisplayName(entry.getKey())
+                    + " held by " + getMonsterDisplayName(entry.getValue())
+                    + " [" + getWorldBossFrontBehavior(entry.getKey()) + " - " + getWorldBossFrontEffectSummary(entry.getKey())
+                    + " | bonus " + getWorldBossFrontVariantBonusText(entry.getKey()) + "].");
+            }
+        }
+
+        lines.addAll(getWarBulletinLines());
+        lines.addAll(getFactionDirectiveLines());
+
+        List<String> pressureZones = getWarPressureZoneLines();
+        if (pressureZones.isEmpty()) {
+            lines.add("Zone pressure: no major frontline modifiers are active right now.");
+        } else {
+            lines.addAll(pressureZones);
+        }
+
+        List<String> infrastructureLines = getWarInfrastructureLines();
+        if (infrastructureLines.isEmpty()) {
+            lines.add("Infrastructure map: no claimed corridor bonuses are online yet.");
+        } else {
+            lines.addAll(infrastructureLines);
+        }
+
+        List<String> projectLines = getActiveSettlementProjectLines();
+        if (projectLines.isEmpty()) {
+            lines.add("Settlement projects: no faction megaprojects are active yet.");
+        } else {
+            lines.addAll(projectLines);
+        }
+
+        lines.add(buildLargeDungeonStatusLine());
+        if (pinnedExpeditionContractKind != null && pinnedExpeditionContractKind.startsWith("LARGE_DUNGEON_EXPEDITION")) {
+            lines.add("Pinned descent order: " + pinnedExpeditionContractText);
+        }
+        return lines;
+    }
+
+    private List<String> getStrategicMapLines() {
+        List<String> lines = new ArrayList<>();
+        WarPhaseSnapshot snapshot = getCurrentWarPhaseSnapshot();
+        List<ExpeditionLaunchDestination> destinations = getStrategicMapDestinations();
+        clampStrategicMapSelection();
+        ExpeditionLaunchDestination selectedDestination = destinations.isEmpty()
+            ? null
+            : destinations.get(Math.min(strategicMapSelectionIndex, destinations.size() - 1));
+        lines.add("Strategic theater: " + getActiveWorldEventName() + ".");
+        if (!snapshot.isUnlocked()) {
+            lines.add("Strategic map is still forming. Act 4 unlocks once the command layer is online.");
+            lines.add("Current reach: " + getTotalClaimedTerritories() + " territories  |  " + getGuildSettlementCount() + " guild settlements.");
+            return lines;
+        }
+
+        lines.add("Global picture: world influence " + snapshot.getTerritoryInfluence() + "%  |  settlement risk "
+            + snapshot.getSettlementAttackRisk() + "%  |  active fronts " + snapshot.getWorldBossFrontCount() + ".");
+        lines.add("Faction balance: Command " + factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_IRONHAVEN_COMMAND, 0)
+            + "%  |  Guilds " + factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_GUILD_COALITION, 0)
+            + "%  |  Hostiles " + factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_FRONTIER_HOSTILES, 0) + "%.");
+        lines.add("Route capacity: convoy lanes " + snapshot.getConvoyRouteCount() + "  |  large expeditions "
+            + snapshot.getLargeExpeditionCount() + "  |  quest boards " + snapshot.getPlayerQuestBoardCount() + ".");
+        lines.addAll(getActFourCampaignStatusLines());
+
+        List<String> frontLines = buildStrategicFrontLines();
+        if (frontLines.isEmpty()) {
+            lines.add("Front map: no active world-boss sieges are fixed on the board right now.");
+        } else {
+            lines.addAll(frontLines);
+        }
+
+        List<String> corridorLines = buildStrategicCorridorLines();
+        if (corridorLines.isEmpty()) {
+            lines.add("Corridors: no player-controlled regions are projecting support yet.");
+        } else {
+            lines.addAll(corridorLines);
+        }
+
+        List<String> projectLines = buildStrategicProjectPriorityLines();
+        if (projectLines.isEmpty()) {
+            lines.add("Projects: no strategic megaproject has reached activation thresholds.");
+        } else {
+            lines.addAll(projectLines);
+        }
+
+        lines.addAll(getWarBulletinLines());
+
+        if (selectedDestination != null) {
+            for (int i = 0; i < destinations.size(); i++) {
+                ExpeditionLaunchDestination destination = destinations.get(i);
+                String prefix = i == strategicMapSelectionIndex ? "> " : "  ";
+                lines.add(prefix + destination.label + " [" + destination.contractTierLabel + "]");
+            }
+            lines.add("Selected theater: " + selectedDestination.label + ".");
+            lines.add(buildStrategicDirectiveLine(selectedDestination));
+            lines.add(buildStrategicSupportLine(selectedDestination.zoneId));
+            if (getRegionalIncidentName(selectedDestination.zoneId) != null) {
+                lines.add("Regional incident: " + getRegionalIncidentName(selectedDestination.zoneId)
+                    + "  |  " + getRegionalIncidentSummary(selectedDestination.zoneId) + ".");
+            }
+            if (getSettlementCrisisName(selectedDestination.zoneId) != null) {
+                lines.add("Settlement crisis: " + getSettlementCrisisName(selectedDestination.zoneId)
+                    + "  |  " + getSettlementCrisisSummary(selectedDestination.zoneId) + ".");
+            }
+            lines.add("Up/Down move theater focus. E deploys directly from the map.");
+        }
+        lines.add(buildStrategicPriorityLine());
+        return lines;
+    }
+
+    private WarPhaseSnapshot getCurrentWarPhaseSnapshot() {
+        return warPhaseManager.buildSnapshot(
             gameState,
             baseStatesByZoneId,
             guildDefinitionsById,
-            playerName
+            playerName,
+            factionInfluenceById,
+            activeWorldBossFrontsByZoneId
         );
-        return new ArrayList<>(snapshot.getCommandLines());
+    }
+
+    private boolean shouldOfferConvoyEscort(ExpeditionLaunchDestination destination) {
+        if (destination == null || destination.zoneId == null || destination.zoneId.isEmpty() || "town".equals(destination.zoneId)) {
+            return false;
+        }
+        BaseState baseState = baseStatesByZoneId.get(destination.zoneId);
+        return warPhaseManager.isConvoyEscortRecommended(getCurrentWarPhaseSnapshot(), baseState);
+    }
+
+    private GuildDefinition getPublishingGuildForZone(String zoneId) {
+        if (zoneId == null || zoneId.isEmpty()) {
+            return null;
+        }
+        for (GuildDefinition guild : guildDefinitionsById.values()) {
+            if (guild == null) {
+                continue;
+            }
+            if (zoneId.equals(guild.getHallZoneId())
+                && guild.getHallClaimedSiteId() != null
+                && !guild.getHallClaimedSiteId().isEmpty()
+                && guildPermissionsEngine.canPerform(guild, playerName, PermissionAction.POST_QUESTS)) {
+                return guild;
+            }
+        }
+        return null;
+    }
+
+    private PlayerQuestContract getActivePlayerQuestContractForZone(String zoneId) {
+        if (zoneId == null || zoneId.isEmpty()) {
+            return null;
+        }
+        for (PlayerQuestContract contract : playerQuestContracts) {
+            if (contract != null && contract.active && zoneId.equals(contract.zoneId)) {
+                return contract;
+            }
+        }
+        return null;
+    }
+
+    private int getActivePlayerQuestContractCount() {
+        int count = 0;
+        for (PlayerQuestContract contract : playerQuestContracts) {
+            if (contract != null && contract.active) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private boolean shouldOfferPlayerCreatedQuest(ExpeditionLaunchDestination destination) {
+        return destination != null
+            && destination.zoneId != null
+            && !destination.zoneId.isEmpty()
+            && getActivePlayerQuestContractForZone(destination.zoneId) != null;
+    }
+
+    private PlayerQuestContract getActivePlayerQuestContractForGuild(String guildId) {
+        if (guildId == null || guildId.isEmpty()) {
+            return null;
+        }
+        for (PlayerQuestContract contract : playerQuestContracts) {
+            if (contract != null && contract.active && guildId.equals(contract.guildId)) {
+                return contract;
+            }
+        }
+        return null;
+    }
+
+    private String getLatestPlayerQuestContractKindForGuild(String guildId) {
+        if (guildId == null || guildId.isEmpty()) {
+            return null;
+        }
+        for (int i = playerQuestContracts.size() - 1; i >= 0; i--) {
+            PlayerQuestContract contract = playerQuestContracts.get(i);
+            if (contract != null && guildId.equals(contract.guildId) && contract.kind != null && !contract.kind.isEmpty()) {
+                return contract.kind;
+            }
+        }
+        return null;
+    }
+
+    private boolean shouldOfferGuildBoardContract(ExpeditionLaunchDestination destination) {
+        if (destination == null || destination.zoneId == null || destination.zoneId.isEmpty() || "town".equals(destination.zoneId)) {
+            return false;
+        }
+        if (isActiveWorldBossFront(destination.zoneId) || shouldOfferConvoyEscort(destination)) {
+            return false;
+        }
+        BaseState baseState = baseStatesByZoneId.get(destination.zoneId);
+        return baseState != null
+            && !baseState.getClaimedSiteIds().isEmpty()
+            && getPublishingGuildForZone(destination.zoneId) != null;
+    }
+
+    private boolean shouldOfferGuildStrikeContract(ExpeditionLaunchDestination destination) {
+        if (destination == null || destination.zoneId == null || destination.zoneId.isEmpty() || "town".equals(destination.zoneId)) {
+            return false;
+        }
+        BaseState baseState = baseStatesByZoneId.get(destination.zoneId);
+        GuildDefinition guild = getPublishingGuildForZone(destination.zoneId);
+        ZoneDefinition definition = zoneDefinitions.get(destination.zoneId);
+        boolean bossActive = definition != null
+            && definition.getBossId() != null
+            && !definition.getBossId().isEmpty()
+            && !gameState.hasDefeatedBoss(definition.getBossId());
+        boolean blockedByHigherPriorityThreat = isActiveWorldBossFront(destination.zoneId) || shouldOfferConvoyEscort(destination);
+        return warPhaseManager.isGuildStrikeRecommended(baseState, guild, bossActive, blockedByHigherPriorityThreat);
+    }
+
+    private boolean shouldOfferPublicBoardContract(ExpeditionLaunchDestination destination) {
+        if (destination == null || destination.zoneId == null || destination.zoneId.isEmpty() || "town".equals(destination.zoneId)) {
+            return false;
+        }
+        if (shouldOfferGuildBoardContract(destination)
+            || shouldOfferGuildStrikeContract(destination)
+            || isActiveWorldBossFront(destination.zoneId)
+            || shouldOfferConvoyEscort(destination)) {
+            return false;
+        }
+        BaseState baseState = baseStatesByZoneId.get(destination.zoneId);
+        return baseState != null
+            && !baseState.getClaimedSiteIds().isEmpty()
+            && warPhaseManager.isWarPhaseUnlocked(gameState)
+            && getDestinationFragmentId(destination.zoneId) == null
+            && (expeditionBoardReputation >= 4 || worldStateManager.isFlagActive(gameState, "settlement.command_hub"));
+    }
+
+    private boolean shouldOfferPublicRecoveryContract(ExpeditionLaunchDestination destination) {
+        if (destination == null || destination.zoneId == null || destination.zoneId.isEmpty() || "town".equals(destination.zoneId)) {
+            return false;
+        }
+        BaseState baseState = baseStatesByZoneId.get(destination.zoneId);
+        boolean fragmentRouteAvailable = getDestinationFragmentId(destination.zoneId) != null;
+        boolean blockedByHigherPriorityThreat = shouldOfferGuildBoardContract(destination)
+            || shouldOfferGuildStrikeContract(destination)
+            || isActiveWorldBossFront(destination.zoneId)
+            || shouldOfferConvoyEscort(destination);
+        return warPhaseManager.isPublicRecoveryRecommended(baseState, fragmentRouteAvailable, blockedByHigherPriorityThreat);
+    }
+
+    private boolean shouldOfferLargeDungeonExpedition(ExpeditionLaunchDestination destination) {
+        if (destination == null || !INFINITE_DUNGEON_ZONE_ID.equals(destination.zoneId)) {
+            return false;
+        }
+        return warPhaseManager.isWarPhaseUnlocked(gameState) && expeditionBoardReputation >= 4;
     }
 
     private String buildFacilityProgressLine(String facilityName, String worldFlag, String fragmentId, int requiredCount, String contactName) {
@@ -2569,6 +3515,7 @@ public class GameScreen implements Screen {
 
     private List<String> getExpeditionBoardLaunchLines() {
         List<String> lines = new ArrayList<>();
+        WarPhaseSnapshot warSnapshot = getCurrentWarPhaseSnapshot();
         List<ExpeditionLaunchDestination> destinations = getExpeditionLaunchDestinations();
         clampExpeditionBoardSelection();
         ExpeditionLaunchDestination selectedDestination = destinations.isEmpty()
@@ -2590,6 +3537,20 @@ public class GameScreen implements Screen {
         lines.add("World event pressure: " + getActiveWorldEventName() + ".");
         lines.add("Board reputation: " + expeditionBoardReputation + "  |  Contract tier: " + getExpeditionBoardTierLabel() + ".");
         lines.add("Sponsor status: " + getExpeditionSponsorStatusLine() + ".");
+        if (warSnapshot.isUnlocked()) {
+            lines.add("War fronts: " + activeWorldBossFrontsByZoneId.size() + " active  |  Territory influence " + warSnapshot.getTerritoryInfluence()
+                + "%  |  Settlement risk " + warSnapshot.getSettlementAttackRisk() + "%.");
+            if (selectedDestination != null) {
+                String incident = getRegionalIncidentName(selectedDestination.zoneId);
+                String crisis = getSettlementCrisisName(selectedDestination.zoneId);
+                if (incident != null) {
+                    lines.add("Regional incident: " + incident + " - " + getRegionalIncidentSummary(selectedDestination.zoneId) + ".");
+                }
+                if (crisis != null) {
+                    lines.add("Settlement crisis: " + crisis + " - " + getSettlementCrisisSummary(selectedDestination.zoneId) + ".");
+                }
+            }
+        }
         if (selectedDestination != null) {
             for (int i = 0; i < destinations.size(); i++) {
                 ExpeditionLaunchDestination destination = destinations.get(i);
@@ -2598,6 +3559,10 @@ public class GameScreen implements Screen {
             }
             lines.add("Selected deployment: " + selectedDestination.label + ".");
             lines.add(selectedDestination.detail);
+            if (isActiveWorldBossFront(selectedDestination.zoneId)) {
+                lines.add("Marked world-boss front: " + getWorldBossFrontVariantName(selectedDestination.zoneId)
+                    + ". Expect a hardened boss signature and " + getWorldBossFrontVariantBonusText(selectedDestination.zoneId) + ".");
+            }
         }
         lines.add("Up/Down choose destination. E launches immediately.");
         return lines;
@@ -2606,6 +3571,7 @@ public class GameScreen implements Screen {
     private List<String> getExpeditionChecklistLines() {
         List<String> lines = new ArrayList<>();
         ExpeditionLaunchDestination destination = getSelectedExpeditionDestination();
+        WarPhaseSnapshot warSnapshot = getCurrentWarPhaseSnapshot();
         if (pinnedExpeditionContractText != null && !pinnedExpeditionContractText.isEmpty()) {
             lines.add("Pinned contract: " + pinnedExpeditionContractText);
         }
@@ -2644,6 +3610,11 @@ public class GameScreen implements Screen {
             lines.add("No active robots assigned. Visit the workshop before launching.");
         }
         lines.add("Reserve frames available: " + getReserveRobotLines().size() + ".");
+        if (warSnapshot.isUnlocked()) {
+            lines.add("Faction pressure: Command " + factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_IRONHAVEN_COMMAND, 0)
+                + "%  |  Guilds " + factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_GUILD_COALITION, 0)
+                + "%  |  Hostiles " + factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_FRONTIER_HOSTILES, 0) + "%.");
+        }
         lines.addAll(getDestinationChecklistNotes(destination, activeCount, slotLimit));
         return lines;
     }
@@ -2747,7 +3718,58 @@ public class GameScreen implements Screen {
         expeditionBoardSelectionIndex = Math.floorMod(expeditionBoardSelectionIndex, destinations.size());
     }
 
+    private List<ExpeditionLaunchDestination> getStrategicMapDestinations() {
+        List<ExpeditionLaunchDestination> destinations = new ArrayList<>();
+        for (ExpeditionLaunchDestination destination : getExpeditionLaunchDestinations()) {
+            if (destination != null && destination.zoneId != null && !"town".equals(destination.zoneId)) {
+                destinations.add(destination);
+            }
+        }
+        return destinations;
+    }
+
+    private void cycleStrategicMapSelection(int delta) {
+        List<ExpeditionLaunchDestination> destinations = getStrategicMapDestinations();
+        if (destinations.isEmpty()) {
+            strategicMapSelectionIndex = 0;
+            return;
+        }
+        strategicMapSelectionIndex = Math.floorMod(strategicMapSelectionIndex + delta, destinations.size());
+    }
+
+    private void clampStrategicMapSelection() {
+        List<ExpeditionLaunchDestination> destinations = getStrategicMapDestinations();
+        if (destinations.isEmpty()) {
+            strategicMapSelectionIndex = 0;
+            return;
+        }
+        strategicMapSelectionIndex = Math.floorMod(strategicMapSelectionIndex, destinations.size());
+    }
+
+    private ExpeditionLaunchDestination getSelectedStrategicMapDestination() {
+        List<ExpeditionLaunchDestination> destinations = getStrategicMapDestinations();
+        if (destinations.isEmpty()) {
+            return null;
+        }
+        clampStrategicMapSelection();
+        return destinations.get(strategicMapSelectionIndex);
+    }
+
+    private void launchSelectedStrategicMapDestination() {
+        ExpeditionLaunchDestination destination = getSelectedStrategicMapDestination();
+        if (destination == null) {
+            showStandaloneDialog("Strategic Map", "No deployable theater is currently available.");
+            return;
+        }
+        questMenuOpen = false;
+        pinExpeditionContract(destination);
+        loadZone(destination.zoneId, destination.spawnId, true);
+        showStandaloneDialog("Strategic Map", "Strategic deployment confirmed: " + destination.label + ". "
+            + (pinnedExpeditionContractText != null ? "Directive: " + pinnedExpeditionContractText : ""));
+    }
+
     private List<ExpeditionLaunchDestination> getExpeditionLaunchDestinations() {
+        syncWarPhaseState(false);
         List<ExpeditionLaunchDestination> destinations = new ArrayList<>();
         addExpeditionLaunchDestination(destinations, "town", "town_square", "Ironhaven",
             "Return to Ironhaven for full banking, drafting, and facility support.");
@@ -2790,6 +3812,12 @@ public class GameScreen implements Screen {
                 addExpeditionLaunchDestination(destinations, "sky_fortress", null, "Sky Fortress Writ",
                     "Gold board writ. A rare command flight plan has opened a sponsored strike route to Sky Fortress.");
             }
+        }
+        if (warPhaseManager.isWarPhaseUnlocked(gameState)
+            && expeditionBoardReputation >= 4
+            && zoneDefinitions.containsKey(INFINITE_DUNGEON_ZONE_ID)) {
+            addExpeditionLaunchDestination(destinations, INFINITE_DUNGEON_ZONE_ID, "home_spawn", "Legacy Descent",
+                "Large expedition order. Bolt Simulation is now being used as a live war-depth rehearsal for multi-floor strike crews.");
         }
         addDragonRoostDestinations(destinations);
     }
@@ -2919,6 +3947,31 @@ public class GameScreen implements Screen {
         if ("town".equals(zoneId)) {
             return getExpeditionBoardTierLabel();
         }
+        if (INFINITE_DUNGEON_ZONE_ID.equals(zoneId) && warPhaseManager.isWarPhaseUnlocked(gameState)) {
+            return expeditionBoardReputation >= 10 ? "Gold Descent" : expeditionBoardReputation >= 4 ? "Silver Descent" : "Bronze Descent";
+        }
+        if (isActiveWorldBossFront(zoneId)) {
+            return expeditionBoardReputation >= 10 ? "Gold Front" : expeditionBoardReputation >= 4 ? "Silver Front" : "Bronze Front";
+        }
+        if (warPhaseManager.isConvoyEscortRecommended(getCurrentWarPhaseSnapshot(), baseStatesByZoneId.get(zoneId))) {
+            return expeditionBoardReputation >= 10 ? "Gold Convoy" : expeditionBoardReputation >= 4 ? "Silver Convoy" : "Bronze Convoy";
+        }
+        ExpeditionLaunchDestination synthetic = new ExpeditionLaunchDestination(zoneId, null, getZoneDisplayName(zoneId), "", zoneId.equals(currentZoneId), "");
+        if (shouldOfferPlayerCreatedQuest(synthetic)) {
+            return expeditionBoardReputation >= 10 ? "Gold Charter" : expeditionBoardReputation >= 4 ? "Silver Charter" : "Bronze Charter";
+        }
+        if (shouldOfferGuildBoardContract(synthetic)) {
+            return expeditionBoardReputation >= 10 ? "Gold Guild" : expeditionBoardReputation >= 4 ? "Silver Guild" : "Bronze Guild";
+        }
+        if (shouldOfferGuildStrikeContract(synthetic)) {
+            return expeditionBoardReputation >= 10 ? "Gold Strike" : expeditionBoardReputation >= 4 ? "Silver Strike" : "Bronze Strike";
+        }
+        if (shouldOfferPublicRecoveryContract(synthetic)) {
+            return expeditionBoardReputation >= 10 ? "Gold Recovery" : expeditionBoardReputation >= 4 ? "Silver Recovery" : "Bronze Recovery";
+        }
+        if (shouldOfferPublicBoardContract(synthetic)) {
+            return expeditionBoardReputation >= 10 ? "Gold Public" : expeditionBoardReputation >= 4 ? "Silver Public" : "Bronze Public";
+        }
         if (definition != null && definition.getBossId() != null && !definition.getBossId().isEmpty()
             && !gameState.hasDefeatedBoss(definition.getBossId())) {
             return expeditionBoardReputation >= 10 ? "Gold Bounty" : expeditionBoardReputation >= 4 ? "Silver Bounty" : "Bronze Bounty";
@@ -2946,11 +3999,23 @@ public class GameScreen implements Screen {
         pinnedExpeditionContractTargetId = determinePinnedContractTargetId(destination, pinnedExpeditionContractKind);
         pinnedExpeditionContractText = buildPinnedExpeditionContract(destination);
         pinnedExpeditionContractZoneId = destination.zoneId;
+        if (pinnedExpeditionContractKind != null && pinnedExpeditionContractKind.startsWith("WORLD_BOSS_FRONT")) {
+            pinnedExpeditionContractTitle = getWorldBossFrontVariantName(destination.zoneId);
+        }
         pinnedExpeditionContractCompleted = false;
     }
 
     private String buildPinnedExpeditionContract(ExpeditionLaunchDestination destination) {
         String objective = getDestinationObjective(destination);
+        if (pinnedExpeditionContractKind != null
+            && (pinnedExpeditionContractKind.startsWith("CONVOY_ESCORT")
+            || pinnedExpeditionContractKind.startsWith("WORLD_BOSS_FRONT")
+            || pinnedExpeditionContractKind.startsWith("GUILD_STRIKE")
+            || pinnedExpeditionContractKind.startsWith("PUBLIC_BOARD_RECOVERY")
+            || pinnedExpeditionContractKind.startsWith("PLAYER_CREATED_")
+            || pinnedExpeditionContractKind.startsWith("LARGE_DUNGEON_EXPEDITION"))) {
+            return objective;
+        }
         String fragmentGoal = getDestinationFragmentGoal(destination.zoneId);
         if (fragmentGoal != null && !fragmentGoal.isEmpty()) {
             return objective + " " + fragmentGoal;
@@ -2968,6 +4033,57 @@ public class GameScreen implements Screen {
         if ("verdant_fields".equals(destination.zoneId) && !worldStateManager.isFlagActive(gameState, "tutorial.frontier_outpost_banked")) {
             return "BANK_HAUL";
         }
+        if (shouldOfferLargeDungeonExpedition(destination)) {
+            return expeditionBoardReputation >= 10 ? "LARGE_DUNGEON_EXPEDITION_GOLD"
+                : expeditionBoardReputation >= 4 ? "LARGE_DUNGEON_EXPEDITION_SILVER"
+                : "LARGE_DUNGEON_EXPEDITION";
+        }
+        if (shouldOfferPlayerCreatedQuest(destination)) {
+            PlayerQuestContract contract = getActivePlayerQuestContractForZone(destination.zoneId);
+            if (contract != null && "STRIKE".equals(contract.kind)) {
+                return expeditionBoardReputation >= 10 ? "PLAYER_CREATED_STRIKE_GOLD"
+                    : expeditionBoardReputation >= 4 ? "PLAYER_CREATED_STRIKE_SILVER"
+                    : "PLAYER_CREATED_STRIKE";
+            }
+            if (contract != null && "RECOVERY".equals(contract.kind)) {
+                return expeditionBoardReputation >= 10 ? "PLAYER_CREATED_RECOVERY_GOLD"
+                    : expeditionBoardReputation >= 4 ? "PLAYER_CREATED_RECOVERY_SILVER"
+                    : "PLAYER_CREATED_RECOVERY";
+            }
+            return expeditionBoardReputation >= 10 ? "PLAYER_CREATED_SUPPLY_GOLD"
+                : expeditionBoardReputation >= 4 ? "PLAYER_CREATED_SUPPLY_SILVER"
+                : "PLAYER_CREATED_SUPPLY";
+        }
+        if (isActiveWorldBossFront(destination.zoneId)) {
+            return expeditionBoardReputation >= 10 ? "WORLD_BOSS_FRONT_GOLD"
+                : expeditionBoardReputation >= 4 ? "WORLD_BOSS_FRONT_SILVER"
+                : "WORLD_BOSS_FRONT";
+        }
+        if (shouldOfferConvoyEscort(destination)) {
+            return expeditionBoardReputation >= 10 ? "CONVOY_ESCORT_GOLD"
+                : expeditionBoardReputation >= 4 ? "CONVOY_ESCORT_SILVER"
+                : "CONVOY_ESCORT";
+        }
+        if (shouldOfferGuildBoardContract(destination)) {
+            return expeditionBoardReputation >= 10 ? "GUILD_BOARD_SUPPLY_GOLD"
+                : expeditionBoardReputation >= 4 ? "GUILD_BOARD_SUPPLY_SILVER"
+                : "GUILD_BOARD_SUPPLY";
+        }
+        if (shouldOfferGuildStrikeContract(destination)) {
+            return expeditionBoardReputation >= 10 ? "GUILD_STRIKE_GOLD"
+                : expeditionBoardReputation >= 4 ? "GUILD_STRIKE_SILVER"
+                : "GUILD_STRIKE";
+        }
+        if (shouldOfferPublicRecoveryContract(destination)) {
+            return expeditionBoardReputation >= 10 ? "PUBLIC_BOARD_RECOVERY_GOLD"
+                : expeditionBoardReputation >= 4 ? "PUBLIC_BOARD_RECOVERY_SILVER"
+                : "PUBLIC_BOARD_RECOVERY";
+        }
+        if (shouldOfferPublicBoardContract(destination)) {
+            return expeditionBoardReputation >= 10 ? "PUBLIC_BOARD_DELIVERY_GOLD"
+                : expeditionBoardReputation >= 4 ? "PUBLIC_BOARD_DELIVERY_SILVER"
+                : "PUBLIC_BOARD_DELIVERY";
+        }
         ZoneDefinition definition = zoneDefinitions.get(destination.zoneId);
         if (definition != null && definition.getBossId() != null && !definition.getBossId().isEmpty()
             && !gameState.hasDefeatedBoss(definition.getBossId())) {
@@ -2983,11 +4099,41 @@ public class GameScreen implements Screen {
         if (destination == null) {
             return null;
         }
+        if (contractKind != null && contractKind.startsWith("CONVOY_ESCORT")) {
+            return destination.zoneId;
+        }
+        if (contractKind != null && contractKind.startsWith("LARGE_DUNGEON_EXPEDITION")) {
+            return "floor:" + getLargeDungeonExpeditionTargetFloor(contractKind);
+        }
+        if (contractKind != null && contractKind.startsWith("PLAYER_CREATED_SUPPLY")) {
+            return destination.zoneId;
+        }
+        if (contractKind != null && contractKind.startsWith("PLAYER_CREATED_STRIKE")) {
+            PlayerQuestContract contract = getActivePlayerQuestContractForZone(destination.zoneId);
+            return contract != null ? contract.targetId : null;
+        }
+        if (contractKind != null && contractKind.startsWith("PLAYER_CREATED_RECOVERY")) {
+            PlayerQuestContract contract = getActivePlayerQuestContractForZone(destination.zoneId);
+            return contract != null ? contract.targetId : null;
+        }
+        if (contractKind != null && contractKind.startsWith("WORLD_BOSS_FRONT")) {
+            String frontBossId = getActiveWorldBossFrontBossId(destination.zoneId);
+            if (frontBossId != null && !frontBossId.isEmpty()) {
+                return frontBossId;
+            }
+        }
+        if (contractKind != null && contractKind.startsWith("GUILD_STRIKE")) {
+            ZoneDefinition definition = zoneDefinitions.get(destination.zoneId);
+            return definition != null ? definition.getBossId() : null;
+        }
         if (contractKind != null && contractKind.startsWith("DEFEAT_BOSS")) {
             ZoneDefinition definition = zoneDefinitions.get(destination.zoneId);
             return definition != null ? definition.getBossId() : null;
         }
         if (contractKind != null && contractKind.startsWith("RECOVER_FRAGMENT")) {
+            return getDestinationFragmentId(destination.zoneId);
+        }
+        if (contractKind != null && contractKind.startsWith("PUBLIC_BOARD_RECOVERY")) {
             return getDestinationFragmentId(destination.zoneId);
         }
         return destination.zoneId;
@@ -3004,6 +4150,37 @@ public class GameScreen implements Screen {
             return "forge_schema";
         }
         return null;
+    }
+
+    private int getLargeDungeonExpeditionTargetFloor(String contractKind) {
+        if (contractKind == null || contractKind.isEmpty()) {
+            return 3;
+        }
+        if (contractKind.endsWith("_GOLD")) {
+            return 10;
+        }
+        if (contractKind.endsWith("_SILVER")) {
+            return 6;
+        }
+        return 3;
+    }
+
+    private int getPinnedLargeDungeonTargetFloor() {
+        if (pinnedExpeditionContractTargetId == null || !pinnedExpeditionContractTargetId.startsWith("floor:")) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(pinnedExpeditionContractTargetId.substring("floor:".length()));
+        } catch (NumberFormatException ignored) {
+            return 0;
+        }
+    }
+
+    private void completePlayerQuestContractForZone(String zoneId) {
+        PlayerQuestContract contract = getActivePlayerQuestContractForZone(zoneId);
+        if (contract != null) {
+            contract.active = false;
+        }
     }
 
     private void handlePinnedContractClaim(String siteId) {
@@ -3027,23 +4204,78 @@ public class GameScreen implements Screen {
     }
 
     private void handlePinnedContractFragmentRecovery(String fragmentId, int amount) {
-        if ((pinnedExpeditionContractKind == null || !pinnedExpeditionContractKind.startsWith("RECOVER_FRAGMENT")) || pinnedExpeditionContractCompleted) {
+        if (pinnedExpeditionContractCompleted || pinnedExpeditionContractKind == null) {
             return;
         }
         if (fragmentId == null || amount <= 0) {
             return;
         }
-        if (pinnedExpeditionContractTargetId != null && pinnedExpeditionContractTargetId.equals(fragmentId)) {
+        if ((pinnedExpeditionContractKind.startsWith("RECOVER_FRAGMENT")
+            || pinnedExpeditionContractKind.startsWith("PUBLIC_BOARD_RECOVERY")
+            || pinnedExpeditionContractKind.startsWith("PLAYER_CREATED_RECOVERY"))
+            && pinnedExpeditionContractTargetId != null
+            && pinnedExpeditionContractTargetId.equals(fragmentId)) {
+            recordActFourRecoveryVictory(currentZoneId, pinnedExpeditionContractKind);
+            resolveRegionalIncident(currentZoneId);
+            if (pinnedExpeditionContractKind.startsWith("PUBLIC_BOARD_RECOVERY")) {
+                adjustFactionInfluence(WarPhaseManager.FACTION_IRONHAVEN_COMMAND, 5);
+                adjustFactionInfluence(WarPhaseManager.FACTION_GUILD_COALITION, 2);
+                adjustFactionInfluence(WarPhaseManager.FACTION_FRONTIER_HOSTILES, -4);
+                syncWarPhaseState(false);
+                completePinnedExpeditionContract("Contract complete. Recovery teams secured the fragment cache before hostile crews could strip it.");
+                return;
+            }
+            if (pinnedExpeditionContractKind.startsWith("PLAYER_CREATED_RECOVERY")) {
+                completePlayerQuestContractForZone(pinnedExpeditionContractZoneId);
+                adjustFactionInfluence(WarPhaseManager.FACTION_GUILD_COALITION, 5);
+                adjustFactionInfluence(WarPhaseManager.FACTION_FRONTIER_HOSTILES, -3);
+                syncWarPhaseState(false);
+                completePinnedExpeditionContract("Contract complete. Player-authored recovery charter fulfilled.");
+                return;
+            }
             completePinnedExpeditionContract("Contract complete. Required fragment recovered for this route.");
         }
     }
 
     private void handlePinnedContractBossDefeat(String bossId) {
-        if ((pinnedExpeditionContractKind == null || !pinnedExpeditionContractKind.startsWith("DEFEAT_BOSS")) || pinnedExpeditionContractCompleted) {
+        if (bossId == null || bossId.isEmpty()) {
             return;
         }
-        if (bossId != null && bossId.equals(pinnedExpeditionContractTargetId)) {
-            completePinnedExpeditionContract("Contract complete. Zone boss neutralized.");
+        if (!pinnedExpeditionContractCompleted
+            && pinnedExpeditionContractKind != null
+            && (pinnedExpeditionContractKind.startsWith("DEFEAT_BOSS")
+            || pinnedExpeditionContractKind.startsWith("WORLD_BOSS_FRONT")
+            || pinnedExpeditionContractKind.startsWith("GUILD_STRIKE")
+            || pinnedExpeditionContractKind.startsWith("PLAYER_CREATED_STRIKE"))
+            && bossId.equals(pinnedExpeditionContractTargetId)) {
+            recordActFourBossVictory(currentZoneId, pinnedExpeditionContractKind);
+            resolveRegionalIncident(currentZoneId);
+            resolveSettlementCrisis(currentZoneId);
+            if (pinnedExpeditionContractKind.startsWith("WORLD_BOSS_FRONT")) {
+                resolveWorldBossFrontByBossId(bossId);
+                completePinnedExpeditionContract("Contract complete. World boss front collapsed.");
+            } else if (pinnedExpeditionContractKind.startsWith("PLAYER_CREATED_STRIKE")) {
+                completePlayerQuestContractForZone(pinnedExpeditionContractZoneId);
+                adjustFactionInfluence(WarPhaseManager.FACTION_GUILD_COALITION, 7);
+                adjustFactionInfluence(WarPhaseManager.FACTION_IRONHAVEN_COMMAND, 2);
+                adjustFactionInfluence(WarPhaseManager.FACTION_FRONTIER_HOSTILES, -6);
+                syncWarPhaseState(false);
+                completePinnedExpeditionContract("Contract complete. Player-authored strike charter resolved.");
+            } else if (pinnedExpeditionContractKind.startsWith("GUILD_STRIKE")) {
+                adjustFactionInfluence(WarPhaseManager.FACTION_GUILD_COALITION, 8);
+                adjustFactionInfluence(WarPhaseManager.FACTION_IRONHAVEN_COMMAND, 3);
+                adjustFactionInfluence(WarPhaseManager.FACTION_FRONTIER_HOSTILES, -8);
+                syncWarPhaseState(false);
+                completePinnedExpeditionContract("Contract complete. Guild strike order resolved and the route leadership shifted back to allied crews.");
+            } else {
+                completePinnedExpeditionContract("Contract complete. Zone boss neutralized.");
+            }
+            return;
+        }
+
+        if (isBossInActiveFront(bossId)) {
+            resolveWorldBossFrontByBossId(bossId);
+            refreshHud();
         }
     }
 
@@ -3067,11 +4299,129 @@ public class GameScreen implements Screen {
         int goldReward = 25;
         int shardReward = 0;
         int reputationReward = 1;
+        int potionReward = 0;
         int sponsorPremiumGold = getExpeditionBoardTierBonusGold();
         if ("CLAIM_SITE".equals(pinnedExpeditionContractKind)) {
             goldReward = 40;
         } else if ("BANK_HAUL".equals(pinnedExpeditionContractKind)) {
             goldReward = 50;
+        } else if ("CONVOY_ESCORT".equals(pinnedExpeditionContractKind)) {
+            goldReward = 85;
+            shardReward = 1;
+            reputationReward = 2;
+        } else if ("CONVOY_ESCORT_SILVER".equals(pinnedExpeditionContractKind)) {
+            goldReward = 120;
+            shardReward = 2;
+            reputationReward = 2;
+        } else if ("CONVOY_ESCORT_GOLD".equals(pinnedExpeditionContractKind)) {
+            goldReward = 165;
+            shardReward = 3;
+            reputationReward = 3;
+        } else if ("WORLD_BOSS_FRONT".equals(pinnedExpeditionContractKind)) {
+            goldReward = 145;
+            shardReward = 3;
+            reputationReward = 3;
+        } else if ("WORLD_BOSS_FRONT_SILVER".equals(pinnedExpeditionContractKind)) {
+            goldReward = 205;
+            shardReward = 4;
+            reputationReward = 3;
+        } else if ("WORLD_BOSS_FRONT_GOLD".equals(pinnedExpeditionContractKind)) {
+            goldReward = 280;
+            shardReward = 6;
+            reputationReward = 4;
+        } else if ("LARGE_DUNGEON_EXPEDITION".equals(pinnedExpeditionContractKind)) {
+            goldReward = 140;
+            shardReward = 3;
+            reputationReward = 2;
+        } else if ("LARGE_DUNGEON_EXPEDITION_SILVER".equals(pinnedExpeditionContractKind)) {
+            goldReward = 200;
+            shardReward = 5;
+            reputationReward = 3;
+        } else if ("LARGE_DUNGEON_EXPEDITION_GOLD".equals(pinnedExpeditionContractKind)) {
+            goldReward = 285;
+            shardReward = 7;
+            reputationReward = 4;
+        } else if ("PLAYER_CREATED_SUPPLY".equals(pinnedExpeditionContractKind)) {
+            goldReward = 95;
+            reputationReward = 2;
+        } else if ("PLAYER_CREATED_SUPPLY_SILVER".equals(pinnedExpeditionContractKind)) {
+            goldReward = 135;
+            shardReward = 1;
+            reputationReward = 3;
+        } else if ("PLAYER_CREATED_SUPPLY_GOLD".equals(pinnedExpeditionContractKind)) {
+            goldReward = 180;
+            shardReward = 2;
+            reputationReward = 3;
+        } else if ("PLAYER_CREATED_STRIKE".equals(pinnedExpeditionContractKind)) {
+            goldReward = 125;
+            shardReward = 2;
+            reputationReward = 2;
+        } else if ("PLAYER_CREATED_STRIKE_SILVER".equals(pinnedExpeditionContractKind)) {
+            goldReward = 170;
+            shardReward = 3;
+            reputationReward = 3;
+        } else if ("PLAYER_CREATED_STRIKE_GOLD".equals(pinnedExpeditionContractKind)) {
+            goldReward = 225;
+            shardReward = 4;
+            reputationReward = 4;
+        } else if ("PLAYER_CREATED_RECOVERY".equals(pinnedExpeditionContractKind)) {
+            goldReward = 100;
+            shardReward = 2;
+            reputationReward = 2;
+        } else if ("PLAYER_CREATED_RECOVERY_SILVER".equals(pinnedExpeditionContractKind)) {
+            goldReward = 145;
+            shardReward = 3;
+            reputationReward = 3;
+        } else if ("PLAYER_CREATED_RECOVERY_GOLD".equals(pinnedExpeditionContractKind)) {
+            goldReward = 195;
+            shardReward = 4;
+            reputationReward = 4;
+        } else if ("GUILD_BOARD_SUPPLY".equals(pinnedExpeditionContractKind)) {
+            goldReward = 70;
+            reputationReward = 2;
+        } else if ("GUILD_BOARD_SUPPLY_SILVER".equals(pinnedExpeditionContractKind)) {
+            goldReward = 105;
+            shardReward = 1;
+            reputationReward = 2;
+        } else if ("GUILD_BOARD_SUPPLY_GOLD".equals(pinnedExpeditionContractKind)) {
+            goldReward = 145;
+            shardReward = 2;
+            reputationReward = 3;
+        } else if ("GUILD_STRIKE".equals(pinnedExpeditionContractKind)) {
+            goldReward = 115;
+            shardReward = 2;
+            reputationReward = 2;
+        } else if ("GUILD_STRIKE_SILVER".equals(pinnedExpeditionContractKind)) {
+            goldReward = 155;
+            shardReward = 3;
+            reputationReward = 3;
+        } else if ("GUILD_STRIKE_GOLD".equals(pinnedExpeditionContractKind)) {
+            goldReward = 210;
+            shardReward = 4;
+            reputationReward = 3;
+        } else if ("PUBLIC_BOARD_DELIVERY".equals(pinnedExpeditionContractKind)) {
+            goldReward = 60;
+            reputationReward = 1;
+        } else if ("PUBLIC_BOARD_DELIVERY_SILVER".equals(pinnedExpeditionContractKind)) {
+            goldReward = 95;
+            shardReward = 1;
+            reputationReward = 2;
+        } else if ("PUBLIC_BOARD_DELIVERY_GOLD".equals(pinnedExpeditionContractKind)) {
+            goldReward = 130;
+            shardReward = 2;
+            reputationReward = 2;
+        } else if ("PUBLIC_BOARD_RECOVERY".equals(pinnedExpeditionContractKind)) {
+            goldReward = 85;
+            shardReward = 1;
+            reputationReward = 2;
+        } else if ("PUBLIC_BOARD_RECOVERY_SILVER".equals(pinnedExpeditionContractKind)) {
+            goldReward = 120;
+            shardReward = 2;
+            reputationReward = 2;
+        } else if ("PUBLIC_BOARD_RECOVERY_GOLD".equals(pinnedExpeditionContractKind)) {
+            goldReward = 160;
+            shardReward = 3;
+            reputationReward = 3;
         } else if ("RECOVER_FRAGMENT".equals(pinnedExpeditionContractKind)) {
             goldReward = 60;
             shardReward = 1;
@@ -3096,6 +4446,79 @@ public class GameScreen implements Screen {
             shardReward = 4;
             reputationReward = 3;
         }
+        if (pinnedExpeditionContractKind != null && pinnedExpeditionContractKind.startsWith("WORLD_BOSS_FRONT")) {
+            if ("sky_fortress".equals(pinnedExpeditionContractZoneId)) {
+                reputationReward += 1;
+                goldReward += 20;
+            } else if ("shadow_caves".equals(pinnedExpeditionContractZoneId)) {
+                shardReward += 1;
+            } else if ("crystal_depths".equals(pinnedExpeditionContractZoneId)) {
+                goldReward += 25;
+                shardReward += 1;
+            } else if ("rusty_quarry".equals(pinnedExpeditionContractZoneId)) {
+                goldReward += 25;
+            }
+        }
+        if (pinnedExpeditionContractZoneId != null && activeRegionalIncidentsByZoneId.containsKey(pinnedExpeditionContractZoneId)) {
+            goldReward += 20;
+            if (pinnedExpeditionContractKind != null
+                && (pinnedExpeditionContractKind.startsWith("RECOVER_FRAGMENT")
+                || pinnedExpeditionContractKind.startsWith("PUBLIC_BOARD_RECOVERY")
+                || pinnedExpeditionContractKind.startsWith("PLAYER_CREATED_RECOVERY")
+                || pinnedExpeditionContractKind.startsWith("WORLD_BOSS_FRONT"))) {
+                shardReward += 1;
+            }
+        }
+        if (pinnedExpeditionContractZoneId != null && activeSettlementCrisesByZoneId.containsKey(pinnedExpeditionContractZoneId)) {
+            reputationReward += 1;
+            if (pinnedExpeditionContractKind != null
+                && (pinnedExpeditionContractKind.startsWith("CONVOY_ESCORT")
+                || pinnedExpeditionContractKind.startsWith("PLAYER_CREATED_SUPPLY")
+                || pinnedExpeditionContractKind.startsWith("GUILD_BOARD_SUPPLY")
+                || pinnedExpeditionContractKind.startsWith("PUBLIC_BOARD_DELIVERY"))) {
+                goldReward += 30;
+            }
+        }
+        int infrastructureBonusGold = getZoneContractSupportBonus(pinnedExpeditionContractZoneId, pinnedExpeditionContractKind);
+        goldReward += infrastructureBonusGold;
+        if (isCoalitionExchangeProjectActive()
+            && pinnedExpeditionContractKind != null
+            && (pinnedExpeditionContractKind.startsWith("CONVOY_ESCORT")
+            || pinnedExpeditionContractKind.startsWith("PLAYER_CREATED_SUPPLY")
+            || pinnedExpeditionContractKind.startsWith("PLAYER_CREATED_RECOVERY")
+            || pinnedExpeditionContractKind.startsWith("GUILD_BOARD_SUPPLY")
+            || pinnedExpeditionContractKind.startsWith("PUBLIC_BOARD_DELIVERY")
+            || pinnedExpeditionContractKind.startsWith("PUBLIC_BOARD_RECOVERY"))) {
+            goldReward += 35;
+            if (pinnedExpeditionContractKind.endsWith("_GOLD")) {
+                potionReward += 1;
+            }
+        }
+        if (isCommandBastionProjectActive()
+            && pinnedExpeditionContractKind != null
+            && (pinnedExpeditionContractKind.startsWith("CONVOY_ESCORT")
+            || pinnedExpeditionContractKind.startsWith("WORLD_BOSS_FRONT")
+            || pinnedExpeditionContractKind.startsWith("PLAYER_CREATED_STRIKE")
+            || pinnedExpeditionContractKind.startsWith("GUILD_STRIKE")
+            || pinnedExpeditionContractKind.startsWith("LARGE_DUNGEON_EXPEDITION"))) {
+            reputationReward += 1;
+        }
+        if (isArchiveWarCollegeProjectActive()
+            && pinnedExpeditionContractKind != null
+            && (pinnedExpeditionContractKind.startsWith("WORLD_BOSS_FRONT")
+            || pinnedExpeditionContractKind.startsWith("PLAYER_CREATED_RECOVERY")
+            || pinnedExpeditionContractKind.startsWith("PUBLIC_BOARD_RECOVERY")
+            || pinnedExpeditionContractKind.startsWith("RECOVER_FRAGMENT")
+            || pinnedExpeditionContractKind.startsWith("LARGE_DUNGEON_EXPEDITION"))) {
+            shardReward += 1;
+            reputationReward += 1;
+        }
+        if (isHostileSabotageProjectActive()
+            && pinnedExpeditionContractKind != null
+            && (pinnedExpeditionContractKind.startsWith("PUBLIC_BOARD_DELIVERY")
+            || pinnedExpeditionContractKind.startsWith("GUILD_BOARD_SUPPLY"))) {
+            goldReward = Math.max(0, goldReward - 15);
+        }
         goldReward += sponsorPremiumGold;
 
         if (goldReward > 0) {
@@ -3105,6 +4528,9 @@ public class GameScreen implements Screen {
             metaProgressionState.setForgeShards(metaProgressionState.getForgeShards() + shardReward);
             metaProgressionManager.save(metaProgressionState);
         }
+        if (potionReward > 0) {
+            addHealingPotions(potionReward);
+        }
         expeditionBoardReputation += reputationReward;
         String sponsorRewardSummary = maybeGrantExpeditionBoardSponsorReward();
         autosave();
@@ -3113,8 +4539,14 @@ public class GameScreen implements Screen {
         if (goldReward > 0) {
             rewards.add("+" + goldReward + " gold");
         }
+        if (infrastructureBonusGold > 0) {
+            rewards.add("+" + infrastructureBonusGold + " corridor support");
+        }
         if (shardReward > 0) {
             rewards.add("+" + shardReward + " Forge Shard" + (shardReward == 1 ? "" : "s"));
+        }
+        if (potionReward > 0) {
+            rewards.add("+" + potionReward + " field kit" + (potionReward == 1 ? "" : "s"));
         }
         rewards.add("+" + reputationReward + " board reputation");
         String rewardText = rewards.isEmpty() ? "" : "Reward: " + String.join(", ", rewards) + ".";
@@ -3180,6 +4612,21 @@ public class GameScreen implements Screen {
         if (addedQuestLines == 0) {
             lines.add("No active quest contracts. Push the frontier and talk to Ironhaven's crew.");
         }
+        int contractBoards = 0;
+        for (GuildDefinition guild : guildDefinitionsById.values()) {
+            if (guild != null && guild.getHallClaimedSiteId() != null && !guild.getHallClaimedSiteId().isEmpty()) {
+                contractBoards++;
+            }
+        }
+        if (contractBoards > 0) {
+            lines.add("Guild boards online: " + contractBoards + ". Player-authored logistics and strike contracts can now surface on frontier routes.");
+        }
+        if (getActivePlayerQuestContractCount() > 0) {
+            lines.add("Live player charters: " + getActivePlayerQuestContractCount() + ". Posted guild directives are currently deployable from the board.");
+        }
+        if (warPhaseManager.isWarPhaseUnlocked(gameState) && worldStateManager.isFlagActive(gameState, "settlement.command_hub")) {
+            lines.add("Public command board: active. Delivery, recovery, and stabilization jobs are now rotating between controlled outposts.");
+        }
         List<String> commandLines = getCommandTabLines();
         for (int i = 0; i < Math.min(4, commandLines.size()); i++) {
             lines.add(commandLines.get(i));
@@ -3194,6 +4641,57 @@ public class GameScreen implements Screen {
         if ("town".equals(destination.zoneId)) {
             return "Prepare the next sortie, spend banked haul, and bring Ironhaven's next project online.";
         }
+        if (shouldOfferLargeDungeonExpedition(destination)) {
+            int targetFloor = getLargeDungeonExpeditionTargetFloor(determinePinnedContractKind(destination));
+            return "Large dungeon expedition authorized. Push the Legacy Descent to floor " + targetFloor
+                + ", then extract with the run intact to prove the route can support multi-team war deployments.";
+        }
+        if (shouldOfferPlayerCreatedQuest(destination)) {
+            PlayerQuestContract contract = getActivePlayerQuestContractForZone(destination.zoneId);
+            if (contract != null && contract.description != null && !contract.description.isEmpty()) {
+                return contract.title + ": " + contract.description;
+            }
+        }
+        if (isActiveWorldBossFront(destination.zoneId)) {
+            if ("sky_fortress".equals(destination.zoneId)) {
+                return "World boss front active in " + destination.label
+                    + ". The air rail has turned into a hard-ascent war lane. Break the marked boss and reopen the sky route.";
+            }
+            if ("shadow_caves".equals(destination.zoneId) || "crystal_depths".equals(destination.zoneId)) {
+                return "World boss front active in " + destination.label
+                    + ". Reclaim the ruin-dark, break the flagged boss, and drag this dusk-struck corridor back into allied hands.";
+            }
+            return "World boss front active in " + destination.label
+                + ". Hunt the flagged boss, break its hold, and reopen the wider route for allied factions.";
+        }
+        if (shouldOfferConvoyEscort(destination)) {
+            return warPhaseManager.buildConvoyEscortObjective(
+                destination.label,
+                baseStatesByZoneId.get(destination.zoneId)
+            );
+        }
+        if (shouldOfferGuildBoardContract(destination)) {
+            GuildDefinition guild = getPublishingGuildForZone(destination.zoneId);
+            String guildName = guild != null ? guild.getDisplayName() : "your guild";
+            return guildName + " has posted a supply contract here. Bank a live haul at the hall outpost to keep guild projects funded and defenses staffed.";
+        }
+        if (shouldOfferGuildStrikeContract(destination)) {
+            GuildDefinition guild = getPublishingGuildForZone(destination.zoneId);
+            ZoneDefinition definition = zoneDefinitions.get(destination.zoneId);
+            String guildName = guild != null ? guild.getDisplayName() : null;
+            String bossName = definition != null ? getMonsterDisplayName(definition.getBossId()) : null;
+            return warPhaseManager.buildGuildStrikeObjective(destination.label, guildName, bossName);
+        }
+        if (shouldOfferPublicBoardContract(destination)) {
+            return "The public contract board needs a live delivery here. Bank a haul at the outpost to keep the route open and the local network supplied.";
+        }
+        if (shouldOfferPublicRecoveryContract(destination)) {
+            String fragmentId = getDestinationFragmentId(destination.zoneId);
+            return warPhaseManager.buildPublicRecoveryObjective(
+                destination.label,
+                fragmentId != null ? getBlueprintFragmentName(fragmentId) : null
+            );
+        }
         if ("verdant_fields".equals(destination.zoneId)) {
             if (!worldStateManager.isFlagActive(gameState, "tutorial.frontier_outpost_claimed")) {
                 return "Claim your first outpost and build storage so Verdant Fields becomes a real foothold.";
@@ -3206,6 +4704,9 @@ public class GameScreen implements Screen {
         ZoneDefinition definition = zoneDefinitions.get(destination.zoneId);
         if (definition != null && definition.getBossId() != null && !definition.getBossId().isEmpty()
             && !gameState.hasDefeatedBoss(definition.getBossId())) {
+            if ("sky_fortress".equals(destination.zoneId)) {
+                return "Advance through " + destination.label + " the hard way and break the boss gate at the top of the restored ascent.";
+            }
             return "Advance through " + destination.label + " and break the zone boss hold there.";
         }
         return "Use " + destination.label + " as a staging ground for tougher salvage runs and local projects.";
@@ -3225,6 +4726,18 @@ public class GameScreen implements Screen {
             return lines;
         }
 
+        if (INFINITE_DUNGEON_ZONE_ID.equals(destination.zoneId)) {
+            int targetFloor = getLargeDungeonExpeditionTargetFloor(determinePinnedContractKind(destination));
+            lines.add("Threat band: scaling dungeon loop  |  Best floor " + gameState.getInfiniteDungeonBestFloor()
+                + "  |  Target floor " + targetFloor + ".");
+            lines.add("Large expedition: complete a stable descent to floor " + targetFloor
+                + " to certify the route for late-war strike crews.");
+            lines.add("Run status: " + (gameState.isInfiniteDungeonRunActive()
+                ? "active on floor " + getInfiniteDungeonCurrentFloor()
+                : "idle, ready for a fresh descent") + ".");
+            return lines;
+        }
+
         lines.add("Threat band: " + definition.getRankFloor() + " to " + definition.getRankCeiling()
             + "  |  Player grade " + getUnlockedGrade() + " / Forge Core Lv" + getForgeCoreLevel() + ".");
         if (definition.getBossId() != null && !definition.getBossId().isEmpty()) {
@@ -3237,6 +4750,46 @@ public class GameScreen implements Screen {
         int structures = baseState != null ? baseState.getPlacedStructures().size() : 0;
         lines.add("Foothold status: " + claimedSites + " claimed site" + (claimedSites == 1 ? "" : "s")
             + ", " + structures + " built structure" + (structures == 1 ? "" : "s") + ".");
+        if (isActiveWorldBossFront(destination.zoneId)) {
+            String bossId = getActiveWorldBossFrontBossId(destination.zoneId);
+            lines.add("War front: priority world boss target " + (bossId != null ? getMonsterDisplayName(bossId) : "registered") + " is destabilizing this route.");
+            lines.add("Elite front: " + getWorldBossFrontVariantName(destination.zoneId) + " ["
+                + getWorldBossFrontBehavior(destination.zoneId) + "]. +35% base max HP, elevated payout, "
+                + getWorldBossFrontEffectSummary(destination.zoneId) + ", and " + getWorldBossFrontVariantBonusText(destination.zoneId) + ".");
+        }
+        if (getRegionalIncidentName(destination.zoneId) != null) {
+            lines.add("Incident field: " + getRegionalIncidentName(destination.zoneId) + " - "
+                + getRegionalIncidentSummary(destination.zoneId) + ".");
+        }
+        if (getSettlementCrisisName(destination.zoneId) != null) {
+            lines.add("Settlement field: " + getSettlementCrisisName(destination.zoneId) + " - "
+                + getSettlementCrisisSummary(destination.zoneId) + ".");
+        }
+        if (shouldOfferConvoyEscort(destination)) {
+            BaseRaidState raidState = baseState != null ? baseState.getRaidState() : null;
+            lines.add(raidState != null && raidState.isActive()
+                ? "War contract: major convoy escort requested. Banking a live haul here will break the active raid lane."
+                : "War contract: escort supplies here before the current pressure spike turns into a major raid.");
+        }
+        if (shouldOfferPlayerCreatedQuest(destination)) {
+            PlayerQuestContract contract = getActivePlayerQuestContractForZone(destination.zoneId);
+            lines.add("Player charter: " + (contract != null ? contract.title : "Custom directive") + " is posted on this route.");
+        } else if (shouldOfferGuildBoardContract(destination)) {
+            GuildDefinition guild = getPublishingGuildForZone(destination.zoneId);
+            lines.add("Guild board: " + (guild != null ? guild.getDisplayName() : "Guild") + " is requesting a funded haul to this hall route.");
+        } else if (shouldOfferGuildStrikeContract(destination)) {
+            GuildDefinition guild = getPublishingGuildForZone(destination.zoneId);
+            lines.add("Guild strike order: " + (guild != null ? guild.getDisplayName() : "Guild Coalition")
+                + " wants the active boss removed before contractors lose control of the corridor.");
+        } else if (shouldOfferPublicBoardContract(destination)) {
+            lines.add("Public board: locals are posting delivery requests to keep this route serviceable.");
+        } else if (shouldOfferPublicRecoveryContract(destination)) {
+            lines.add("Public board: salvage recovery teams are paying for strategic fragments before hostile scavengers strip the zone.");
+        }
+        String zoneCondition = getZoneWarConditionSummary(destination.zoneId);
+        if (zoneCondition != null) {
+            lines.add(zoneCondition);
+        }
         if (definition.isExpansiveFrontier()) {
             lines.add("Recommended focus: outpost growth, local banking, and fragment recovery from deeper frontier bands.");
         } else if (definition.getBossId() != null && !definition.getBossId().isEmpty() && !gameState.hasDefeatedBoss(definition.getBossId())) {
@@ -3271,7 +4824,7 @@ public class GameScreen implements Screen {
         font.setColor(Color.WHITE);
         font.draw(batch, "Guild Charter", 212f, h - 128f);
         font.setColor(Color.LIGHT_GRAY);
-        font.draw(batch, "G or ESC close  |  Up/Down select  |  Enter choose active claim guild  |  C create guild  |  Del personal mode", 212f, h - 154f);
+        font.draw(batch, "G or ESC close  |  Up/Down select  |  Enter choose active claim guild  |  P post charter  |  C create guild  |  Del personal mode", 212f, h - 154f);
 
         String activeMode = activeClaimGuildId != null && !activeClaimGuildId.isEmpty()
             ? getGuildDisplayName(activeClaimGuildId)
@@ -3300,6 +4853,11 @@ public class GameScreen implements Screen {
                 : "No hall claimed yet";
             font.draw(batch, "Founder: " + guild.getFounderPlayerId() + "  |  Hall: " + hall, 232f, y);
             y -= 34f;
+            PlayerQuestContract activeContract = guild.getGuildId() != null ? getActivePlayerQuestContractForGuild(guild.getGuildId()) : null;
+            if (activeContract != null) {
+                font.draw(batch, "Posted charter: " + activeContract.title + " [" + activeContract.kind + "]", 232f, y);
+                y -= 30f;
+            }
         }
         batch.end();
     }
@@ -3354,6 +4912,134 @@ public class GameScreen implements Screen {
         clampGuildMenuSelectionToGuild(guildId);
         autosave();
         showStandaloneDialog("Guild Charter", guildName + " founded. New claims can now be assigned to this guild.");
+    }
+
+    private void postPlayerQuestForSelectedGuild() {
+        List<GuildDefinition> controllableGuilds = getControllableGuilds();
+        if (controllableGuilds.isEmpty()) {
+            showStandaloneDialog("Guild Charter", "Create or control a guild before posting a player charter.");
+            return;
+        }
+        clampGuildMenuSelection();
+        GuildDefinition guild = controllableGuilds.get(guildMenuSelectionIndex);
+        if (guild.getHallZoneId() == null || guild.getHallZoneId().isEmpty()
+            || guild.getHallClaimedSiteId() == null || guild.getHallClaimedSiteId().isEmpty()) {
+            showStandaloneDialog("Guild Charter", "That guild needs a claimed hall before it can post player-authored contracts.");
+            return;
+        }
+        PlayerQuestContract existing = getActivePlayerQuestContractForGuild(guild.getGuildId());
+        if (existing != null) {
+            existing.active = false;
+        }
+
+        PlayerQuestContract contract = buildNextPlayerQuestContract(guild);
+        if (contract == null) {
+            showStandaloneDialog("Guild Charter", "No valid player-authored charter template is available for that guild yet.");
+            return;
+        }
+        playerQuestContracts.add(contract);
+        autosave();
+        showStandaloneDialog("Guild Charter", "Posted charter: " + contract.title + ".");
+    }
+
+    private PlayerQuestContract buildNextPlayerQuestContract(GuildDefinition guild) {
+        if (guild == null || guild.getHallZoneId() == null || guild.getHallZoneId().isEmpty()) {
+            return null;
+        }
+        ZoneDefinition zoneDefinition = zoneDefinitions.get(guild.getHallZoneId());
+        String contractId = guild.getGuildId() + "_charter_" + (playerQuestContracts.size() + 1);
+        PlayerQuestContract contract = new PlayerQuestContract();
+        contract.contractId = contractId;
+        contract.guildId = guild.getGuildId();
+        contract.zoneId = guild.getHallZoneId();
+        contract.authorPlayerId = playerName;
+        contract.active = true;
+
+        String nextKind = "SUPPLY";
+        String previousKind = getLatestPlayerQuestContractKindForGuild(guild.getGuildId());
+        if (previousKind != null) {
+            nextKind = "SUPPLY".equals(previousKind) ? "STRIKE" : "STRIKE".equals(previousKind) ? "RECOVERY" : "SUPPLY";
+        }
+        if ("STRIKE".equals(nextKind) && (zoneDefinition == null || zoneDefinition.getBossId() == null || zoneDefinition.getBossId().isEmpty())) {
+            nextKind = getDestinationFragmentId(guild.getHallZoneId()) != null ? "RECOVERY" : "SUPPLY";
+        }
+        if ("RECOVERY".equals(nextKind) && getDestinationFragmentId(guild.getHallZoneId()) == null) {
+            nextKind = zoneDefinition != null && zoneDefinition.getBossId() != null && !zoneDefinition.getBossId().isEmpty() ? "STRIKE" : "SUPPLY";
+        }
+
+        contract.kind = nextKind;
+        if ("STRIKE".equals(nextKind)) {
+            contract.targetId = zoneDefinition != null ? zoneDefinition.getBossId() : guild.getHallZoneId();
+            contract.title = buildPlayerQuestTitle(guild, guild.getHallZoneId(), "STRIKE");
+            contract.description = buildPlayerQuestDescription(guild, guild.getHallZoneId(), "STRIKE", contract.targetId);
+        } else if ("RECOVERY".equals(nextKind)) {
+            contract.targetId = getDestinationFragmentId(guild.getHallZoneId());
+            contract.title = buildPlayerQuestTitle(guild, guild.getHallZoneId(), "RECOVERY");
+            contract.description = buildPlayerQuestDescription(guild, guild.getHallZoneId(), "RECOVERY", contract.targetId);
+        } else {
+            contract.targetId = guild.getHallZoneId();
+            contract.title = buildPlayerQuestTitle(guild, guild.getHallZoneId(), "SUPPLY");
+            contract.description = buildPlayerQuestDescription(guild, guild.getHallZoneId(), "SUPPLY", contract.targetId);
+        }
+        return contract;
+    }
+
+    private String buildPlayerQuestTitle(GuildDefinition guild, String zoneId, String kind) {
+        String guildName = guild != null ? guild.getDisplayName() : "Guild";
+        if ("STRIKE".equals(kind)) {
+            if ("sky_fortress".equals(zoneId)) {
+                return guildName + " Hell Climb Charter";
+            }
+            if ("rusty_quarry".equals(zoneId)) {
+                return guildName + " Attrition Break Charter";
+            }
+            return guildName + " Strike Charter";
+        }
+        if ("RECOVERY".equals(kind)) {
+            if ("shadow_caves".equals(zoneId)) {
+                return guildName + " Ghost Archive Charter";
+            }
+            if ("crystal_depths".equals(zoneId)) {
+                return guildName + " Dusk Memory Charter";
+            }
+            return guildName + " Recovery Charter";
+        }
+        if ("verdant_fields".equals(zoneId)) {
+            return guildName + " Frontier Lifeline Charter";
+        }
+        if ("frozen_vale".equals(zoneId)) {
+            return guildName + " Last Light Supply Charter";
+        }
+        return guildName + " Supply Charter";
+    }
+
+    private String buildPlayerQuestDescription(GuildDefinition guild, String zoneId, String kind, String targetId) {
+        String zoneName = getZoneDisplayName(zoneId);
+        String guildName = guild != null ? guild.getDisplayName() : "Guild";
+        if ("STRIKE".equals(kind)) {
+            String bossName = getMonsterDisplayName(targetId);
+            if ("sky_fortress".equals(zoneId)) {
+                return "Push the fortress the hard way, break " + bossName
+                    + ", and prove " + guildName + " can survive a no-shortcuts ascent.";
+            }
+            return "Hunt " + bossName + " in " + zoneName
+                + " and prove " + guildName + " can hold that corridor under hell-mode pressure.";
+        }
+        if ("RECOVERY".equals(kind)) {
+            String fragmentName = getBlueprintFragmentName(targetId);
+            if ("shadow_caves".equals(zoneId) || "crystal_depths".equals(zoneId)) {
+                return "Recover " + fragmentName + " from " + zoneName
+                    + " before the dusk beyond the frontier swallows what the old world still remembers.";
+            }
+            return "Recover " + fragmentName + " from " + zoneName
+                + " for " + guildName + " research and logistics.";
+        }
+        if ("verdant_fields".equals(zoneId)) {
+            return "Bank a live haul at the guild hall outpost in " + zoneName
+                + " and keep the first true lifeline corridor open for future crews.";
+        }
+        return "Bank a live haul at the guild hall outpost in " + zoneName
+            + " to keep the posted corridor funded and defended.";
     }
 
     private void selectHighlightedGuildForClaims() {
@@ -3475,6 +5161,9 @@ public class GameScreen implements Screen {
                     ? "Raid active: wave " + Math.max(1, raidState.getWaveIndex()) + " threat " + String.format(Locale.US, "%.2f", raidState.getThreatLevel())
                     : "Raid pressure " + String.format(Locale.US, "%.2f", raidState.getThreatLevel()) + "  cooldown " + String.format(Locale.US, "%.0fs", raidState.getCooldownSeconds()),
                 42f, h - 168f);
+        }
+        if (getCurrentBaseState() != null) {
+            font.draw(batch, getStructureWarSupportLine(getCurrentBaseState().getZoneId()), 420f, h - 168f);
         }
         batch.end();
     }
@@ -3684,6 +5373,7 @@ public class GameScreen implements Screen {
             return;
         }
         int floorReached = Math.max(0, getInfiniteDungeonCurrentFloor() - 1);
+        handleLargeDungeonExpeditionProgress(floorReached, sealedExit);
         int reward = sealedExit ? forgeLegacyEngine.getSealRunBonus() : forgeLegacyEngine.getDeathShardBonus(floorReached);
         if (reward > 0) {
             awardForgeShards(reward, sealedExit ? "Legacy Vault" : "Bolt Simulation",
@@ -3758,18 +5448,1236 @@ public class GameScreen implements Screen {
     }
 
     private String getActiveWorldEventName() {
+        syncWarPhaseState(false);
         int territories = getTotalClaimedTerritories();
         int guildSettlements = getGuildSettlementCount();
         if (gameState.getInfiniteDungeonBestFloor() >= 30) {
             return "Rift Storm";
         }
+        if (!activeSettlementCrisesByZoneId.isEmpty()) {
+            return "Settlement Crisis";
+        }
+        if (!activeRegionalIncidentsByZoneId.isEmpty()) {
+            return "Regional Incident";
+        }
+        if (!activeWorldBossFrontsByZoneId.isEmpty()) {
+            return "World Boss Front";
+        }
+        int hostileInfluence = factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_FRONTIER_HOSTILES, 0);
+        int commandInfluence = factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_IRONHAVEN_COMMAND, 0);
         if (guildSettlements >= 1 && territories >= 4) {
             return "Guild Summit";
+        }
+        if (hostileInfluence >= 60) {
+            return "Siege Warning";
+        }
+        if (commandInfluence >= 60) {
+            return "Command Offensive";
         }
         if (territories >= 2) {
             return "Salvage Surge";
         }
         return "Frontier Recon";
+    }
+
+    private void ensureWarPhaseStateInitialized() {
+        if (factionInfluenceById.isEmpty()) {
+            factionInfluenceById.putAll(warPhaseManager.createDefaultFactionInfluence());
+        } else {
+            for (Map.Entry<String, Integer> entry : warPhaseManager.createDefaultFactionInfluence().entrySet()) {
+                factionInfluenceById.putIfAbsent(entry.getKey(), entry.getValue());
+            }
+        }
+        syncWarPhaseState(false);
+    }
+
+    private void syncWarPhaseState(boolean autosaveAfterSync) {
+        if (!warPhaseManager.isWarPhaseUnlocked(gameState)) {
+            activeWorldBossFrontsByZoneId.clear();
+            activeRegionalIncidentsByZoneId.clear();
+            activeSettlementCrisesByZoneId.clear();
+            return;
+        }
+        ensureFactionInfluenceBounds();
+        pruneResolvedWorldBossFronts();
+        populateWorldBossFrontsIfNeeded();
+        pruneResolvedRegionalIncidents();
+        populateRegionalIncidentsIfNeeded();
+        pruneResolvedSettlementCrises();
+        populateSettlementCrisesIfNeeded();
+        syncActFourWarCampaignState();
+        if (autosaveAfterSync) {
+            autosave();
+        }
+    }
+
+    private void pruneResolvedRegionalIncidents() {
+        List<String> zonesToRemove = new ArrayList<>();
+        for (Map.Entry<String, String> entry : activeRegionalIncidentsByZoneId.entrySet()) {
+            String zoneId = entry.getKey();
+            if (zoneId == null || zoneId.isEmpty() || !zoneDefinitions.containsKey(zoneId)) {
+                zonesToRemove.add(zoneId);
+                continue;
+            }
+            if ("town".equals(zoneId) || INFINITE_DUNGEON_ZONE_ID.equals(zoneId)) {
+                zonesToRemove.add(zoneId);
+            }
+        }
+        for (String zoneId : zonesToRemove) {
+            activeRegionalIncidentsByZoneId.remove(zoneId);
+        }
+    }
+
+    private void populateRegionalIncidentsIfNeeded() {
+        int desiredIncidents = expeditionBoardReputation >= 10 ? 3 : expeditionBoardReputation >= 4 ? 2 : 1;
+        for (ZoneDefinition definition : zoneDefinitions.values()) {
+            if (definition == null || definition.getId() == null || definition.getId().isEmpty()) {
+                continue;
+            }
+            String zoneId = definition.getId();
+            if ("town".equals(zoneId) || INFINITE_DUNGEON_ZONE_ID.equals(zoneId)) {
+                continue;
+            }
+            if (activeRegionalIncidentsByZoneId.size() >= desiredIncidents) {
+                return;
+            }
+            if (activeRegionalIncidentsByZoneId.containsKey(zoneId)) {
+                continue;
+            }
+            ZoneAccessPolicy.AccessDecision accessDecision = evaluateZoneAccess(zoneId);
+            if (!accessDecision.isAllowed()) {
+                continue;
+            }
+            if (!shouldZoneReceiveRegionalIncident(zoneId)) {
+                continue;
+            }
+            activeRegionalIncidentsByZoneId.put(zoneId, determineRegionalIncidentType(zoneId));
+        }
+    }
+
+    private boolean shouldZoneReceiveRegionalIncident(String zoneId) {
+        return isActiveWorldBossFront(zoneId)
+            || "shadow_caves".equals(zoneId)
+            || "crystal_depths".equals(zoneId)
+            || "rusty_quarry".equals(zoneId)
+            || "sky_fortress".equals(zoneId);
+    }
+
+    private String determineRegionalIncidentType(String zoneId) {
+        if ("shadow_caves".equals(zoneId)) {
+            return "ghost_signal";
+        }
+        if ("crystal_depths".equals(zoneId)) {
+            return "shard_storm";
+        }
+        if ("sky_fortress".equals(zoneId)) {
+            return "air_raid_siren";
+        }
+        if ("rusty_quarry".equals(zoneId)) {
+            return "scrap_stampede";
+        }
+        return "frontier_blackout";
+    }
+
+    private void pruneResolvedSettlementCrises() {
+        List<String> zonesToRemove = new ArrayList<>();
+        for (Map.Entry<String, String> entry : activeSettlementCrisesByZoneId.entrySet()) {
+            String zoneId = entry.getKey();
+            BaseState baseState = zoneId != null ? baseStatesByZoneId.get(zoneId) : null;
+            if (zoneId == null || zoneId.isEmpty() || baseState == null || baseState.getClaimedSiteIds().isEmpty()) {
+                zonesToRemove.add(zoneId);
+            }
+        }
+        for (String zoneId : zonesToRemove) {
+            activeSettlementCrisesByZoneId.remove(zoneId);
+        }
+    }
+
+    private void populateSettlementCrisesIfNeeded() {
+        int desiredCrises = expeditionBoardReputation >= 10 ? 2 : 1;
+        List<Map.Entry<String, BaseState>> entries = new ArrayList<>(baseStatesByZoneId.entrySet());
+        entries.sort((left, right) -> Integer.compare(
+            getZoneInfrastructureSupportScore(left.getKey()),
+            getZoneInfrastructureSupportScore(right.getKey())
+        ));
+        for (Map.Entry<String, BaseState> entry : entries) {
+            String zoneId = entry.getKey();
+            BaseState baseState = entry.getValue();
+            if (activeSettlementCrisesByZoneId.size() >= desiredCrises) {
+                return;
+            }
+            if (zoneId == null || zoneId.isEmpty() || baseState == null || baseState.getClaimedSiteIds().isEmpty()) {
+                continue;
+            }
+            if (activeSettlementCrisesByZoneId.containsKey(zoneId)) {
+                continue;
+            }
+            if (getZoneInfrastructureSupportScore(zoneId) >= 6 && !isUnderWarPressure(zoneId)) {
+                continue;
+            }
+            activeSettlementCrisesByZoneId.put(zoneId, determineSettlementCrisisType(zoneId));
+        }
+    }
+
+    private boolean isUnderWarPressure(String zoneId) {
+        BaseState baseState = zoneId != null ? baseStatesByZoneId.get(zoneId) : null;
+        BaseRaidState raidState = baseState != null ? baseState.getRaidState() : null;
+        return isActiveWorldBossFront(zoneId)
+            || raidState != null && (raidState.isActive() || raidState.getThreatLevel() >= 0.45f)
+            || factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_FRONTIER_HOSTILES, 0) >= 60;
+    }
+
+    private String determineSettlementCrisisType(String zoneId) {
+        if (isActiveWorldBossFront(zoneId)) {
+            return "frontline_panic";
+        }
+        if (getZoneInfrastructureSupportScore(zoneId) <= 2) {
+            return "supply_breakdown";
+        }
+        return "defender_overstretch";
+    }
+
+    private void syncActFourWarCampaignState() {
+        activateActFourOperationIfNeeded(ACT4_OPERATION_IRON_LIFELINE);
+        if (isActFourOperationStarted(ACT4_OPERATION_IRON_LIFELINE)
+            && !isActFourOperationCompleted(ACT4_OPERATION_IRON_LIFELINE)) {
+            showActFourOperationBriefingIfNeeded(ACT4_OPERATION_IRON_LIFELINE);
+        }
+        if (isActFourOperationStarted(ACT4_OPERATION_IRON_LIFELINE)
+            && isActFourOperationCompleted(ACT4_OPERATION_IRON_LIFELINE)) {
+            showActFourOperationDebriefIfNeeded(ACT4_OPERATION_IRON_LIFELINE);
+            activateActFourOperationIfNeeded(ACT4_OPERATION_GLOAM_ARCHIVE);
+        }
+        if (isActFourOperationStarted(ACT4_OPERATION_GLOAM_ARCHIVE)
+            && !isActFourOperationCompleted(ACT4_OPERATION_GLOAM_ARCHIVE)) {
+            showActFourOperationBriefingIfNeeded(ACT4_OPERATION_GLOAM_ARCHIVE);
+        }
+        if (isActFourOperationStarted(ACT4_OPERATION_GLOAM_ARCHIVE)
+            && isActFourOperationCompleted(ACT4_OPERATION_GLOAM_ARCHIVE)) {
+            showActFourOperationDebriefIfNeeded(ACT4_OPERATION_GLOAM_ARCHIVE);
+            activateActFourOperationIfNeeded(ACT4_OPERATION_HELLCLIMB);
+        }
+        if (isActFourOperationStarted(ACT4_OPERATION_HELLCLIMB)
+            && !isActFourOperationCompleted(ACT4_OPERATION_HELLCLIMB)) {
+            showActFourOperationBriefingIfNeeded(ACT4_OPERATION_HELLCLIMB);
+        }
+        if (isActFourOperationStarted(ACT4_OPERATION_HELLCLIMB)
+            && isActFourOperationCompleted(ACT4_OPERATION_HELLCLIMB)) {
+            showActFourOperationDebriefIfNeeded(ACT4_OPERATION_HELLCLIMB);
+            activateActFourOperationIfNeeded(ACT4_OPERATION_LAST_LIGHT);
+        }
+        if (isActFourOperationStarted(ACT4_OPERATION_LAST_LIGHT)
+            && !isActFourOperationCompleted(ACT4_OPERATION_LAST_LIGHT)) {
+            showActFourOperationBriefingIfNeeded(ACT4_OPERATION_LAST_LIGHT);
+        }
+        if (isActFourOperationStarted(ACT4_OPERATION_LAST_LIGHT)
+            && isActFourOperationCompleted(ACT4_OPERATION_LAST_LIGHT)) {
+            showActFourOperationDebriefIfNeeded(ACT4_OPERATION_LAST_LIGHT);
+            showActFourCampaignEpilogueIfNeeded();
+        }
+        syncActFourFactionSideArcs();
+    }
+
+    private void syncActFourFactionSideArcs() {
+        activateActFourSideArcIfNeeded(ACT4_SIDEARC_COMMAND_BASTION);
+        activateActFourSideArcIfNeeded(ACT4_SIDEARC_GUILD_ASCENDANCY);
+        activateActFourSideArcIfNeeded(ACT4_SIDEARC_ARCHIVE_RECLAMATION);
+        maybeCompleteActFourSideArc(ACT4_SIDEARC_COMMAND_BASTION);
+        maybeCompleteActFourSideArc(ACT4_SIDEARC_GUILD_ASCENDANCY);
+        maybeCompleteActFourSideArc(ACT4_SIDEARC_ARCHIVE_RECLAMATION);
+    }
+
+    private void activateActFourSideArcIfNeeded(String sideArcId) {
+        if (sideArcId == null || sideArcId.isEmpty() || isActFourSideArcStarted(sideArcId)) {
+            return;
+        }
+        if (ACT4_SIDEARC_COMMAND_BASTION.equals(sideArcId) && isActFourOperationCompleted(ACT4_OPERATION_IRON_LIFELINE)) {
+            worldStateManager.setFlag(gameState, operationFlag(sideArcId, "started"), true);
+        } else if (ACT4_SIDEARC_GUILD_ASCENDANCY.equals(sideArcId) && isActFourOperationCompleted(ACT4_OPERATION_IRON_LIFELINE)) {
+            worldStateManager.setFlag(gameState, operationFlag(sideArcId, "started"), true);
+        } else if (ACT4_SIDEARC_ARCHIVE_RECLAMATION.equals(sideArcId) && isActFourOperationCompleted(ACT4_OPERATION_GLOAM_ARCHIVE)) {
+            worldStateManager.setFlag(gameState, operationFlag(sideArcId, "started"), true);
+        }
+    }
+
+    private boolean isActFourSideArcStarted(String sideArcId) {
+        return worldStateManager.isFlagActive(gameState, operationFlag(sideArcId, "started"));
+    }
+
+    private boolean isActFourSideArcCompleted(String sideArcId) {
+        return worldStateManager.isFlagActive(gameState, operationFlag(sideArcId, "completed"));
+    }
+
+    private void maybeCompleteActFourSideArc(String sideArcId) {
+        if (sideArcId == null || sideArcId.isEmpty() || !isActFourSideArcStarted(sideArcId) || isActFourSideArcCompleted(sideArcId)) {
+            return;
+        }
+        boolean shouldComplete = false;
+        if (ACT4_SIDEARC_COMMAND_BASTION.equals(sideArcId)) {
+            shouldComplete = factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_IRONHAVEN_COMMAND, 0) >= 60
+                && isCommandBastionProjectActive();
+        } else if (ACT4_SIDEARC_GUILD_ASCENDANCY.equals(sideArcId)) {
+            shouldComplete = getGuildSettlementCount() >= 2
+                || (isCoalitionExchangeProjectActive() && getActivePlayerQuestContractCount() > 0);
+        } else if (ACT4_SIDEARC_ARCHIVE_RECLAMATION.equals(sideArcId)) {
+            shouldComplete = isArchiveWarCollegeProjectActive()
+                && (gameState.getInfiniteDungeonBestFloor() >= 6 || isActFourOperationCompleted(ACT4_OPERATION_LAST_LIGHT));
+        }
+        if (!shouldComplete) {
+            return;
+        }
+        worldStateManager.setFlag(gameState, operationFlag(sideArcId, "completed"), true);
+        grantActFourSideArcReward(sideArcId);
+    }
+
+    private void grantActFourSideArcReward(String sideArcId) {
+        if (worldStateManager.isFlagActive(gameState, operationFlag(sideArcId, "reward_granted"))) {
+            return;
+        }
+        if (ACT4_SIDEARC_COMMAND_BASTION.equals(sideArcId)) {
+            addGold(110);
+            addHealingPotions(1);
+        } else if (ACT4_SIDEARC_GUILD_ASCENDANCY.equals(sideArcId)) {
+            addGold(130);
+            expeditionBoardReputation += 1;
+        } else if (ACT4_SIDEARC_ARCHIVE_RECLAMATION.equals(sideArcId)) {
+            addGold(80);
+            metaProgressionState.setForgeShards(metaProgressionState.getForgeShards() + 2);
+            metaProgressionManager.save(metaProgressionState);
+        }
+        worldStateManager.setFlag(gameState, operationFlag(sideArcId, "reward_granted"), true);
+    }
+
+    private void activateActFourOperationIfNeeded(String operationId) {
+        if (operationId == null || operationId.isEmpty() || isActFourOperationStarted(operationId)) {
+            return;
+        }
+        worldStateManager.setFlag(gameState, operationFlag(operationId, "started"), true);
+        showActFourOperationBriefingIfNeeded(operationId);
+    }
+
+    private void showActFourOperationBriefingIfNeeded(String operationId) {
+        if (!canShowActFourCampaignDialog()
+            || worldStateManager.isFlagActive(gameState, operationFlag(operationId, "briefing_shown"))) {
+            return;
+        }
+        showDialogueSequence(buildActFourOperationBriefing(operationId), "Command", getActFourOperationObjective(operationId));
+        worldStateManager.setFlag(gameState, operationFlag(operationId, "briefing_shown"), true);
+    }
+
+    private void showActFourOperationDebriefIfNeeded(String operationId) {
+        if (!canShowActFourCampaignDialog()
+            || worldStateManager.isFlagActive(gameState, operationFlag(operationId, "debrief_shown"))) {
+            return;
+        }
+        showDialogueSequence(buildActFourOperationDebrief(operationId), "Command", getActFourOperationStatusText(operationId));
+        worldStateManager.setFlag(gameState, operationFlag(operationId, "debrief_shown"), true);
+    }
+
+    private void showActFourCampaignEpilogueIfNeeded() {
+        if (!canShowActFourCampaignDialog() || worldStateManager.isFlagActive(gameState, ACT4_CAMPAIGN_EPILOGUE)) {
+            return;
+        }
+        List<DialogueSystem.DialoguePage> pages = new ArrayList<>();
+        pages.add(new DialogueSystem.DialoguePage("Commander Rex",
+            "This is no longer a survival pocket. You've turned Ironhaven into the hand that moves the frontier. Every corridor, every guild board, every reclaimed ruin is answering to your campaign now."));
+        pages.add(new DialogueSystem.DialoguePage("Professor Cogs",
+            "The dusk data doesn't read like a dead world anymore. It reads like a world being rewritten by force, memory, and a frankly irresponsible amount of successful field improvisation."));
+        pages.add(new DialogueSystem.DialoguePage("Guild Coalition",
+            "Your charters are spreading faster than our messengers can pin them. The frontier sees a future again, and that's because you made one under garbage balancing and worse odds."));
+        showDialogueSequence(pages, "Ironhaven", "Act 4 campaign secured.");
+        worldStateManager.setFlag(gameState, ACT4_CAMPAIGN_EPILOGUE, true);
+    }
+
+    private boolean canShowActFourCampaignDialog() {
+        return isHubTownZone() && !hasActiveDialog();
+    }
+
+    private boolean isActFourOperationStarted(String operationId) {
+        return worldStateManager.isFlagActive(gameState, operationFlag(operationId, "started"));
+    }
+
+    private boolean isActFourOperationCompleted(String operationId) {
+        return worldStateManager.isFlagActive(gameState, operationFlag(operationId, "completed"));
+    }
+
+    private void completeActFourOperation(String operationId) {
+        if (operationId == null || operationId.isEmpty() || isActFourOperationCompleted(operationId)) {
+            return;
+        }
+        worldStateManager.setFlag(gameState, operationFlag(operationId, "completed"), true);
+        grantActFourOperationReward(operationId);
+    }
+
+    private String operationFlag(String operationId, String suffix) {
+        return operationId + "." + suffix;
+    }
+
+    private void recordActFourSupplyVictory(String zoneId, String contractKind) {
+        if (!warPhaseManager.isWarPhaseUnlocked(gameState)
+            || zoneId == null
+            || zoneId.isEmpty()
+            || contractKind == null
+            || contractKind.isEmpty()) {
+            return;
+        }
+        if (contractKind.startsWith("CONVOY_ESCORT")
+            || contractKind.startsWith("PLAYER_CREATED_SUPPLY")
+            || contractKind.startsWith("GUILD_BOARD_SUPPLY")
+            || contractKind.startsWith("PUBLIC_BOARD_DELIVERY")) {
+            completeActFourOperation(ACT4_OPERATION_IRON_LIFELINE);
+        }
+    }
+
+    private void recordActFourRecoveryVictory(String zoneId, String contractKind) {
+        if (!warPhaseManager.isWarPhaseUnlocked(gameState)
+            || zoneId == null
+            || zoneId.isEmpty()
+            || contractKind == null
+            || contractKind.isEmpty()) {
+            return;
+        }
+        if (("shadow_caves".equals(zoneId) || "crystal_depths".equals(zoneId))
+            && (contractKind.startsWith("RECOVER_FRAGMENT")
+            || contractKind.startsWith("PUBLIC_BOARD_RECOVERY")
+            || contractKind.startsWith("PLAYER_CREATED_RECOVERY"))) {
+            completeActFourOperation(ACT4_OPERATION_GLOAM_ARCHIVE);
+        }
+    }
+
+    private void recordActFourBossVictory(String zoneId, String contractKind) {
+        if (!warPhaseManager.isWarPhaseUnlocked(gameState)
+            || !"sky_fortress".equals(zoneId)
+            || contractKind == null
+            || contractKind.isEmpty()) {
+            return;
+        }
+        if (contractKind.startsWith("DEFEAT_BOSS")
+            || contractKind.startsWith("WORLD_BOSS_FRONT")
+            || contractKind.startsWith("GUILD_STRIKE")
+            || contractKind.startsWith("PLAYER_CREATED_STRIKE")) {
+            completeActFourOperation(ACT4_OPERATION_HELLCLIMB);
+        }
+    }
+
+    private void recordActFourDungeonVictory(String contractKind) {
+        if (!warPhaseManager.isWarPhaseUnlocked(gameState) || contractKind == null || contractKind.isEmpty()) {
+            return;
+        }
+        if ("LARGE_DUNGEON_EXPEDITION_SILVER".equals(contractKind)
+            || "LARGE_DUNGEON_EXPEDITION_GOLD".equals(contractKind)) {
+            completeActFourOperation(ACT4_OPERATION_LAST_LIGHT);
+        }
+    }
+
+    private List<DialogueSystem.DialoguePage> buildActFourOperationBriefing(String operationId) {
+        List<DialogueSystem.DialoguePage> pages = new ArrayList<>();
+        if (ACT4_OPERATION_IRON_LIFELINE.equals(operationId)) {
+            pages.add(new DialogueSystem.DialoguePage("Commander Rex",
+                "Act 4 begins now. Verdant lanes are under full war pressure, and the settlements we saved in earlier phases will starve if we let the routes die."));
+            pages.add(new DialogueSystem.DialoguePage("Guild Coalition",
+                "Then we post the first lifeline. Convoys, guild supply runs, public relief drops, your own charters, whatever moves the world forward. Hell mode or not, we climb by carrying everyone with us."));
+            pages.add(new DialogueSystem.DialoguePage("Directive",
+                "Operation Iron Lifeline: complete any convoy escort or supply-style war contract to prove Ironhaven can keep multiple fronts fed."));
+            return pages;
+        }
+        if (ACT4_OPERATION_GLOAM_ARCHIVE.equals(operationId)) {
+            pages.add(new DialogueSystem.DialoguePage("Professor Cogs",
+                "Shadow Caves and Crystal Depths are coughing up memory cores from the dusk era. If the hostiles strip those first, we'll never know what killed these regions or how to stop the next collapse."));
+            pages.add(new DialogueSystem.DialoguePage("Scout Relay",
+                "Treat this like a twilight salvage prayer with knives out. Recovery teams go in fast, pull fragments, and get out before the dark starts remembering us back."));
+            pages.add(new DialogueSystem.DialoguePage("Directive",
+                "Operation Gloam Archive: finish a recovery contract in Shadow Caves or Crystal Depths and return the data before hostile scavengers claim the ruin-memory."));
+            return pages;
+        }
+        if (ACT4_OPERATION_HELLCLIMB.equals(operationId)) {
+            pages.add(new DialogueSystem.DialoguePage("Commander Rex",
+                "The Sky Fortress has become the frontier's filter. If we can't break that summit under active resistance, every lower route stays one bad night away from collapse."));
+            pages.add(new DialogueSystem.DialoguePage("Guild Coalition",
+                "Good. A war phase should have at least one climb that feels unfair. Strike the fortress boss, front target, or posted charter and show the whole map the summit can bleed."));
+            pages.add(new DialogueSystem.DialoguePage("Directive",
+                "Operation Hellclimb: win a major boss operation in Sky Fortress."));
+            return pages;
+        }
+        if (ACT4_OPERATION_LAST_LIGHT.equals(operationId)) {
+            pages.add(new DialogueSystem.DialoguePage("Professor Cogs",
+                "We have enough routes to feed a world, enough archives to understand a dead age, and enough air control to launch one final proof. Now we descend where no settlement can escort us."));
+            pages.add(new DialogueSystem.DialoguePage("Commander Rex",
+                "Push a silver or gold Legacy Descent. Bring back proof that Ironhaven can hold the surface and still dominate the abyss below it."));
+            pages.add(new DialogueSystem.DialoguePage("Directive",
+                "Operation Last Light: complete a silver or gold large dungeon expedition."));
+        }
+        return pages;
+    }
+
+    private List<DialogueSystem.DialoguePage> buildActFourOperationDebrief(String operationId) {
+        List<DialogueSystem.DialoguePage> pages = new ArrayList<>();
+        if (ACT4_OPERATION_IRON_LIFELINE.equals(operationId)) {
+            pages.add(new DialogueSystem.DialoguePage("Guild Coalition",
+                "The first lifeline held. Settlements are talking about routes, not funerals, and that alone changes what this war thinks is possible."));
+            pages.add(new DialogueSystem.DialoguePage("Commander Rex",
+                "Good. We stop playing defense against starvation and start deciding which parts of the world survive next."));
+            pages.add(new DialogueSystem.DialoguePage("Quartermaster", getActFourOperationRewardSummary(operationId)));
+            return pages;
+        }
+        if (ACT4_OPERATION_GLOAM_ARCHIVE.equals(operationId)) {
+            pages.add(new DialogueSystem.DialoguePage("Professor Cogs",
+                "Recovered archives confirm it: the world didn't just end, it was abandoned in layers. We can reverse some of those layers if we keep winning these ruins back."));
+            pages.add(new DialogueSystem.DialoguePage("Archive Relay",
+                "The dusk isn't just a grave anymore. It's a map."));
+            pages.add(new DialogueSystem.DialoguePage("Quartermaster", getActFourOperationRewardSummary(operationId)));
+            return pages;
+        }
+        if (ACT4_OPERATION_HELLCLIMB.equals(operationId)) {
+            pages.add(new DialogueSystem.DialoguePage("Commander Rex",
+                "Sky Fortress cracked. That climb was supposed to break morale. Instead it became proof that the frontier can be taken upward, not just reclaimed sideways."));
+            pages.add(new DialogueSystem.DialoguePage("Guild Coalition",
+                "Every board in Ironhaven wants the next impossible contract now. That's your fault, and I mean that as praise."));
+            pages.add(new DialogueSystem.DialoguePage("Quartermaster", getActFourOperationRewardSummary(operationId)));
+            return pages;
+        }
+        if (ACT4_OPERATION_LAST_LIGHT.equals(operationId)) {
+            pages.add(new DialogueSystem.DialoguePage("Professor Cogs",
+                "Your descent returned with something more valuable than salvage: certainty. Ironhaven can project power above ground, below ground, and across every dusk-band between."));
+            pages.add(new DialogueSystem.DialoguePage("Commander Rex",
+                "Then Act 4 is ours. We are no longer reacting to world events. We are generating them."));
+            pages.add(new DialogueSystem.DialoguePage("Quartermaster", getActFourOperationRewardSummary(operationId)));
+        }
+        return pages;
+    }
+
+    private String getActFourOperationTitle(String operationId) {
+        if (ACT4_OPERATION_IRON_LIFELINE.equals(operationId)) {
+            return "Operation Iron Lifeline";
+        }
+        if (ACT4_OPERATION_GLOAM_ARCHIVE.equals(operationId)) {
+            return "Operation Gloam Archive";
+        }
+        if (ACT4_OPERATION_HELLCLIMB.equals(operationId)) {
+            return "Operation Hellclimb";
+        }
+        if (ACT4_OPERATION_LAST_LIGHT.equals(operationId)) {
+            return "Operation Last Light";
+        }
+        return "War Operation";
+    }
+
+    private String getActFourOperationObjective(String operationId) {
+        if (ACT4_OPERATION_IRON_LIFELINE.equals(operationId)) {
+            return "Complete a convoy escort or supply-style war contract to prove your settlements can feed multiple fronts.";
+        }
+        if (ACT4_OPERATION_GLOAM_ARCHIVE.equals(operationId)) {
+            return "Recover strategic fragments from Shadow Caves or Crystal Depths before hostile scavengers erase the dusk record.";
+        }
+        if (ACT4_OPERATION_HELLCLIMB.equals(operationId)) {
+            return "Win a major boss operation in Sky Fortress and turn the summit into a symbol of allied momentum.";
+        }
+        if (ACT4_OPERATION_LAST_LIGHT.equals(operationId)) {
+            return "Complete a silver or gold Legacy Descent to prove Ironhaven can dominate the abyss as well as the frontier surface.";
+        }
+        return "Advance the war phase.";
+    }
+
+    private String getActFourOperationStatusText(String operationId) {
+        String status = isActFourOperationCompleted(operationId) ? "Complete" : isActFourOperationStarted(operationId) ? "Active" : "Locked";
+        return getActFourOperationTitle(operationId) + " [" + status + "]: " + getActFourOperationObjective(operationId);
+    }
+
+    private void grantActFourOperationReward(String operationId) {
+        if (operationId == null || operationId.isEmpty()
+            || worldStateManager.isFlagActive(gameState, operationFlag(operationId, "reward_granted"))) {
+            return;
+        }
+        int goldReward = 0;
+        int shardReward = 0;
+        int potionReward = 0;
+        int reputationReward = 0;
+        if (ACT4_OPERATION_IRON_LIFELINE.equals(operationId)) {
+            goldReward = 140;
+            potionReward = 1;
+            reputationReward = 1;
+        } else if (ACT4_OPERATION_GLOAM_ARCHIVE.equals(operationId)) {
+            goldReward = 90;
+            shardReward = 3;
+            reputationReward = 1;
+        } else if (ACT4_OPERATION_HELLCLIMB.equals(operationId)) {
+            goldReward = 170;
+            shardReward = 2;
+            potionReward = 1;
+            reputationReward = 2;
+        } else if (ACT4_OPERATION_LAST_LIGHT.equals(operationId)) {
+            goldReward = 220;
+            shardReward = 4;
+            potionReward = 2;
+            reputationReward = 2;
+        }
+        if (goldReward > 0) {
+            addGold(goldReward);
+        }
+        if (shardReward > 0) {
+            metaProgressionState.setForgeShards(metaProgressionState.getForgeShards() + shardReward);
+            metaProgressionManager.save(metaProgressionState);
+        }
+        if (potionReward > 0) {
+            addHealingPotions(potionReward);
+        }
+        expeditionBoardReputation += reputationReward;
+        maybeGrantExpeditionBoardSponsorReward();
+        worldStateManager.setFlag(gameState, operationFlag(operationId, "reward_granted"), true);
+    }
+
+    private String getActFourOperationRewardSummary(String operationId) {
+        if (ACT4_OPERATION_IRON_LIFELINE.equals(operationId)) {
+            return "Campaign reward: +140 gold, +1 field kit, +1 board reputation.";
+        }
+        if (ACT4_OPERATION_GLOAM_ARCHIVE.equals(operationId)) {
+            return "Campaign reward: +90 gold, +3 Forge Shards, +1 board reputation.";
+        }
+        if (ACT4_OPERATION_HELLCLIMB.equals(operationId)) {
+            return "Campaign reward: +170 gold, +2 Forge Shards, +1 field kit, +2 board reputation.";
+        }
+        if (ACT4_OPERATION_LAST_LIGHT.equals(operationId)) {
+            return "Campaign reward: +220 gold, +4 Forge Shards, +2 field kits, +2 board reputation.";
+        }
+        return null;
+    }
+
+    private List<String> getActFourCampaignStatusLines() {
+        List<String> lines = new ArrayList<>();
+        if (!warPhaseManager.isWarPhaseUnlocked(gameState)) {
+            return lines;
+        }
+        int completed = 0;
+        String[] operations = {
+            ACT4_OPERATION_IRON_LIFELINE,
+            ACT4_OPERATION_GLOAM_ARCHIVE,
+            ACT4_OPERATION_HELLCLIMB,
+            ACT4_OPERATION_LAST_LIGHT
+        };
+        for (String operationId : operations) {
+            if (isActFourOperationCompleted(operationId)) {
+                completed++;
+            }
+        }
+        lines.add("War chronicle: " + completed + "/" + operations.length + " named operations secured.");
+        for (String operationId : operations) {
+            if (!isActFourOperationStarted(operationId)) {
+                continue;
+            }
+            lines.add(getActFourOperationStatusText(operationId));
+            if (!isActFourOperationCompleted(operationId)) {
+                break;
+            }
+        }
+        if (worldStateManager.isFlagActive(gameState, ACT4_CAMPAIGN_EPILOGUE)) {
+            lines.add("Campaign result: Ironhaven is no longer surviving the frontier. It is setting the frontier's pace.");
+        }
+        lines.addAll(getRegionalCampaignThreadLines());
+        lines.addAll(getActFourFactionStoryLines());
+        lines.addAll(getRegionalIncidentStatusLines());
+        lines.addAll(getSettlementCrisisStatusLines());
+        lines.addAll(getWarConsequenceLines());
+        return lines;
+    }
+
+    private List<String> getRegionalCampaignThreadLines() {
+        List<String> lines = new ArrayList<>();
+        String zoneId = getPrimaryWarDispatchZone();
+        if (zoneId == null || zoneId.isEmpty()) {
+            return lines;
+        }
+        lines.add("Regional thread: " + getRegionalCampaignThreadTitle(zoneId) + " - " + getRegionalCampaignThreadObjective(zoneId));
+        if (worldStateManager.isFlagActive(gameState, "war.thread.cleared." + zoneId)) {
+            lines.add("Regional thread result: " + getZoneDisplayName(zoneId) + " has been marked as a cleared campaign lane.");
+        }
+        return lines;
+    }
+
+    private String getRegionalCampaignThreadTitle(String zoneId) {
+        if ("shadow_caves".equals(zoneId)) {
+            return "Ghostline Recovery";
+        }
+        if ("crystal_depths".equals(zoneId)) {
+            return "Prismfall Accord";
+        }
+        if ("sky_fortress".equals(zoneId)) {
+            return "Summit Mandate";
+        }
+        if ("rusty_quarry".equals(zoneId)) {
+            return "Ironwake Extraction";
+        }
+        if ("verdant_fields".equals(zoneId)) {
+            return "Lifeline Corridor";
+        }
+        return getZoneDisplayName(zoneId) + " Campaign";
+    }
+
+    private String getRegionalCampaignThreadObjective(String zoneId) {
+        if ("shadow_caves".equals(zoneId)) {
+            return "break the ghost-signal loop, recover the dusk record, and deny the scavenger scramble";
+        }
+        if ("crystal_depths".equals(zoneId)) {
+            return "survive the shard weather, claim the salvage window, and turn crystal loss into allied gain";
+        }
+        if ("sky_fortress".equals(zoneId)) {
+            return "win the hard ascent and keep the summit from collapsing back into hostile control";
+        }
+        if ("rusty_quarry".equals(zoneId)) {
+            return "stop extraction collapse and convert industrial pressure into secured supply stock";
+        }
+        if ("verdant_fields".equals(zoneId)) {
+            return "hold the first corridor open so every later front has a backbone";
+        }
+        return "convert the active hotspot into a stable regional lane";
+    }
+
+    private List<String> getRegionalIncidentStatusLines() {
+        List<String> lines = new ArrayList<>();
+        for (Map.Entry<String, String> entry : activeRegionalIncidentsByZoneId.entrySet()) {
+            String name = getRegionalIncidentName(entry.getKey());
+            String summary = getRegionalIncidentSummary(entry.getKey());
+            if (name != null && summary != null) {
+                lines.add("Incident: " + name + " in " + getZoneDisplayName(entry.getKey()) + " - " + summary + ".");
+            }
+            if (lines.size() >= 3) {
+                break;
+            }
+        }
+        return lines;
+    }
+
+    private List<String> getSettlementCrisisStatusLines() {
+        List<String> lines = new ArrayList<>();
+        for (Map.Entry<String, String> entry : activeSettlementCrisesByZoneId.entrySet()) {
+            String name = getSettlementCrisisName(entry.getKey());
+            String summary = getSettlementCrisisSummary(entry.getKey());
+            if (name != null && summary != null) {
+                lines.add("Crisis: " + name + " at " + getZoneDisplayName(entry.getKey()) + " - " + summary + ".");
+            }
+            if (lines.size() >= 2) {
+                break;
+            }
+        }
+        return lines;
+    }
+
+    private List<String> getWarConsequenceLines() {
+        List<String> lines = new ArrayList<>();
+        for (String zoneId : zoneDefinitions.keySet()) {
+            if (worldStateManager.isFlagActive(gameState, "war.consequence.stabilized." + zoneId)) {
+                lines.add("Consequence: neighboring corridors around " + getZoneDisplayName(zoneId) + " stabilized after a successful regional containment.");
+            } else if (worldStateManager.isFlagActive(gameState, "war.consequence.relief." + zoneId)) {
+                lines.add("Consequence: relief pressure spread into " + getZoneDisplayName(zoneId) + " and prevented a second outpost collapse.");
+            } else if (worldStateManager.isFlagActive(gameState, "war.consequence.spillover." + zoneId)) {
+                lines.add("Consequence: hostile spillover has shifted into " + getZoneDisplayName(zoneId) + " after the last containment sweep.");
+            } else if (worldStateManager.isFlagActive(gameState, "war.consequence.chain." + zoneId)) {
+                lines.add("Consequence: route strain chained into " + getZoneDisplayName(zoneId) + " and opened a linked settlement crisis.");
+            }
+            if (lines.size() >= 3) {
+                break;
+            }
+        }
+        return lines;
+    }
+
+    private int getPositiveWarConsequenceCount() {
+        int count = 0;
+        for (String zoneId : zoneDefinitions.keySet()) {
+            if (worldStateManager.isFlagActive(gameState, "war.consequence.stabilized." + zoneId)
+                || worldStateManager.isFlagActive(gameState, "war.consequence.relief." + zoneId)) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private int getNegativeWarConsequenceCount() {
+        int count = 0;
+        for (String zoneId : zoneDefinitions.keySet()) {
+            if (worldStateManager.isFlagActive(gameState, "war.consequence.spillover." + zoneId)
+                || worldStateManager.isFlagActive(gameState, "war.consequence.chain." + zoneId)) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private boolean hasTownServiceSurplus() {
+        return getPositiveWarConsequenceCount() >= 2 || isCoalitionExchangeProjectActive();
+    }
+
+    private boolean hasTownServiceStrain() {
+        return getNegativeWarConsequenceCount() >= 2 && !isCoalitionExchangeProjectActive();
+    }
+
+    private String getDominantWarFactionId() {
+        int command = factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_IRONHAVEN_COMMAND, 0);
+        int guilds = factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_GUILD_COALITION, 0);
+        int hostiles = factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_FRONTIER_HOSTILES, 0);
+        if (command >= guilds && command >= hostiles) {
+            return WarPhaseManager.FACTION_IRONHAVEN_COMMAND;
+        }
+        if (guilds >= command && guilds >= hostiles) {
+            return WarPhaseManager.FACTION_GUILD_COALITION;
+        }
+        return WarPhaseManager.FACTION_FRONTIER_HOSTILES;
+    }
+
+    private List<String> getActFourFactionStoryLines() {
+        List<String> lines = new ArrayList<>();
+        if (!warPhaseManager.isWarPhaseUnlocked(gameState)) {
+            return lines;
+        }
+        if (!isActFourOperationCompleted(ACT4_OPERATION_IRON_LIFELINE)) {
+            lines.add("Faction thread: annex crews are drafting emergency lifeline charters for any route that still looks survivable.");
+        } else if (!isActFourOperationCompleted(ACT4_OPERATION_GLOAM_ARCHIVE)) {
+            lines.add("Faction thread: archive scouts want dusk-memory cores from Shadow Caves and Crystal Depths before hostile crews erase the record.");
+        } else if (!isActFourOperationCompleted(ACT4_OPERATION_HELLCLIMB)) {
+            lines.add("Faction thread: command is circulating summit warrants for the next impossible Sky Fortress push.");
+        } else if (!isActFourOperationCompleted(ACT4_OPERATION_LAST_LIGHT)) {
+            lines.add("Faction thread: the war college is underwriting deep-descent crews to prove Ironhaven can own the abyss too.");
+        } else {
+            lines.add("Faction thread: guild boards are now posting victory-grade charters built around your campaign model.");
+        }
+        if (!activeWorldBossFrontsByZoneId.isEmpty()) {
+            String zoneId = activeWorldBossFrontsByZoneId.keySet().iterator().next();
+            lines.add("Faction thread: field reports say " + getZoneDisplayName(zoneId)
+                + " is defining the current theater and pulling contract traffic toward that front.");
+        }
+        lines.addAll(getActFourSideArcStatusLines());
+        return lines;
+    }
+
+    private List<String> getActFourSideArcStatusLines() {
+        List<String> lines = new ArrayList<>();
+        lines.add(getActFourSideArcStatusText(
+            ACT4_SIDEARC_COMMAND_BASTION,
+            "Bastion Doctrine",
+            "Stabilize command influence and bring the Bastion Network fully online."
+        ));
+        lines.add(getActFourSideArcStatusText(
+            ACT4_SIDEARC_GUILD_ASCENDANCY,
+            "Charter Ascendancy",
+            "Expand guild settlement reach and turn posted charters into a standing war economy."
+        ));
+        lines.add(getActFourSideArcStatusText(
+            ACT4_SIDEARC_ARCHIVE_RECLAMATION,
+            "Dusk Ledger",
+            "Merge archive doctrine and deep-descent proof into a permanent reclamation program."
+        ));
+        return lines;
+    }
+
+    private String getActFourSideArcStatusText(String sideArcId, String title, String objective) {
+        String status = isActFourSideArcCompleted(sideArcId) ? "Complete" : isActFourSideArcStarted(sideArcId) ? "Active" : "Locked";
+        return "Side arc " + title + " [" + status + "]: " + objective;
+    }
+
+    private void ensureFactionInfluenceBounds() {
+        for (Map.Entry<String, Integer> entry : warPhaseManager.createDefaultFactionInfluence().entrySet()) {
+            int current = factionInfluenceById.getOrDefault(entry.getKey(), entry.getValue());
+            factionInfluenceById.put(entry.getKey(), Math.max(0, Math.min(100, current)));
+        }
+    }
+
+    private void pruneResolvedWorldBossFronts() {
+        List<String> zonesToRemove = new ArrayList<>();
+        for (Map.Entry<String, String> entry : activeWorldBossFrontsByZoneId.entrySet()) {
+            String zoneId = entry.getKey();
+            String bossId = entry.getValue();
+            ZoneDefinition definition = zoneDefinitions.get(zoneId);
+            if (zoneId == null || zoneId.isEmpty() || bossId == null || bossId.isEmpty() || definition == null) {
+                zonesToRemove.add(zoneId);
+                continue;
+            }
+            if (!bossId.equals(definition.getBossId()) || gameState.hasDefeatedBoss(bossId)) {
+                zonesToRemove.add(zoneId);
+            }
+        }
+        for (String zoneId : zonesToRemove) {
+            activeWorldBossFrontsByZoneId.remove(zoneId);
+        }
+    }
+
+    private void populateWorldBossFrontsIfNeeded() {
+        int desiredFronts = expeditionBoardReputation >= 10 ? 3 : expeditionBoardReputation >= 4 ? 2 : 1;
+        for (ZoneDefinition definition : zoneDefinitions.values()) {
+            if (definition == null || definition.getId() == null || definition.getId().isEmpty()) {
+                continue;
+            }
+            if (activeWorldBossFrontsByZoneId.size() >= desiredFronts) {
+                return;
+            }
+            if (definition.getBossId() == null || definition.getBossId().isEmpty() || gameState.hasDefeatedBoss(definition.getBossId())) {
+                continue;
+            }
+            if (activeWorldBossFrontsByZoneId.containsKey(definition.getId())) {
+                continue;
+            }
+            ZoneAccessPolicy.AccessDecision accessDecision = evaluateZoneAccess(definition.getId());
+            if (!accessDecision.isAllowed()) {
+                continue;
+            }
+            activeWorldBossFrontsByZoneId.put(definition.getId(), definition.getBossId());
+        }
+    }
+
+    private boolean isActiveWorldBossFront(String zoneId) {
+        if (zoneId == null || zoneId.isEmpty()) {
+            return false;
+        }
+        syncWarPhaseState(false);
+        return activeWorldBossFrontsByZoneId.containsKey(zoneId);
+    }
+
+    private String getActiveWorldBossFrontBossId(String zoneId) {
+        return zoneId != null ? activeWorldBossFrontsByZoneId.get(zoneId) : null;
+    }
+
+    private boolean isBossInActiveFront(String bossId) {
+        return bossId != null && activeWorldBossFrontsByZoneId.containsValue(bossId);
+    }
+
+    private void resolveWorldBossFrontByBossId(String bossId) {
+        if (bossId == null || bossId.isEmpty()) {
+            return;
+        }
+        String resolvedZoneId = null;
+        for (Map.Entry<String, String> entry : activeWorldBossFrontsByZoneId.entrySet()) {
+            if (bossId.equals(entry.getValue())) {
+                resolvedZoneId = entry.getKey();
+                break;
+            }
+        }
+        if (resolvedZoneId != null) {
+            activeWorldBossFrontsByZoneId.remove(resolvedZoneId);
+        }
+        adjustFactionInfluence(WarPhaseManager.FACTION_IRONHAVEN_COMMAND, 8);
+        adjustFactionInfluence(WarPhaseManager.FACTION_GUILD_COALITION, 6);
+        adjustFactionInfluence(WarPhaseManager.FACTION_FRONTIER_HOSTILES, -14);
+        syncWarPhaseState(false);
+    }
+
+    private void adjustFactionInfluence(String factionId, int delta) {
+        if (factionId == null || factionId.isEmpty() || delta == 0) {
+            return;
+        }
+        int current = factionInfluenceById.getOrDefault(factionId, warPhaseManager.createDefaultFactionInfluence().getOrDefault(factionId, 50));
+        factionInfluenceById.put(factionId, Math.max(0, Math.min(100, current + delta)));
+    }
+
+    private String getMonsterDisplayName(String monsterId) {
+        MonsterDefinition definition = monsterId != null ? monsterDefinitions.get(monsterId) : null;
+        if (definition != null && definition.getName() != null && !definition.getName().isEmpty()) {
+            return definition.getName();
+        }
+        return formatZoneName(monsterId);
+    }
+
+    private String getZoneWarConditionSummary(String zoneId) {
+        if (zoneId == null || zoneId.isEmpty() || "town".equals(zoneId) || INFINITE_DUNGEON_ZONE_ID.equals(zoneId)) {
+            return null;
+        }
+        int hostile = factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_FRONTIER_HOSTILES, 0);
+        int command = factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_IRONHAVEN_COMMAND, 0);
+        int guilds = factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_GUILD_COALITION, 0);
+        boolean claimed = isZoneClaimedForWar(zoneId);
+        boolean guildHall = isGuildHallWarZone(zoneId);
+
+        if (!claimed && hostile >= 60) {
+            return "Zone condition: hostile pressure spike. Unsecured enemies here gain extra durability and hit harder.";
+        }
+        if (claimed && command >= 60) {
+            return "Zone condition: command corridor. Local hostiles are weakened by allied patrol coverage.";
+        }
+        if (guildHall && guilds >= 55) {
+            return "Zone condition: guild contract lane. Marked hostiles are being hunted aggressively for higher-value sorties.";
+        }
+        return "Zone condition: contested but stable. No dominant faction modifier is overriding the route.";
+    }
+
+    private String buildZoneInfrastructureBonusLine(String zoneId) {
+        if (zoneId == null || zoneId.isEmpty() || "town".equals(zoneId) || INFINITE_DUNGEON_ZONE_ID.equals(zoneId)) {
+            return null;
+        }
+        BaseState baseState = baseStatesByZoneId.get(zoneId);
+        if (baseState == null || baseState.getClaimedSiteIds().isEmpty()) {
+            return null;
+        }
+        int storage = countActiveStructuresByCategory(baseState, StructureCategory.STORAGE);
+        int defense = countActiveStructuresByCategory(baseState, StructureCategory.DEFENSE)
+            + countActiveStructuresByCategory(baseState, StructureCategory.WALL);
+        int logistics = countActiveStructuresByCategory(baseState, StructureCategory.UTILITY)
+            + countActiveStructuresByCategory(baseState, StructureCategory.POWER)
+            + countActiveStructuresByCategory(baseState, StructureCategory.CRAFTING);
+        int support = getZoneInfrastructureSupportScore(zoneId);
+        return getZoneDisplayName(zoneId) + ": support " + support
+            + "  |  storage " + storage
+            + "  |  defenses " + defense
+            + "  |  logistics " + logistics + ".";
+    }
+
+    private List<String> getWarPressureZoneLines() {
+        List<String> lines = new ArrayList<>();
+        for (ZoneDefinition definition : zoneDefinitions.values()) {
+            if (definition == null || definition.getId() == null || definition.getId().isEmpty() || "town".equals(definition.getId())) {
+                continue;
+            }
+            String summary = getZoneWarConditionSummary(definition.getId());
+            if (summary == null || summary.contains("contested but stable")) {
+                continue;
+            }
+            lines.add(getZoneDisplayName(definition.getId()) + ": " + summary.replace("Zone condition: ", ""));
+            if (lines.size() >= 4) {
+                break;
+            }
+        }
+        return lines;
+    }
+
+    private List<String> getWarInfrastructureLines() {
+        List<String> lines = new ArrayList<>();
+        for (Map.Entry<String, BaseState> entry : baseStatesByZoneId.entrySet()) {
+            String line = buildZoneInfrastructureBonusLine(entry.getKey());
+            if (line != null) {
+                lines.add(line);
+            }
+            if (lines.size() >= 4) {
+                break;
+            }
+        }
+        return lines;
+    }
+
+    private List<String> buildStrategicFrontLines() {
+        List<String> lines = new ArrayList<>();
+        for (Map.Entry<String, String> entry : activeWorldBossFrontsByZoneId.entrySet()) {
+            String zoneId = entry.getKey();
+            String bossId = entry.getValue();
+            lines.add("Frontline: " + getWorldBossFrontVariantName(zoneId) + "  |  " + getWorldBossFrontBehavior(zoneId)
+                + " front led by " + getMonsterDisplayName(bossId) + "  |  " + getWorldBossFrontVariantBonusText(zoneId) + ".");
+            if (lines.size() >= 3) {
+                break;
+            }
+        }
+        return lines;
+    }
+
+    private List<String> buildStrategicCorridorLines() {
+        List<String> lines = new ArrayList<>();
+        List<Map.Entry<String, BaseState>> entries = new ArrayList<>(baseStatesByZoneId.entrySet());
+        entries.sort((left, right) -> Integer.compare(
+            getZoneInfrastructureSupportScore(right.getKey()),
+            getZoneInfrastructureSupportScore(left.getKey())
+        ));
+        for (Map.Entry<String, BaseState> entry : entries) {
+            String zoneId = entry.getKey();
+            BaseState baseState = entry.getValue();
+            if (baseState == null || baseState.getClaimedSiteIds().isEmpty()) {
+                continue;
+            }
+            int support = getZoneInfrastructureSupportScore(zoneId);
+            String condition = getZoneWarConditionSummary(zoneId);
+            String shortCondition = condition != null && condition.startsWith("Zone condition: ")
+                ? condition.substring("Zone condition: ".length())
+                : "stable corridor";
+            lines.add("Corridor: " + getZoneDisplayName(zoneId) + "  |  support " + support + "  |  " + shortCondition);
+            if (lines.size() >= 4) {
+                break;
+            }
+        }
+        return lines;
+    }
+
+    private List<String> buildStrategicProjectPriorityLines() {
+        List<String> lines = new ArrayList<>();
+        if (isCommandBastionProjectActive()) {
+            lines.add("Project online: Command Bastion Network is anchoring fortified response corridors.");
+        }
+        if (isCoalitionExchangeProjectActive()) {
+            lines.add("Project online: Coalition Exchange is enriching trade, convoy, and guild logistics lanes.");
+        }
+        if (isArchiveWarCollegeProjectActive()) {
+            lines.add("Project online: Archive War College is converting war salvage into doctrine and shards.");
+        }
+        if (isHostileSabotageProjectActive()) {
+            lines.add("Project threat: Hostile Sabotage Cells are degrading calmer civilian lanes.");
+        }
+        return lines;
+    }
+
+    private String buildStrategicPriorityLine() {
+        if (!activeWorldBossFrontsByZoneId.isEmpty()) {
+            Map.Entry<String, String> front = activeWorldBossFrontsByZoneId.entrySet().iterator().next();
+            return "Current priority: break the " + getWorldBossFrontBehavior(front.getKey()).toLowerCase(Locale.ROOT)
+                + " front in " + getZoneDisplayName(front.getKey()) + ".";
+        }
+        if (factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_FRONTIER_HOSTILES, 0) >= 60) {
+            return "Current priority: stabilize threatened corridors and keep hostile influence below siege threshold.";
+        }
+        if (gameState.getInfiniteDungeonBestFloor() < (expeditionBoardReputation >= 10 ? 10 : expeditionBoardReputation >= 4 ? 6 : 3)) {
+            return "Current priority: certify deeper Legacy Descent floors for multi-team war deployment.";
+        }
+        return "Current priority: expand support corridors and convert logistics strength into world control.";
+    }
+
+    private String buildStrategicDirectiveLine(ExpeditionLaunchDestination destination) {
+        if (destination == null) {
+            return "Directive: await command assignment.";
+        }
+        String objective = getDestinationObjective(destination);
+        if (isActiveWorldBossFront(destination.zoneId)) {
+            return "Directive [" + getWorldBossFrontBehavior(destination.zoneId) + " Front - "
+                + getWorldBossFrontEffectSummary(destination.zoneId) + "]: " + objective;
+        }
+        if (shouldOfferLargeDungeonExpedition(destination)) {
+            return "Directive [Legacy Descent]: " + objective;
+        }
+        if (shouldOfferConvoyEscort(destination)) {
+            return "Directive [Relief Convoy]: " + objective;
+        }
+        if (shouldOfferGuildStrikeContract(destination)) {
+            return "Directive [Guild Strike]: " + objective;
+        }
+        if (shouldOfferGuildBoardContract(destination)) {
+            return "Directive [Guild Supply]: " + objective;
+        }
+        if (shouldOfferPublicRecoveryContract(destination)) {
+            return "Directive [Recovery Sweep]: " + objective;
+        }
+        if (shouldOfferPublicBoardContract(destination)) {
+            return "Directive [Public Support]: " + objective;
+        }
+        if ("shadow_caves".equals(destination.zoneId)) {
+            return "Directive [Twilight Recovery]: descend through the ruin-dark, keep the line intact, and bring the dead archive back under allied control. " + objective;
+        }
+        if ("sky_fortress".equals(destination.zoneId)) {
+            return "Directive [Hell Climb]: commit to the hard route, clear the upper air rail, and prove this theater can be conquered the brutal way. " + objective;
+        }
+        if ("crystal_depths".equals(destination.zoneId)) {
+            return "Directive [Dusk Descent]: harvest what still remembers the old world before hostile crews turn memory into territory. " + objective;
+        }
+        return "Directive [Frontier Push]: " + objective;
+    }
+
+    private String buildStrategicSupportLine(String zoneId) {
+        String condition = getZoneWarConditionSummary(zoneId);
+        int support = getZoneInfrastructureSupportScore(zoneId);
+        int contractBonus = getZoneContractSupportBonus(zoneId, determinePinnedContractKind(
+            new ExpeditionLaunchDestination(zoneId, null, getZoneDisplayName(zoneId), "", zoneId.equals(currentZoneId), "")
+        ));
+        return "Support picture: corridor " + support + "  |  contract bonus " + contractBonus + "g"
+            + (condition != null ? "  |  " + condition.replace("Zone condition: ", "") : ".");
+    }
+
+    private String buildLargeDungeonStatusLine() {
+        int bestFloor = gameState.getInfiniteDungeonBestFloor();
+        String runStatus = gameState.isInfiniteDungeonRunActive()
+            ? "run active on floor " + getInfiniteDungeonCurrentFloor()
+            : "ready for a fresh descent";
+        return "Legacy Descent: best floor " + bestFloor + ", " + runStatus
+            + ". Recommended war-depth contract target: floor "
+            + (expeditionBoardReputation >= 10 ? 10 : expeditionBoardReputation >= 4 ? 6 : 3) + ".";
+    }
+
+    private int getZoneContractSupportBonus(String zoneId, String contractKind) {
+        if (zoneId == null || zoneId.isEmpty() || contractKind == null || contractKind.isEmpty()) {
+            return 0;
+        }
+        BaseState baseState = baseStatesByZoneId.get(zoneId);
+        if (baseState == null) {
+            return 0;
+        }
+        int storage = countActiveStructuresByCategory(baseState, StructureCategory.STORAGE);
+        int defense = countActiveStructuresByCategory(baseState, StructureCategory.DEFENSE)
+            + countActiveStructuresByCategory(baseState, StructureCategory.WALL);
+        int logistics = countActiveStructuresByCategory(baseState, StructureCategory.UTILITY)
+            + countActiveStructuresByCategory(baseState, StructureCategory.POWER)
+            + countActiveStructuresByCategory(baseState, StructureCategory.CRAFTING);
+        int bonus = 0;
+        if (contractKind.startsWith("CONVOY_ESCORT")
+            || contractKind.startsWith("GUILD_BOARD_SUPPLY")
+            || contractKind.startsWith("PUBLIC_BOARD_DELIVERY")) {
+            bonus += storage * 10 + logistics * 6;
+        }
+        if (contractKind.startsWith("WORLD_BOSS_FRONT")
+            || contractKind.startsWith("GUILD_STRIKE")
+            || contractKind.startsWith("DEFEAT_BOSS")) {
+            bonus += defense * 8 + logistics * 4;
+        }
+        if (contractKind.startsWith("PUBLIC_BOARD_RECOVERY")
+            || contractKind.startsWith("RECOVER_FRAGMENT")) {
+            bonus += storage * 6 + logistics * 8;
+        }
+        if (contractKind.startsWith("LARGE_DUNGEON_EXPEDITION")) {
+            bonus += logistics * 10 + defense * 4;
+        }
+        return Math.min(90, bonus);
+    }
+
+    private boolean isCommandBastionProjectActive() {
+        return warPhaseManager.isWarPhaseUnlocked(gameState)
+            && factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_IRONHAVEN_COMMAND, 0) >= 55
+            && (worldStateManager.isFlagActive(gameState, "settlement.command_hub")
+            || worldStateManager.isFlagActive(gameState, "settlement.watchtower_network"));
+    }
+
+    private boolean isCoalitionExchangeProjectActive() {
+        return warPhaseManager.isWarPhaseUnlocked(gameState)
+            && getGuildSettlementCount() >= 1
+            && factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_GUILD_COALITION, 0) >= 50
+            && (worldStateManager.isFlagActive(gameState, "settlement.frontier_annex")
+            || worldStateManager.isFlagActive(gameState, "settlement.tavern_open"));
+    }
+
+    private boolean isArchiveWarCollegeProjectActive() {
+        return warPhaseManager.isWarPhaseUnlocked(gameState)
+            && worldStateManager.isFlagActive(gameState, "settlement.archive_open")
+            && worldStateManager.isFlagActive(gameState, "settlement.training_grounds_open")
+            && (worldStateManager.isFlagActive(gameState, "settlement.data_vaults")
+            || worldStateManager.isFlagActive(gameState, "settlement.prototype_lab"));
+    }
+
+    private boolean isHostileSabotageProjectActive() {
+        return warPhaseManager.isWarPhaseUnlocked(gameState)
+            && factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_FRONTIER_HOSTILES, 0) >= 65;
+    }
+
+    private List<String> getActiveSettlementProjectLines() {
+        List<String> lines = new ArrayList<>();
+        if (isCommandBastionProjectActive()) {
+            lines.add("Command Bastion Network: command relays are stabilizing owned corridors and boosting strike coordination.");
+        }
+        if (isCoalitionExchangeProjectActive()) {
+            lines.add("Coalition Exchange: guild annex traffic is turning deliveries and convoy work into richer contract payouts.");
+        }
+        if (isArchiveWarCollegeProjectActive()) {
+            lines.add("Archive War College: archive analysts are converting recovered war data into shard and reputation gains.");
+        }
+        if (isHostileSabotageProjectActive()) {
+            lines.add("Hostile Sabotage Cells: enemy pressure is disrupting calm routes and forcing stronger raid responses.");
+        }
+        return lines;
+    }
+
+    private void handleLargeDungeonExpeditionProgress(int completedFloor, boolean sealedExit) {
+        if (pinnedExpeditionContractCompleted
+            || pinnedExpeditionContractKind == null
+            || !pinnedExpeditionContractKind.startsWith("LARGE_DUNGEON_EXPEDITION")) {
+            return;
+        }
+        int targetFloor = getPinnedLargeDungeonTargetFloor();
+        if (targetFloor <= 0 || completedFloor < targetFloor) {
+            return;
+        }
+        adjustFactionInfluence(WarPhaseManager.FACTION_IRONHAVEN_COMMAND, sealedExit ? 9 : 7);
+        adjustFactionInfluence(WarPhaseManager.FACTION_GUILD_COALITION, sealedExit ? 6 : 4);
+        adjustFactionInfluence(WarPhaseManager.FACTION_FRONTIER_HOSTILES, sealedExit ? -10 : -7);
+        resolveRegionalIncident("shadow_caves");
+        resolveRegionalIncident("crystal_depths");
+        recordActFourDungeonVictory(pinnedExpeditionContractKind);
+        syncWarPhaseState(false);
+        completePinnedExpeditionContract("Contract complete. Large dungeon expedition certified at floor " + completedFloor + ".");
     }
 
     private RunOutcomeSummary buildRunOutcomeSummary() {
@@ -3937,6 +6845,11 @@ public class GameScreen implements Screen {
         sf.setPinnedExpeditionContractTargetId(pinnedExpeditionContractTargetId);
         sf.setPinnedExpeditionContractCompleted(pinnedExpeditionContractCompleted);
         sf.setExpeditionBoardReputation(expeditionBoardReputation);
+        sf.setFactionInfluenceById(new HashMap<>(factionInfluenceById));
+        sf.setActiveWorldBossFrontsByZoneId(new HashMap<>(activeWorldBossFrontsByZoneId));
+        sf.setActiveRegionalIncidentsByZoneId(new HashMap<>(activeRegionalIncidentsByZoneId));
+        sf.setActiveSettlementCrisesByZoneId(new HashMap<>(activeSettlementCrisesByZoneId));
+        sf.setPlayerQuestContracts(buildPlayerQuestContractSaveData());
         sf.setCurrentZoneId(gameState.getCurrentZoneId());
         sf.setRobotEquipment(copyRobotEquipment(robotEquipment));
         sf.setCollectedRobotIds(new ArrayList<>(gameState.getCollectedRobotIds()));
@@ -3970,6 +6883,15 @@ public class GameScreen implements Screen {
         pinnedExpeditionContractTargetId = saveFile.getPinnedExpeditionContractTargetId();
         pinnedExpeditionContractCompleted = saveFile.isPinnedExpeditionContractCompleted();
         expeditionBoardReputation = saveFile.getExpeditionBoardReputation();
+        factionInfluenceById.clear();
+        factionInfluenceById.putAll(saveFile.getFactionInfluenceById());
+        activeWorldBossFrontsByZoneId.clear();
+        activeWorldBossFrontsByZoneId.putAll(saveFile.getActiveWorldBossFrontsByZoneId());
+        activeRegionalIncidentsByZoneId.clear();
+        activeRegionalIncidentsByZoneId.putAll(saveFile.getActiveRegionalIncidentsByZoneId());
+        activeSettlementCrisesByZoneId.clear();
+        activeSettlementCrisesByZoneId.putAll(saveFile.getActiveSettlementCrisesByZoneId());
+        loadPlayerQuestContractsFromSave(saveFile);
         loadBaseStatesFromSave(saveFile);
         gameState.setInfiniteDungeonCurrentFloor(saveFile.getInfiniteDungeonCurrentFloor());
         gameState.setInfiniteDungeonBestFloor(saveFile.getInfiniteDungeonBestFloor());
@@ -4345,6 +7267,7 @@ public class GameScreen implements Screen {
         int shardReward = forgeLegacyEngine.getFloorClearReward()
             + (completedFloor % INFINITE_DUNGEON_BOSS_INTERVAL == 0 ? forgeLegacyEngine.getBossFloorReward() : 0);
         awardForgeShards(shardReward, "", "");
+        handleLargeDungeonExpeditionProgress(completedFloor, false);
         syncAct5EndgameState(true);
         regenerateInfiniteDungeonFloor("from_boss_gate", true);
         showStandaloneDialog("Bolt Simulation", completedFloor % INFINITE_DUNGEON_BOSS_INTERVAL == 0
@@ -4913,6 +7836,7 @@ public class GameScreen implements Screen {
             }
         }
         addZoneShopFeatureIfNeeded();
+        addWarVendorFeatureIfNeeded();
 
         for (TmxWorldLoader.NpcData npcData : currentZone.npcs) {
             if (npcData.hiddenUntilFlag != null && !npcData.hiddenUntilFlag.isEmpty()
@@ -4940,6 +7864,7 @@ public class GameScreen implements Screen {
             spawnEnemies();
         }
         triggerStoryEvents("ZONE_ENTER", zoneId);
+        maybeShowWarArrivalDispatch(zoneId);
         refreshHud();
         autosave();
     }
@@ -5305,13 +8230,16 @@ public class GameScreen implements Screen {
 
     private DialogueSystem.DialogueResult resolveNpcDialogue(String npcId, String speakerName) {
         questManager.syncProgress(gameState, worldStateManager);
-        DialogueSystem.DialogueResult result = dialogueSystem.resolve(
-            npcId,
-            currentZoneId,
-            gameState,
-            questManager,
-            worldStateManager
-        );
+        DialogueSystem.DialogueResult result = buildActFourTownDialogue(npcId, speakerName);
+        if (result == null) {
+            result = dialogueSystem.resolve(
+                npcId,
+                currentZoneId,
+                gameState,
+                questManager,
+                worldStateManager
+            );
+        }
         if (result == null) {
             result = new DialogueSystem.DialogueResult();
             result.speaker = speakerName;
@@ -5323,6 +8251,164 @@ public class GameScreen implements Screen {
         questManager.syncProgress(gameState, worldStateManager);
         refreshHud();
         return result;
+    }
+
+    private DialogueSystem.DialogueResult buildActFourTownDialogue(String npcId, String speakerName) {
+        if (!isHubTownZone() || !warPhaseManager.isWarPhaseUnlocked(gameState) || npcId == null || npcId.isEmpty()) {
+            return null;
+        }
+        List<DialogueSystem.DialoguePage> pages = new ArrayList<>();
+        if ("commander_rex".equals(npcId)) {
+            pages.add(new DialogueSystem.DialoguePage(speakerName, getActFourCommanderRexLine()));
+            pages.add(new DialogueSystem.DialoguePage(speakerName, "Keep reading the war tab like a field map. If the chronicle is stalled, push the exact theater it names."));
+        } else if ("professor_cogs".equals(npcId)) {
+            pages.add(new DialogueSystem.DialoguePage(speakerName, getActFourProfessorCogsLine()));
+            pages.add(new DialogueSystem.DialoguePage(speakerName, "The frontier isn't empty ruin anymore. It's a library written in raids, shards, and the parts you choose to save."));
+        } else if ("hale".equals(npcId)) {
+            pages.add(new DialogueSystem.DialoguePage(speakerName, getActFourAnnexLine()));
+        } else if ("vesa".equals(npcId)) {
+            pages.add(new DialogueSystem.DialoguePage(speakerName, getActFourVesaLine()));
+        } else if ("innkeeper_tamsin".equals(npcId)) {
+            pages.add(new DialogueSystem.DialoguePage(speakerName, getActFourTamsinLine()));
+        } else if ("quartermaster".equals(npcId)) {
+            pages.add(new DialogueSystem.DialoguePage(speakerName, getActFourQuartermasterLine()));
+        } else if ("dispatcher".equals(npcId)) {
+            pages.add(new DialogueSystem.DialoguePage(speakerName, getActFourDispatcherLine()));
+        } else if ("lookout".equals(npcId)) {
+            pages.add(new DialogueSystem.DialoguePage(speakerName, getActFourLookoutLine()));
+        } else {
+            return null;
+        }
+        DialogueSystem.DialogueResult result = new DialogueSystem.DialogueResult();
+        result.speaker = speakerName;
+        result.pages.addAll(pages);
+        result.text = pages.isEmpty() ? "The frontier keeps moving." : pages.get(0).text;
+        return result;
+    }
+
+    private String getActFourCommanderRexLine() {
+        if (!isActFourOperationCompleted(ACT4_OPERATION_IRON_LIFELINE)) {
+            return "Iron Lifeline is the whole war in miniature. If we can't feed multiple fronts, none of the harder operations matter.";
+        }
+        if (!isActFourOperationCompleted(ACT4_OPERATION_GLOAM_ARCHIVE)) {
+            return "Gloam Archive is next. Pull the dusk-memory out of those ruins before the hostiles turn ignorance into territory.";
+        }
+        if (!isActFourOperationCompleted(ACT4_OPERATION_HELLCLIMB)) {
+            return "Hellclimb is where the map judges us. Take Sky Fortress and every crew in Ironhaven starts believing the hard route is real.";
+        }
+        if (!isActFourOperationCompleted(ACT4_OPERATION_LAST_LIGHT)) {
+            return "Last Light is a command proof. Surface control means nothing if we fold the moment the descent goes deep and ugly.";
+        }
+        return "You're not chasing stability anymore. You're setting campaign tempo for the entire frontier.";
+    }
+
+    private String getActFourProfessorCogsLine() {
+        if (!isActFourOperationCompleted(ACT4_OPERATION_GLOAM_ARCHIVE)) {
+            return "The Shadow Caves and Crystal Depths still remember the age that died here. Bring me fragments before the ruin forgets on purpose.";
+        }
+        if (!isActFourOperationCompleted(ACT4_OPERATION_LAST_LIGHT)) {
+            return "Archive doctrine says the next truth is below us. The abyss is where a rebuilt world proves whether it's real or just loud.";
+        }
+        return "We've crossed from archaeology into authorship. The archive is recording a new era because you forced one into existence.";
+    }
+
+    private String getActFourAnnexLine() {
+        if (!isActFourOperationCompleted(ACT4_OPERATION_IRON_LIFELINE)) {
+            return "We're still on emergency routing. Every convoy, delivery, and supply charter you clear keeps another district from going dark.";
+        }
+        if (!isActFourOperationCompleted(ACT4_OPERATION_HELLCLIMB)) {
+            return "The annex can feed the low routes now. What we need from you is confidence at altitude.";
+        }
+        return "Traffic's cleaner than it's ever been. Hard to believe this yard used to feel like the edge of the world.";
+    }
+
+    private String getActFourVesaLine() {
+        if (!isActFourOperationCompleted(ACT4_OPERATION_GLOAM_ARCHIVE)) {
+            return "Couriers coming back from the dusk bands all say the same thing: the ruins feel like they're waiting to be chosen. Choose faster than the scavengers.";
+        }
+        if (!isActFourOperationCompleted(ACT4_OPERATION_LAST_LIGHT)) {
+            return "The crews are placing bets on your next descent floor now. That's morale, in Ironhaven terms.";
+        }
+        return "We've gone from scraping by to scheduling futures. I don't think the town knows what to do with hope yet.";
+    }
+
+    private String getActFourTamsinLine() {
+        if (!isActFourOperationCompleted(ACT4_OPERATION_IRON_LIFELINE)) {
+            return "The tavern's all route maps and emergency drinks tonight. Nobody relaxes until the lifeline sticks.";
+        }
+        if (!isActFourOperationCompleted(ACT4_OPERATION_HELLCLIMB)) {
+            return "After Gloam Archive, the crews started talking like the dead world can be understood. After Hellclimb, they'll talk like it can be beaten.";
+        }
+        return "Half this room is writing charters now. That's how I know you've changed the place.";
+    }
+
+    private String getActFourQuartermasterLine() {
+        if (isActFourSideArcCompleted(ACT4_SIDEARC_ARCHIVE_RECLAMATION)
+            && isActFourSideArcCompleted(ACT4_SIDEARC_GUILD_ASCENDANCY)
+            && isActFourSideArcCompleted(ACT4_SIDEARC_COMMAND_BASTION)) {
+            return "All three side programs are funded and stable. That's not a logistics state, it's an empire state.";
+        }
+        if (!isActFourOperationCompleted(ACT4_OPERATION_LAST_LIGHT)) {
+            return "Command packages are already folded into your operation clears. Keep the chronicle moving and the quartermaster keeps signing off on miracle budgets.";
+        }
+        return "You're on victory-grade logistics now. If a crew wants to model a charter after your campaign, we can actually fund it.";
+    }
+
+    private String getActFourDispatcherLine() {
+        String zoneId = getPrimaryWarDispatchZone();
+        if (zoneId == null) {
+            return "Traffic board is steady for once. I'm suspicious of that, but I'll take it.";
+        }
+        if (worldStateManager.isFlagActive(gameState, "war.consequence.chain." + zoneId)
+            || worldStateManager.isFlagActive(gameState, "war.consequence.spillover." + zoneId)) {
+            return "We've got spillover on the board. Clear one hotspot too slowly and the neighboring lane starts screaming for help instead.";
+        }
+        String incident = getRegionalIncidentName(zoneId);
+        if (incident != null) {
+            return "Priority dispatch is " + incident + " in " + getZoneDisplayName(zoneId)
+                + ". Every route note coming in says the same thing: get there fast or lose the window.";
+        }
+        String crisis = getSettlementCrisisName(zoneId);
+        if (crisis != null) {
+            return "Priority dispatch is " + crisis + " at " + getZoneDisplayName(zoneId)
+                + ". Logistics wants one clean contract there before the line tears wider open.";
+        }
+        return "No single route owns the board right now. That's usually when the frontier starts preparing a surprise.";
+    }
+
+    private String getActFourLookoutLine() {
+        String zoneId = getPrimaryWarDispatchZone();
+        if (zoneId == null) {
+            return "Signal lamps are calm. The frontier only stays this quiet when it's catching its breath.";
+        }
+        if (worldStateManager.isFlagActive(gameState, "war.consequence.relief." + zoneId)
+            || worldStateManager.isFlagActive(gameState, "war.consequence.stabilized." + zoneId)) {
+            return "The neighboring lamps settled after the last push. That's the kind of calm you earn, not the kind you wait for.";
+        }
+        String incident = getRegionalIncidentName(zoneId);
+        if (incident != null) {
+            return "I'm watching " + getZoneDisplayName(zoneId) + " all night. " + incident
+                + " is throwing strange light off the horizon and the crews can feel it even from town.";
+        }
+        String crisis = getSettlementCrisisName(zoneId);
+        if (crisis != null) {
+            return getZoneDisplayName(zoneId) + " is flashing irregular support codes. " + crisis
+                + " means that outpost needs relief before the next pressure wave lands.";
+        }
+        return "Watch line is clear enough to plan around. That's your chance to make the next move first.";
+    }
+
+    private String getPrimaryWarDispatchZone() {
+        if (!activeSettlementCrisesByZoneId.isEmpty()) {
+            return activeSettlementCrisesByZoneId.keySet().iterator().next();
+        }
+        if (!activeRegionalIncidentsByZoneId.isEmpty()) {
+            return activeRegionalIncidentsByZoneId.keySet().iterator().next();
+        }
+        if (!activeWorldBossFrontsByZoneId.isEmpty()) {
+            return activeWorldBossFrontsByZoneId.keySet().iterator().next();
+        }
+        return null;
     }
 
     private void applyDialogueResult(DialogueSystem.DialogueResult result) {
@@ -5360,6 +8446,13 @@ public class GameScreen implements Screen {
     }
 
     private void applyRecruitment(String eventId) {
+        List<String> collectedBefore = new ArrayList<>(collectedRobotIds);
+        if (hasTownServiceStrain() && eventId != null && !eventId.isEmpty()
+            && eventId.startsWith("recruit_") && !worldStateManager.isFlagActive(gameState, "war.recruitment_strain_warning")) {
+            worldStateManager.setFlag(gameState, "war.recruitment_strain_warning", true);
+            activeDialog = "Ironhaven's recruitment net is under strain from chained frontier crises. New frames can still be stabilized, but support crews are stretched thin.";
+            dialogPageTrackingText = null;
+        }
         RobotRecruitmentManager.RecruitmentResult recruitment = recruitmentManager.apply(eventId, collectedRobotIds, activeRobotIds, gameState);
         if (recruitment == null) {
             return;
@@ -5384,6 +8477,75 @@ public class GameScreen implements Screen {
                 : recruitment.message;
             dialogPageTrackingText = null;
         }
+        applyWarRecruitmentBonus(collectedBefore);
+    }
+
+    private void applyWarRecruitmentBonus(List<String> collectedBefore) {
+        if (!warPhaseManager.isWarPhaseUnlocked(gameState) || !hasTownServiceSurplus()) {
+            return;
+        }
+        List<String> previous = collectedBefore != null ? collectedBefore : List.of();
+        String dispatchZoneId = getPrimaryWarDispatchZone();
+        int bonusXp = getWarRecruitmentBonusXp(dispatchZoneId);
+        if (bonusXp <= 0) {
+            return;
+        }
+        for (String robotId : collectedRobotIds) {
+            if (robotId == null || robotId.isEmpty() || previous.contains(robotId)) {
+                continue;
+            }
+            RobotProgressionState state = gameState.getRobotProgressionState(robotId);
+            if (state == null) {
+                continue;
+            }
+            RobotEvolutionManager.addExperience(state, bonusXp);
+            if ("sky_fortress".equals(dispatchZoneId)) {
+                state.setLevel(state.getLevel() + 1);
+            }
+            gameState.putRobotProgressionState(state);
+            String dispatchLabel = dispatchZoneId != null ? getZoneDisplayName(dispatchZoneId) : "the frontier";
+            String specialty = getWarRecruitmentSpecialty(dispatchZoneId);
+            activeDialog = (activeDialog != null && !activeDialog.isEmpty() ? activeDialog + " " : "")
+                + state.getDisplayName() + " joined with " + dispatchLabel + " war-drill experience. "
+                + specialty + " Bonus training XP +" + bonusXp
+                + ("sky_fortress".equals(dispatchZoneId) ? ", bonus level +1." : ".");
+            dialogPageTrackingText = null;
+        }
+    }
+
+    private String getWarRecruitmentSpecialty(String dispatchZoneId) {
+        if ("sky_fortress".equals(dispatchZoneId)) {
+            return "Specialty: summit assault drills are already baked into its chassis prep.";
+        }
+        if ("crystal_depths".equals(dispatchZoneId)) {
+            return "Specialty: crystal-shelf hazard conditioning improved its field stability.";
+        }
+        if ("shadow_caves".equals(dispatchZoneId)) {
+            return "Specialty: low-visibility ghostline routing sharpened its recovery discipline.";
+        }
+        if ("rusty_quarry".equals(dispatchZoneId)) {
+            return "Specialty: extraction-line pressure work hardened its endurance profile.";
+        }
+        if ("verdant_fields".equals(dispatchZoneId)) {
+            return "Specialty: corridor escort training improved its early-war readiness.";
+        }
+        return "Specialty: frontier readiness package applied.";
+    }
+
+    private int getWarRecruitmentBonusXp(String dispatchZoneId) {
+        if (dispatchZoneId == null || dispatchZoneId.isEmpty()) {
+            return 18;
+        }
+        if ("sky_fortress".equals(dispatchZoneId)) {
+            return 34;
+        }
+        if ("crystal_depths".equals(dispatchZoneId) || "shadow_caves".equals(dispatchZoneId)) {
+            return 28;
+        }
+        if ("rusty_quarry".equals(dispatchZoneId) || "verdant_fields".equals(dispatchZoneId)) {
+            return 22;
+        }
+        return 18;
     }
 
     private boolean applySettlementUpgrade(String upgradeId) {
@@ -7089,6 +10251,27 @@ public class GameScreen implements Screen {
         return guildData;
     }
 
+    private List<SaveFile.PlayerQuestContractData> buildPlayerQuestContractSaveData() {
+        List<SaveFile.PlayerQuestContractData> data = new ArrayList<>();
+        for (PlayerQuestContract contract : playerQuestContracts) {
+            if (contract == null) {
+                continue;
+            }
+            SaveFile.PlayerQuestContractData saved = new SaveFile.PlayerQuestContractData();
+            saved.setContractId(contract.contractId);
+            saved.setGuildId(contract.guildId);
+            saved.setZoneId(contract.zoneId);
+            saved.setKind(contract.kind);
+            saved.setTitle(contract.title);
+            saved.setDescription(contract.description);
+            saved.setTargetId(contract.targetId);
+            saved.setAuthorPlayerId(contract.authorPlayerId);
+            saved.setActive(contract.active);
+            data.add(saved);
+        }
+        return data;
+    }
+
     private void loadGuildsFromSave(SaveFile saveFile) {
         guildDefinitionsById.clear();
         if (saveFile == null) {
@@ -7126,6 +10309,29 @@ public class GameScreen implements Screen {
                 ));
             }
             guildDefinitionsById.put(guild.getGuildId(), guild);
+        }
+    }
+
+    private void loadPlayerQuestContractsFromSave(SaveFile saveFile) {
+        playerQuestContracts.clear();
+        if (saveFile == null) {
+            return;
+        }
+        for (SaveFile.PlayerQuestContractData data : saveFile.getPlayerQuestContracts()) {
+            if (data == null || data.getContractId() == null || data.getContractId().isEmpty()) {
+                continue;
+            }
+            PlayerQuestContract contract = new PlayerQuestContract();
+            contract.contractId = data.getContractId();
+            contract.guildId = data.getGuildId();
+            contract.zoneId = data.getZoneId();
+            contract.kind = data.getKind();
+            contract.title = data.getTitle();
+            contract.description = data.getDescription();
+            contract.targetId = data.getTargetId();
+            contract.authorPlayerId = data.getAuthorPlayerId();
+            contract.active = data.isActive();
+            playerQuestContracts.add(contract);
         }
     }
 
@@ -7275,6 +10481,66 @@ public class GameScreen implements Screen {
         currentZone.features.add(feature);
     }
 
+    private void addWarVendorFeatureIfNeeded() {
+        if (currentZone == null || currentZoneId == null || currentZoneId.isEmpty() || !warPhaseManager.isWarPhaseUnlocked(gameState)) {
+            return;
+        }
+        if (!isHubTownZone() && !hasTownServiceSurplus()) {
+            return;
+        }
+        String dispatchZoneId = getPrimaryWarDispatchZone();
+        String shopId = getRegionalWarShopId(dispatchZoneId);
+        if (shopId == null || shopId.isEmpty()) {
+            return;
+        }
+        String featureId = "war_vendor_" + dispatchZoneId;
+        for (TmxWorldLoader.Feature existing : currentZone.features) {
+            if (existing != null && featureId.equals(existing.id)) {
+                return;
+            }
+        }
+        TmxWorldLoader.Feature feature = new TmxWorldLoader.Feature();
+        feature.id = featureId;
+        feature.kind = "stall";
+        feature.label = getRegionalWarVendorLabel(dispatchZoneId);
+        feature.bounds = isHubTownZone()
+            ? new Rectangle(1180f, 560f, 68f, 52f)
+            : new Rectangle(playerPos.x + 72f, playerPos.y - 18f, 56f, 44f);
+        feature.interactionType = "shop";
+        feature.shopId = shopId;
+        currentZone.features.add(feature);
+    }
+
+    private String getRegionalWarVendorLabel(String zoneId) {
+        if ("shadow_caves".equals(zoneId)) {
+            return "War Exchange: Ghostline Cache";
+        }
+        if ("crystal_depths".equals(zoneId)) {
+            return "War Exchange: Prismfall Cache";
+        }
+        if ("sky_fortress".equals(zoneId)) {
+            return "War Exchange: Summit Cache";
+        }
+        if ("rusty_quarry".equals(zoneId)) {
+            return "War Exchange: Ironwake Cache";
+        }
+        if ("verdant_fields".equals(zoneId)) {
+            return "War Exchange: Lifeline Depot";
+        }
+        return "War Exchange: " + getZoneDisplayName(zoneId);
+    }
+
+    private String getRegionalWarShopId(String zoneId) {
+        if (zoneId == null || zoneId.isEmpty()) {
+            return null;
+        }
+        List<ShopDefinition> shops = shopsByZoneId.get(zoneId);
+        if (shops == null || shops.isEmpty()) {
+            return null;
+        }
+        return shops.get(0).getId();
+    }
+
     private boolean zoneHasInteriorShop() {
         for (House house : houses) {
             if (house == null || house.interiorNpcs == null) {
@@ -7354,7 +10620,14 @@ public class GameScreen implements Screen {
     }
 
     public void addHealingPotions(int amount) {
-        gameState.addHealingPotions(amount);
+        int adjustedAmount = amount;
+        if (amount > 0 && hasTownServiceSurplus()) {
+            adjustedAmount += 1;
+        }
+        if (amount > 0 && hasTownServiceStrain()) {
+            adjustedAmount = Math.max(1, adjustedAmount - 1);
+        }
+        gameState.addHealingPotions(adjustedAmount);
         healingPotions = gameState.getHealingPotions();
         refreshHud();
     }
@@ -7504,15 +10777,106 @@ public class GameScreen implements Screen {
     }
 
     private void handlePinnedContractBankingProgress(boolean bankedAtOutpostStorage) {
-        if (!"BANK_HAUL".equals(pinnedExpeditionContractKind) || pinnedExpeditionContractCompleted) {
+        if (pinnedExpeditionContractCompleted) {
             return;
         }
         if (pinnedExpeditionContractZoneId == null || pinnedExpeditionContractZoneId.isEmpty()) {
             return;
         }
+        if (pinnedExpeditionContractKind != null && pinnedExpeditionContractKind.startsWith("CONVOY_ESCORT")) {
+            if (bankedAtOutpostStorage && pinnedExpeditionContractZoneId.equals(currentZoneId)) {
+                recordActFourSupplyVictory(currentZoneId, pinnedExpeditionContractKind);
+                resolveSettlementCrisis(currentZoneId);
+                String stabilization = stabilizeConvoyRoute(currentZoneId);
+                completePinnedExpeditionContract(
+                    "Contract complete. Relief convoy secured in " + getZoneDisplayName(currentZoneId) + "."
+                        + (stabilization.isEmpty() ? "" : " " + stabilization)
+                );
+            }
+            return;
+        }
+        if (pinnedExpeditionContractKind != null
+            && pinnedExpeditionContractKind.startsWith("PLAYER_CREATED_SUPPLY")
+            && bankedAtOutpostStorage
+            && pinnedExpeditionContractZoneId.equals(currentZoneId)) {
+            completePlayerQuestContractForZone(currentZoneId);
+            recordActFourSupplyVictory(currentZoneId, pinnedExpeditionContractKind);
+            resolveSettlementCrisis(currentZoneId);
+            adjustFactionInfluence(WarPhaseManager.FACTION_GUILD_COALITION, 6);
+            adjustFactionInfluence(WarPhaseManager.FACTION_IRONHAVEN_COMMAND, 2);
+            syncWarPhaseState(false);
+            completePinnedExpeditionContract("Contract complete. Player-authored supply charter fulfilled.");
+            return;
+        }
+        if ((pinnedExpeditionContractKind != null
+            && (pinnedExpeditionContractKind.startsWith("GUILD_BOARD_SUPPLY")
+            || pinnedExpeditionContractKind.startsWith("PUBLIC_BOARD_DELIVERY")))
+            && bankedAtOutpostStorage
+            && pinnedExpeditionContractZoneId.equals(currentZoneId)) {
+            recordActFourSupplyVictory(currentZoneId, pinnedExpeditionContractKind);
+            resolveSettlementCrisis(currentZoneId);
+            String deliverySummary = fulfillBoardSupplyContract(currentZoneId, pinnedExpeditionContractKind);
+            completePinnedExpeditionContract("Contract complete. " + deliverySummary);
+            return;
+        }
+        if (!"BANK_HAUL".equals(pinnedExpeditionContractKind)) {
+            return;
+        }
         if (bankedAtOutpostStorage || isHubTownZone()) {
             completePinnedExpeditionContract("Contract complete. Haul banked safely for the current route.");
         }
+    }
+
+    private String fulfillBoardSupplyContract(String zoneId, String contractKind) {
+        if (contractKind != null && contractKind.startsWith("GUILD_BOARD_SUPPLY")) {
+            GuildDefinition guild = getPublishingGuildForZone(zoneId);
+            adjustFactionInfluence(WarPhaseManager.FACTION_GUILD_COALITION, 7);
+            adjustFactionInfluence(WarPhaseManager.FACTION_IRONHAVEN_COMMAND, 2);
+            syncWarPhaseState(false);
+            return (guild != null ? guild.getDisplayName() : "Guild crews") + " received the delivered haul and expanded their frontier operations.";
+        }
+        adjustFactionInfluence(WarPhaseManager.FACTION_IRONHAVEN_COMMAND, 4);
+        adjustFactionInfluence(WarPhaseManager.FACTION_FRONTIER_HOSTILES, -4);
+        syncWarPhaseState(false);
+        return "The public board marked the route resupplied and local services are back online.";
+    }
+
+    private String stabilizeConvoyRoute(String zoneId) {
+        BaseState baseState = zoneId != null ? baseStatesByZoneId.get(zoneId) : null;
+        if (baseState == null) {
+            return "";
+        }
+        BaseRaidState raidState = baseState.getRaidState();
+        if (raidState == null) {
+            return "";
+        }
+
+        int dispersedRaiders = 0;
+        for (Enemy enemy : enemies) {
+            if (enemy != null && enemy.alive && enemy.raidSpawned) {
+                enemy.alive = false;
+                dispersedRaiders++;
+            }
+        }
+
+        boolean hadActiveRaid = raidState.isActive();
+        float previousThreat = raidState.getThreatLevel();
+        raidState.setActive(false);
+        raidState.setThreatLevel(Math.max(0f, previousThreat - 0.75f));
+        raidState.setCooldownSeconds(Math.max(raidState.getCooldownSeconds(), BASE_RAID_COOLDOWN_SECONDS));
+        raidState.setWaveIndex(Math.max(0, raidState.getWaveIndex() - 1));
+        adjustFactionInfluence(WarPhaseManager.FACTION_IRONHAVEN_COMMAND, 6);
+        adjustFactionInfluence(WarPhaseManager.FACTION_GUILD_COALITION, 3);
+        adjustFactionInfluence(WarPhaseManager.FACTION_FRONTIER_HOSTILES, -9);
+        syncWarPhaseState(false);
+
+        if (hadActiveRaid || dispersedRaiders > 0) {
+            return "Raid lanes disrupted and local pressure pushed back.";
+        }
+        if (previousThreat >= 0.55f) {
+            return "Threat pressure reduced before the next strike window could open.";
+        }
+        return "Supply route confirmed and outpost reserves restored.";
     }
 
     private boolean maybeTriggerActOneOutpostBankingTutorial(
@@ -7850,6 +11214,7 @@ public class GameScreen implements Screen {
     public List<String> getQuestJournalLines() {
         questManager.syncProgress(gameState, worldStateManager);
         List<String> lines = new ArrayList<>();
+        lines.addAll(getActFourCampaignStatusLines());
         lines.addAll(questManager.getActiveQuestLines(gameState, true));
         lines.addAll(questManager.getActiveQuestLines(gameState, false));
         return lines;
@@ -7882,10 +11247,21 @@ public class GameScreen implements Screen {
         List<String> lines = new ArrayList<>();
         int territories = getTotalClaimedTerritories();
         int guildSettlements = getGuildSettlementCount();
+        WarPhaseSnapshot snapshot = getCurrentWarPhaseSnapshot();
         lines.add("Empire tier: " + forgeLegacyEngine.describeEmpireTier(territories, guildSettlements));
         lines.add("Territories held: " + territories);
         lines.add("Guild settlements: " + guildSettlements);
         lines.add("World event: " + getActiveWorldEventName());
+        if (snapshot.isUnlocked()) {
+            lines.add("Strategic map: territory " + snapshot.getTerritoryInfluence() + "%  |  risk " + snapshot.getSettlementAttackRisk()
+                + "%  |  fronts " + snapshot.getWorldBossFrontCount() + ".");
+            lines.add("Strategic map: convoy lanes " + snapshot.getConvoyRouteCount() + "  |  expeditions "
+                + snapshot.getLargeExpeditionCount() + "  |  boards " + snapshot.getPlayerQuestBoardCount() + ".");
+        }
+        List<String> projectLines = getActiveSettlementProjectLines();
+        if (!projectLines.isEmpty()) {
+            lines.add(projectLines.get(0));
+        }
         return lines;
     }
 
@@ -7928,6 +11304,33 @@ public class GameScreen implements Screen {
         }
         if (worldStateManager.isFlagActive(gameState, "settlement.training_grounds_open")) {
             lines.add("Training grounds now support disciplined team drills.");
+        }
+        if (isCommandBastionProjectActive()) {
+            lines.add("Command Bastion Network is granting extra reputation on major war contracts.");
+        }
+        if (isCoalitionExchangeProjectActive()) {
+            lines.add("Coalition Exchange is increasing convoy, delivery, and supply payouts.");
+        }
+        if (isArchiveWarCollegeProjectActive()) {
+            lines.add("Archive War College is turning expeditions into additional shard and command insight gains.");
+        }
+        if (hasTownServiceSurplus()) {
+            lines.add("War surplus: stabilized corridors are improving stock rotation, kit supply, and town response speed.");
+        }
+        if (hasTownServiceStrain()) {
+            lines.add("War strain: chained crises are dragging on prices, resupply cadence, and reserve readiness.");
+        }
+        String dominantFactionId = getDominantWarFactionId();
+        if (WarPhaseManager.FACTION_IRONHAVEN_COMMAND.equals(dominantFactionId)) {
+            lines.add("Command posture: facilities are prioritizing disciplined field kits, strike readiness, and fortified route support.");
+        } else if (WarPhaseManager.FACTION_GUILD_COALITION.equals(dominantFactionId)) {
+            lines.add("Guild posture: facilities are prioritizing flexible stock, contract traffic, and richer frontier resale flow.");
+        } else {
+            lines.add("Hostile pressure posture: facilities are operating defensively and trimming nonessential inventory.");
+        }
+        String dispatchZoneId = getPrimaryWarDispatchZone();
+        if (dispatchZoneId != null) {
+            lines.add("Regional bias: Ironhaven is currently stocking around " + getZoneDisplayName(dispatchZoneId) + " and its live theater demands.");
         }
         return lines;
     }
@@ -8977,6 +12380,8 @@ public class GameScreen implements Screen {
         if (definition == null || definition.getEntries() == null) {
             return inventory;
         }
+        boolean serviceSurplus = hasTownServiceSurplus();
+        boolean serviceStrain = hasTownServiceStrain();
         for (ShopEntryDefinition entry : definition.getEntries()) {
             if (entry == null) {
                 continue;
@@ -8989,18 +12394,66 @@ public class GameScreen implements Screen {
                 && worldStateManager.isFlagActive(gameState, entry.getBlockedWorldFlag())) {
                 continue;
             }
+            long adjustedCost = Math.max(1L, entry.getCost()
+                + (serviceStrain ? 10L : 0L)
+                - (serviceSurplus ? 5L : 0L));
             if ("healing".equals(entry.getType())) {
-                inventory.addHealingItem(entry.getLabel(), Math.max(1, entry.getQuantity()), entry.getCost());
+                int quantity = Math.max(1, entry.getQuantity()) + (serviceSurplus ? 1 : 0);
+                if (serviceStrain) {
+                    quantity = Math.max(1, quantity - 1);
+                }
+                inventory.addHealingItem(entry.getLabel(), quantity, adjustedCost);
                 continue;
             }
             if ("equipment".equals(entry.getType())) {
                 EquipmentItem item = findEquipmentItem(entry.getItemId());
                 if (item != null) {
-                    inventory.addEquipmentItem(item, entry.getCost() > 0 ? entry.getCost() : item.getCost());
+                    long cost = entry.getCost() > 0 ? adjustedCost : Math.max(1L, item.getCost()
+                        + (serviceStrain ? 10L : 0L)
+                        - (serviceSurplus ? 5L : 0L));
+                    inventory.addEquipmentItem(item, cost);
                 }
             }
         }
+        addWarBiasedShopEntries(inventory, definition);
         return inventory;
+    }
+
+    private void addWarBiasedShopEntries(ShopInventory inventory, ShopDefinition definition) {
+        if (inventory == null || definition == null || !isHubTownZone() || !warPhaseManager.isWarPhaseUnlocked(gameState)) {
+            return;
+        }
+        String dominantFactionId = getDominantWarFactionId();
+        String dispatchZoneId = getPrimaryWarDispatchZone();
+        boolean serviceSurplus = hasTownServiceSurplus();
+        boolean serviceStrain = hasTownServiceStrain();
+        long baseCost = Math.max(10L, 24L + (serviceStrain ? 10L : 0L) - (serviceSurplus ? 6L : 0L));
+
+        if ("workshop".equals(definition.getId()) || "town_general".equals(definition.getId())) {
+            if (WarPhaseManager.FACTION_IRONHAVEN_COMMAND.equals(dominantFactionId)) {
+                inventory.addHealingItem("Command Field Pack", serviceSurplus ? 3 : 2, baseCost + 8L);
+            } else if (WarPhaseManager.FACTION_GUILD_COALITION.equals(dominantFactionId)) {
+                inventory.addHealingItem("Broker Supply Cache", serviceSurplus ? 4 : 3, baseCost + 14L);
+            } else {
+                inventory.addHealingItem("Emergency Ironhaven Kit", 1, Math.max(8L, baseCost - 4L));
+            }
+        }
+
+        if ("herbalist".equals(definition.getId()) || "apothecary".equals(definition.getId()) || "town_general".equals(definition.getId())) {
+            if ("shadow_caves".equals(dispatchZoneId)) {
+                inventory.addHealingItem("Ghostlight Recovery Set", serviceSurplus ? 3 : 2, baseCost + 10L);
+            } else if ("crystal_depths".equals(dispatchZoneId)) {
+                inventory.addHealingItem("Shardstorm Med Pack", serviceSurplus ? 3 : 2, baseCost + 12L);
+            } else if ("sky_fortress".equals(dispatchZoneId)) {
+                inventory.addHealingItem("Summit Breach Kit", serviceSurplus ? 2 : 1, baseCost + 16L);
+            } else if (dispatchZoneId != null) {
+                inventory.addHealingItem("Frontier Relief Crate", serviceSurplus ? 2 : 1, baseCost + 6L);
+            }
+        }
+
+        if (serviceStrain) {
+            inventory.addHealingItem("Rationed Emergency Dose", 1, Math.max(6L, baseCost - 8L));
+        }
     }
 
     public String buyShopEntry(ShopInventory.ShopEntry entry) {
@@ -9617,6 +13070,18 @@ public class GameScreen implements Screen {
             this.currentZone = currentZone;
             this.contractTierLabel = contractTierLabel;
         }
+    }
+
+    private static class PlayerQuestContract {
+        String contractId;
+        String guildId;
+        String zoneId;
+        String kind;
+        String title;
+        String description;
+        String targetId;
+        String authorPlayerId;
+        boolean active;
     }
 
     private static class AnimationSet {

@@ -20,6 +20,9 @@ import java.util.Map;
  * Builds a strategic Act 4 snapshot from persistent world systems.
  */
 public class WarPhaseManager {
+    public static final String FACTION_IRONHAVEN_COMMAND = "ironhaven_command";
+    public static final String FACTION_GUILD_COALITION = "guild_coalition";
+    public static final String FACTION_FRONTIER_HOSTILES = "frontier_hostiles";
     private static final float THREATENED_OUTPOST_LEVEL = 0.55f;
 
     private final StructureDefinitionRegistry structureRegistry = new StructureDefinitionRegistry();
@@ -33,15 +36,93 @@ public class WarPhaseManager {
             || state.getDefeatedBossCount() >= 15;
     }
 
+    public boolean isConvoyEscortRecommended(WarPhaseSnapshot snapshot, BaseState baseState) {
+        if (snapshot == null || baseState == null || !snapshot.isUnlocked() || snapshot.getConvoyRouteCount() <= 0) {
+            return false;
+        }
+        if (baseState.getClaimedSiteIds().isEmpty()) {
+            return false;
+        }
+        BaseRaidState raidState = baseState.getRaidState();
+        return raidState != null && (raidState.isActive() || raidState.getThreatLevel() >= THREATENED_OUTPOST_LEVEL);
+    }
+
+    public String buildConvoyEscortObjective(String zoneLabel, BaseState baseState) {
+        String resolvedZoneLabel = zoneLabel != null && !zoneLabel.isEmpty() ? zoneLabel : "this outpost";
+        BaseRaidState raidState = baseState != null ? baseState.getRaidState() : null;
+        if (raidState != null && raidState.isActive()) {
+            return "Escort a relief convoy into " + resolvedZoneLabel
+                + " and bank a live haul at its outpost storage to break the current raid surge.";
+        }
+        return "Escort munitions and salvage into " + resolvedZoneLabel
+            + " and bank a live haul at its outpost storage before the next raid wave lands.";
+    }
+
+    public boolean isGuildStrikeRecommended(BaseState baseState, GuildDefinition guildDefinition, boolean bossActive, boolean blockedByHigherPriorityThreat) {
+        if (baseState == null || guildDefinition == null || !bossActive || blockedByHigherPriorityThreat) {
+            return false;
+        }
+        return !baseState.getClaimedSiteIds().isEmpty()
+            && guildDefinition.getHallClaimedSiteId() != null
+            && !guildDefinition.getHallClaimedSiteId().isEmpty();
+    }
+
+    public String buildGuildStrikeObjective(String zoneLabel, String guildName, String bossName) {
+        String resolvedZoneLabel = zoneLabel != null && !zoneLabel.isEmpty() ? zoneLabel : "this route";
+        String resolvedGuildName = guildName != null && !guildName.isEmpty() ? guildName : "Guild Coalition";
+        String resolvedBossName = bossName != null && !bossName.isEmpty() ? bossName : "the marked hostile";
+        return resolvedGuildName + " has posted a strike order in " + resolvedZoneLabel
+            + ". Hunt " + resolvedBossName + " and break the zone hold before guild crews lose the corridor.";
+    }
+
+    public boolean isPublicRecoveryRecommended(BaseState baseState, boolean fragmentRouteAvailable, boolean blockedByHigherPriorityThreat) {
+        if (baseState == null || !fragmentRouteAvailable || blockedByHigherPriorityThreat) {
+            return false;
+        }
+        return !baseState.getClaimedSiteIds().isEmpty();
+    }
+
+    public String buildPublicRecoveryObjective(String zoneLabel, String fragmentName) {
+        String resolvedZoneLabel = zoneLabel != null && !zoneLabel.isEmpty() ? zoneLabel : "this route";
+        String resolvedFragmentName = fragmentName != null && !fragmentName.isEmpty() ? fragmentName : "strategic fragments";
+        return "The public board is funding a recovery sweep through " + resolvedZoneLabel
+            + ". Extract " + resolvedFragmentName + " and bring the haul home before hostile scavengers claim the site.";
+    }
+
+    public Map<String, Integer> createDefaultFactionInfluence() {
+        java.util.Map<String, Integer> defaults = new java.util.HashMap<>();
+        defaults.put(FACTION_IRONHAVEN_COMMAND, 48);
+        defaults.put(FACTION_GUILD_COALITION, 30);
+        defaults.put(FACTION_FRONTIER_HOSTILES, 54);
+        return defaults;
+    }
+
+    public String getFactionDisplayName(String factionId) {
+        if (FACTION_IRONHAVEN_COMMAND.equals(factionId)) {
+            return "Ironhaven Command";
+        }
+        if (FACTION_GUILD_COALITION.equals(factionId)) {
+            return "Guild Coalition";
+        }
+        if (FACTION_FRONTIER_HOSTILES.equals(factionId)) {
+            return "Frontier Hostiles";
+        }
+        return factionId != null ? factionId : "";
+    }
+
     public WarPhaseSnapshot buildSnapshot(
         GameState state,
         Map<String, BaseState> baseStatesByZoneId,
         Map<String, GuildDefinition> guildsById,
-        String playerId
+        String playerId,
+        Map<String, Integer> factionInfluenceById,
+        Map<String, String> activeWorldBossFrontsByZoneId
     ) {
         boolean unlocked = isWarPhaseUnlocked(state);
         Map<String, BaseState> bases = baseStatesByZoneId != null ? baseStatesByZoneId : Collections.emptyMap();
         Map<String, GuildDefinition> guilds = guildsById != null ? guildsById : Collections.emptyMap();
+        Map<String, Integer> factionInfluence = factionInfluenceById != null ? factionInfluenceById : createDefaultFactionInfluence();
+        Map<String, String> activeWorldBossFronts = activeWorldBossFrontsByZoneId != null ? activeWorldBossFrontsByZoneId : Collections.emptyMap();
 
         int outpostsControlled = 0;
         int activeRaidCount = 0;
@@ -133,6 +214,7 @@ public class WarPhaseManager {
         int worldBossFronts = unlocked
             ? Math.max(1, Math.min(4, 1 + contestedRegions + Math.max(0, (state != null ? state.getDefeatedBossCount() : 0) - 15) / 5))
             : 0;
+        worldBossFronts = Math.max(worldBossFronts, activeWorldBossFronts.size());
 
         int territoryInfluence = clampPercent(
             outpostsControlled * 10
@@ -158,18 +240,28 @@ public class WarPhaseManager {
 
         List<WarPhaseSnapshot.FactionPressure> factions = new ArrayList<>();
         factions.add(new WarPhaseSnapshot.FactionPressure(
-            "Ironhaven Command",
-            clampPercent(30 + upgradeScore(watchtowerNetwork, relayExpansion, commandHub, hangarOnline, trainingGrounds) * 12 + defenderBots * 3),
+            getFactionDisplayName(FACTION_IRONHAVEN_COMMAND),
+            clampPercent(
+                30 + upgradeScore(watchtowerNetwork, relayExpansion, commandHub, hangarOnline, trainingGrounds) * 12
+                    + defenderBots * 3
+                    + factionInfluence.getOrDefault(FACTION_IRONHAVEN_COMMAND, 0) / 3
+            ),
             settlementAttackRisk >= 55 ? "mobilizing" : "holding"
         ));
         factions.add(new WarPhaseSnapshot.FactionPressure(
-            "Guild Coalition",
-            clampPercent(guildCount * 18 + playerQuestBoards * 10 + playerLedGuildCount * 14),
+            getFactionDisplayName(FACTION_GUILD_COALITION),
+            clampPercent(
+                guildCount * 18 + playerQuestBoards * 10 + playerLedGuildCount * 14
+                    + factionInfluence.getOrDefault(FACTION_GUILD_COALITION, 0) / 3
+            ),
             guildCount == 0 ? "forming" : (playerQuestBoards > 0 ? "contracting" : "assembling")
         ));
         factions.add(new WarPhaseSnapshot.FactionPressure(
-            "Frontier Hostiles",
-            clampPercent(18 + activeRaidCount * 22 + threatenedOutposts * 12 + worldBossFronts * 10),
+            getFactionDisplayName(FACTION_FRONTIER_HOSTILES),
+            clampPercent(
+                18 + activeRaidCount * 22 + threatenedOutposts * 12 + worldBossFronts * 10
+                    + factionInfluence.getOrDefault(FACTION_FRONTIER_HOSTILES, 0) / 3
+            ),
             activeRaidCount > 0 ? "raiding" : (contestedRegions > 0 ? "probing" : "scattered")
         ));
 

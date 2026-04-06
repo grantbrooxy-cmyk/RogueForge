@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.rogueforge.game.world.ZoneMapIntegrityTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-04-06T06:52:36" hostname="Grants-MacBook-Pro.local" time="0.184">
-  <properties/>
-  <testcase name="lateGameDoorsDeclareTheirRequiredWorldFlagsInMapData()" classname="com.rogueforge.game.world.ZoneMapIntegrityTest" time="0.089"/>
-  <testcase name="everyZoneHasALoadableMapAndValidDoorTargets()" classname="com.rogueforge.game.world.ZoneMapIntegrityTest" time="0.095"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>

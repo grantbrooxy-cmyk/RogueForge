@@ -402,7 +402,9 @@ class WorldSystemsIntegrationTest {
             state,
             Map.of("verdant_fields", verdant, "shadow_caves", shadow),
             Map.of("guild_iron", guild),
-            "Tester"
+            "Tester",
+            manager.createDefaultFactionInfluence(),
+            Map.of("shadow_caves", "rusted_sovereign_c")
         );
 
         assertTrue(snapshot.isUnlocked());
@@ -420,6 +422,12 @@ class WorldSystemsIntegrationTest {
         assertEquals(3, snapshot.getWorldBossFrontCount());
         assertTrue(snapshot.getTerritoryInfluence() > snapshot.getSettlementAttackRisk());
         assertEquals(3, snapshot.getFactionPressures().size());
+        assertTrue(manager.isConvoyEscortRecommended(snapshot, verdant));
+        assertTrue(manager.buildConvoyEscortObjective("Verdant Fields", verdant).contains("bank a live haul"));
+        assertTrue(manager.isGuildStrikeRecommended(verdant, guild, true, false));
+        assertTrue(manager.buildGuildStrikeObjective("Verdant Fields", guild.getDisplayName(), "Rusted Sovereign").contains("strike order"));
+        assertTrue(manager.isPublicRecoveryRecommended(shadow, true, false));
+        assertTrue(manager.buildPublicRecoveryObjective("Shadow Caves", "Settlement Plan Fragments").contains("recovery sweep"));
         assertTrue(snapshot.getCommandLines().stream().anyMatch(line -> line.contains("World influence")));
         assertTrue(snapshot.getCommandLines().stream().anyMatch(line -> line.contains("Major raids: 1 active")));
         assertTrue(snapshot.getCommandLines().stream().anyMatch(line -> line.contains("Guild fronts: 1 active")));
