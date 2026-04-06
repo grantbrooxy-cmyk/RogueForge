@@ -59,24 +59,24 @@
     "requiredBlueprintFragmentCount": 2
   },
   {
-    "eventId": "scout_mk3_join",
-    "robotId": "scout_mk3",
+    "eventId": "legendary_scout_join",
+    "robotId": "legendary_scout",
     "autoDeploySlot": -1,
-    "message": "Scout MK-III thaws from the reliquary and joins your reserve roster.",
-    "joinedWorldFlag": "recruit.scout_mk3_joined"
+    "message": "Specter Zero thaws from the reliquary and joins your reserve roster as a legendary scout frame.",
+    "joinedWorldFlag": "recruit.legendary_scout_joined"
   },
   {
-    "eventId": "guardian_mk3_join",
-    "robotId": "guardian_mk3",
+    "eventId": "legendary_guardian_join",
+    "robotId": "legendary_guardian",
     "autoDeploySlot": -1,
-    "message": "Guardian MK-III answers the abyssal reliquary and joins your reserve roster.",
-    "joinedWorldFlag": "recruit.guardian_mk3_joined"
+    "message": "Aegis Prime answers the abyssal reliquary and joins your reserve roster as a legendary guardian frame.",
+    "joinedWorldFlag": "recruit.legendary_guardian_joined"
   },
   {
-    "eventId": "striker_mk3_join",
-    "robotId": "striker_mk3",
+    "eventId": "legendary_striker_join",
+    "robotId": "legendary_striker",
     "autoDeploySlot": -1,
-    "message": "Striker MK-III awakens at the edge of origin and joins your reserve roster.",
-    "joinedWorldFlag": "recruit.striker_mk3_joined"
+    "message": "Ruin Halo awakens at the edge of origin and joins your reserve roster as a legendary striker frame.",
+    "joinedWorldFlag": "recruit.legendary_striker_joined"
   }
 ]

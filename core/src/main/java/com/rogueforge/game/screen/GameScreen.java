@@ -168,14 +168,21 @@ public class GameScreen implements Screen {
     private static final String INFINITE_DUNGEON_ZONE_ID = "infinite_dungeon";
     private static final int INFINITE_DUNGEON_START_FLOOR = 1;
     private static final int INFINITE_DUNGEON_BOSS_INTERVAL = 10;
+    private static final String ENDGAME_MODE_STANDARD = "STANDARD";
+    private static final String ENDGAME_MODE_CHALLENGE = "CHALLENGE";
+    private static final String ENDGAME_MODE_BOSS_RUSH = "BOSS_RUSH";
+    private static final String[] ENDGAME_MODE_ORDER = {ENDGAME_MODE_STANDARD, ENDGAME_MODE_CHALLENGE, ENDGAME_MODE_BOSS_RUSH};
+    private static final String[] CHALLENGE_MODIFIER_ORDER = {"GLASS_CANNON", "THIN_SUPPLIES", "OVERCLOCKED"};
+    private static final String[] HARD_MODE_SEED_NAMES = {"Baseline", "Ashstorm", "Null Rift", "Empirefall"};
     private static final List<String> ENDGAME_BOSS_IDS = List.of(
         "origin_core_s",
         "the_unmaker_s",
         "apex_predator_s",
         "dungeon_overlord_s"
     );
-    private static final String[] LEGENDARY_ROBOT_UNLOCK_IDS = {"scout_mk3", "guardian_mk3", "striker_mk3"};
-    private static final String[] LEGENDARY_ROBOT_EVENTS = {"scout_mk3_join", "guardian_mk3_join", "striker_mk3_join"};
+    private static final String[] LEGENDARY_ROBOT_UNLOCK_IDS = {"legendary_scout", "legendary_guardian", "legendary_striker"};
+    private static final String[] LEGENDARY_ROBOT_EVENTS = {"legendary_scout_join", "legendary_guardian_join", "legendary_striker_join"};
+    private static final String[] LEGACY_LEGENDARY_ROBOT_IDS = {"scout_mk3", "guardian_mk3", "striker_mk3"};
     private static final String ACT4_OPERATION_IRON_LIFELINE = "act4.operation.iron_lifeline";
     private static final String ACT4_OPERATION_GLOAM_ARCHIVE = "act4.operation.gloam_archive";
     private static final String ACT4_OPERATION_HELLCLIMB = "act4.operation.hellclimb";
@@ -303,10 +310,16 @@ public class GameScreen implements Screen {
     private final Map<String, String> activeRegionalIncidentsByZoneId = new HashMap<>();
     private final Map<String, String> activeSettlementCrisesByZoneId = new HashMap<>();
     private final List<PlayerQuestContract> playerQuestContracts = new ArrayList<>();
+    private final List<PlayerCreatedNpc> playerCreatedNpcs = new ArrayList<>();
     private int guildMenuSelectionIndex = 0;
     private boolean buildModeOpen = false;
     private int selectedBuildStructureIndex = 0;
     private String activeClaimGuildId = null;
+    private String expeditionBoardMode = ENDGAME_MODE_STANDARD;
+    private int selectedChallengeModifierIndex = 0;
+    private int selectedHardModeSeedIndex = 0;
+    private String activeChallengeModifierId = null;
+    private int activeHardModeSeedIndex = 0;
     private static final String OPENING_HOME_INTRO_FLAG = "intro.player_home_seen";
     private static final String[] QUEST_MENU_TABS = {"Quests", "Command", "War", "Map", "Materials", "Shards", "Blueprints", "Items"};
     private boolean pendingOpeningCutscene = false;
@@ -346,6 +359,7 @@ public class GameScreen implements Screen {
             ? saveFile.getPlayerName()
             : "Player";
         this.metaProgressionState = metaProgressionManager.load();
+        migrateLegacyLegendaryUnlocks();
         this.worldSeed = saveFile != null && saveFile.getWorldSeed() != 0L
             ? saveFile.getWorldSeed()
             : generateWorldSeed();
@@ -539,6 +553,18 @@ public class GameScreen implements Screen {
                 if (Gdx.input.isKeyJustPressed(Input.Keys.DOWN) || Gdx.input.isKeyJustPressed(Input.Keys.S)) {
                     cycleExpeditionBoardSelection(1);
                 }
+                if (Gdx.input.isKeyJustPressed(Input.Keys.LEFT) || Gdx.input.isKeyJustPressed(Input.Keys.A)) {
+                    cycleEndgameDeploymentMode(-1);
+                }
+                if (Gdx.input.isKeyJustPressed(Input.Keys.RIGHT) || Gdx.input.isKeyJustPressed(Input.Keys.D)) {
+                    cycleEndgameDeploymentMode(1);
+                }
+                if (Gdx.input.isKeyJustPressed(Input.Keys.TAB)) {
+                    cycleHardModeSeed(1);
+                }
+                if (Gdx.input.isKeyJustPressed(Input.Keys.T)) {
+                    cycleChallengeModifier(1);
+                }
                 if (Gdx.input.isKeyJustPressed(Input.Keys.E) || Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) {
                     launchSelectedExpeditionDestination();
                     return;
@@ -560,6 +586,10 @@ public class GameScreen implements Screen {
                 }
                 if (Gdx.input.isKeyJustPressed(Input.Keys.P)) {
                     postPlayerQuestForSelectedGuild();
+                    return;
+                }
+                if (Gdx.input.isKeyJustPressed(Input.Keys.N)) {
+                    createPlayerNpcForSelectedGuild();
                     return;
                 }
                 if (Gdx.input.isKeyJustPressed(Input.Keys.E) || Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) {
@@ -663,6 +693,7 @@ public class GameScreen implements Screen {
             drawDialogOverlay();
         }
         drawQuestOverlay();
+        drawExpeditionBoardOverlayExpanded();
         drawGuildOverlay();
         drawBuildOverlay();
 
@@ -1385,17 +1416,30 @@ public class GameScreen implements Screen {
         if (currentZone == null) {
             return 0;
         }
+        if (isBossRushModeActive()) {
+            return 1;
+        }
         int floor = getInfiniteDungeonCurrentFloor();
         if (floor > 0 && floor % INFINITE_DUNGEON_BOSS_INTERVAL == 0) {
             return 1;
         }
         int desired = 2 + Math.min(2, Math.max(0, (floor - 1) / 4));
+        if (activeHardModeSeedIndex > 0) {
+            desired += 1;
+        }
         return Math.min(Math.max(2, desired), currentZone.enemySpawns.size);
     }
 
     private MonsterDefinition pickInfiniteDungeonMonster(int index) {
         if (currentZoneDefinition == null || currentZoneDefinition.getMonsterIds() == null || currentZoneDefinition.getMonsterIds().length == 0) {
             return null;
+        }
+        if (isBossRushModeActive()) {
+            String bossId = ENDGAME_BOSS_IDS.get(Math.floorMod(getInfiniteDungeonCurrentFloor() - 1, ENDGAME_BOSS_IDS.size()));
+            MonsterDefinition bossDefinition = monsterDefinitions.get(bossId);
+            if (bossDefinition != null) {
+                return bossDefinition;
+            }
         }
         int floor = getInfiniteDungeonCurrentFloor();
         String monsterId;
@@ -1428,6 +1472,31 @@ public class GameScreen implements Screen {
             healthScale += 0.45f;
             offenseScale += 0.18f;
         }
+        if (isBossRushModeActive()) {
+            healthScale += 0.60f;
+            offenseScale += 0.24f;
+            speedScale += 0.08f;
+            enemy.rewardExperience = Math.max(enemy.rewardExperience, Math.round(enemy.rewardExperience * 1.6f));
+        }
+        String challengeModifierId = activeChallengeModifierId != null ? activeChallengeModifierId : getSelectedChallengeModifierId();
+        if (ENDGAME_MODE_CHALLENGE.equals(expeditionBoardMode) || activeChallengeModifierId != null) {
+            if ("GLASS_CANNON".equals(challengeModifierId)) {
+                healthScale *= 0.86f;
+                offenseScale += 0.32f;
+            } else if ("THIN_SUPPLIES".equals(challengeModifierId)) {
+                healthScale += 0.18f;
+                offenseScale += 0.12f;
+            } else if ("OVERCLOCKED".equals(challengeModifierId)) {
+                speedScale += 0.18f;
+                offenseScale += 0.14f;
+            }
+        }
+        if (activeHardModeSeedIndex > 0) {
+            healthScale += 0.10f * activeHardModeSeedIndex;
+            offenseScale += 0.08f * activeHardModeSeedIndex;
+            speedScale += 0.04f * activeHardModeSeedIndex;
+            enemy.rewardExperience = Math.max(enemy.rewardExperience, Math.round(enemy.rewardExperience * (1f + activeHardModeSeedIndex * 0.18f)));
+        }
         enemy.maxHp = Math.max(enemy.maxHp, enemy.maxHp * healthScale);
         enemy.hp = enemy.maxHp;
         enemy.strength *= offenseScale;
@@ -1439,6 +1508,10 @@ public class GameScreen implements Screen {
         enemy.rewardExperience = Math.max(enemy.rewardExperience, Math.round(enemy.rewardExperience * (1f + floor * 0.12f)));
         enemy.name = enemy.name + " F" + floor;
         enemy.dungeonFloor = floor;
+    }
+
+    private boolean isBossRushModeActive() {
+        return ENDGAME_MODE_BOSS_RUSH.equals(expeditionBoardMode);
     }
 
     private MonsterDefinition pickMonsterForCurrentZone(int index) {
@@ -3559,12 +3632,16 @@ public class GameScreen implements Screen {
             }
             lines.add("Selected deployment: " + selectedDestination.label + ".");
             lines.add(selectedDestination.detail);
+            if (INFINITE_DUNGEON_ZONE_ID.equals(selectedDestination.zoneId)) {
+                lines.add("Endgame mode: " + formatEndgameModeLabel(expeditionBoardMode)
+                    + "  |  Seed: " + getSelectedHardModeSeedLabel() + ".");
+            }
             if (isActiveWorldBossFront(selectedDestination.zoneId)) {
                 lines.add("Marked world-boss front: " + getWorldBossFrontVariantName(selectedDestination.zoneId)
                     + ". Expect a hardened boss signature and " + getWorldBossFrontVariantBonusText(selectedDestination.zoneId) + ".");
             }
         }
-        lines.add("Up/Down choose destination. E launches immediately.");
+        lines.add("Up/Down choose destination. Left/Right switch dungeon mode. Tab cycles hard seed. T cycles challenge rule. E launches immediately.");
         return lines;
     }
 
@@ -3614,6 +3691,13 @@ public class GameScreen implements Screen {
             lines.add("Faction pressure: Command " + factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_IRONHAVEN_COMMAND, 0)
                 + "%  |  Guilds " + factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_GUILD_COALITION, 0)
                 + "%  |  Hostiles " + factionInfluenceById.getOrDefault(WarPhaseManager.FACTION_FRONTIER_HOSTILES, 0) + "%.");
+        }
+        if (destination != null && INFINITE_DUNGEON_ZONE_ID.equals(destination.zoneId)) {
+            lines.add("Dungeon command profile: " + formatEndgameModeLabel(expeditionBoardMode)
+                + "  |  Hard-mode seed " + getSelectedHardModeSeedLabel() + ".");
+            if (ENDGAME_MODE_CHALLENGE.equals(expeditionBoardMode)) {
+                lines.add("Challenge rule: " + getSelectedChallengeModifierLabel() + ".");
+            }
         }
         lines.addAll(getDestinationChecklistNotes(destination, activeCount, slotLimit));
         return lines;
@@ -3716,6 +3800,82 @@ public class GameScreen implements Screen {
             return;
         }
         expeditionBoardSelectionIndex = Math.floorMod(expeditionBoardSelectionIndex, destinations.size());
+    }
+
+    private void cycleEndgameDeploymentMode(int delta) {
+        ExpeditionLaunchDestination destination = getSelectedExpeditionDestination();
+        if (destination == null || !INFINITE_DUNGEON_ZONE_ID.equals(destination.zoneId)) {
+            return;
+        }
+        List<String> availableModes = getAvailableEndgameModes();
+        if (availableModes.isEmpty()) {
+            expeditionBoardMode = ENDGAME_MODE_STANDARD;
+            return;
+        }
+        int currentIndex = Math.max(0, availableModes.indexOf(expeditionBoardMode));
+        expeditionBoardMode = availableModes.get(Math.floorMod(currentIndex + delta, availableModes.size()));
+    }
+
+    private List<String> getAvailableEndgameModes() {
+        List<String> modes = new ArrayList<>();
+        modes.add(ENDGAME_MODE_STANDARD);
+        if (forgeLegacyEngine.areChallengeRunsUnlocked(gameState.getInfiniteDungeonBestFloor())) {
+            modes.add(ENDGAME_MODE_CHALLENGE);
+        }
+        if (forgeLegacyEngine.isBossRushUnlocked(getDefeatedEndgameBossCount())) {
+            modes.add(ENDGAME_MODE_BOSS_RUSH);
+        }
+        return modes;
+    }
+
+    private void cycleChallengeModifier(int delta) {
+        ExpeditionLaunchDestination destination = getSelectedExpeditionDestination();
+        if (destination == null || !INFINITE_DUNGEON_ZONE_ID.equals(destination.zoneId) || !ENDGAME_MODE_CHALLENGE.equals(expeditionBoardMode)) {
+            return;
+        }
+        selectedChallengeModifierIndex = Math.floorMod(selectedChallengeModifierIndex + delta, CHALLENGE_MODIFIER_ORDER.length);
+    }
+
+    private void cycleHardModeSeed(int delta) {
+        ExpeditionLaunchDestination destination = getSelectedExpeditionDestination();
+        if (destination == null || !INFINITE_DUNGEON_ZONE_ID.equals(destination.zoneId)) {
+            return;
+        }
+        int unlockedSeeds = forgeLegacyEngine.getHardModeSeedsUnlocked(gameState.getInfiniteDungeonBestFloor());
+        int maxIndex = Math.min(unlockedSeeds, HARD_MODE_SEED_NAMES.length - 1);
+        selectedHardModeSeedIndex = Math.floorMod(selectedHardModeSeedIndex + delta, Math.max(1, maxIndex + 1));
+    }
+
+    private String getSelectedChallengeModifierId() {
+        return CHALLENGE_MODIFIER_ORDER[Math.floorMod(selectedChallengeModifierIndex, CHALLENGE_MODIFIER_ORDER.length)];
+    }
+
+    private String getSelectedChallengeModifierLabel() {
+        String modifierId = getSelectedChallengeModifierId();
+        if ("GLASS_CANNON".equals(modifierId)) {
+            return "Glass Cannon";
+        }
+        if ("THIN_SUPPLIES".equals(modifierId)) {
+            return "Thin Supplies";
+        }
+        if ("OVERCLOCKED".equals(modifierId)) {
+            return "Overclocked";
+        }
+        return "Challenge";
+    }
+
+    private String getSelectedHardModeSeedLabel() {
+        return HARD_MODE_SEED_NAMES[Math.min(selectedHardModeSeedIndex, HARD_MODE_SEED_NAMES.length - 1)];
+    }
+
+    private String formatEndgameModeLabel(String modeId) {
+        if (ENDGAME_MODE_CHALLENGE.equals(modeId)) {
+            return "Challenge Run";
+        }
+        if (ENDGAME_MODE_BOSS_RUSH.equals(modeId)) {
+            return "Boss Rush";
+        }
+        return "Standard Descent";
     }
 
     private List<ExpeditionLaunchDestination> getStrategicMapDestinations() {
@@ -3887,6 +4047,7 @@ public class GameScreen implements Screen {
             showStandaloneDialog("Expedition Board", accessDecision.getBlockedReason());
             return;
         }
+        armEndgameDeploymentProfile(destination);
         pinExpeditionContract(destination);
         expeditionBoardOpen = false;
         loadZone(destination.zoneId, destination.spawnId, true);
@@ -3901,6 +4062,21 @@ public class GameScreen implements Screen {
         }
         clampExpeditionBoardSelection();
         return destinations.get(expeditionBoardSelectionIndex);
+    }
+
+    private void armEndgameDeploymentProfile(ExpeditionLaunchDestination destination) {
+        if (destination == null || !INFINITE_DUNGEON_ZONE_ID.equals(destination.zoneId)) {
+            expeditionBoardMode = ENDGAME_MODE_STANDARD;
+            activeChallengeModifierId = null;
+            activeHardModeSeedIndex = 0;
+            return;
+        }
+        activeHardModeSeedIndex = selectedHardModeSeedIndex;
+        if (ENDGAME_MODE_CHALLENGE.equals(expeditionBoardMode)) {
+            activeChallengeModifierId = getSelectedChallengeModifierId();
+        } else {
+            activeChallengeModifierId = null;
+        }
     }
 
     private String getZoneDisplayName(String zoneId) {
@@ -3946,6 +4122,12 @@ public class GameScreen implements Screen {
         ZoneDefinition definition = zoneDefinitions.get(zoneId);
         if ("town".equals(zoneId)) {
             return getExpeditionBoardTierLabel();
+        }
+        if (INFINITE_DUNGEON_ZONE_ID.equals(zoneId) && ENDGAME_MODE_BOSS_RUSH.equals(expeditionBoardMode)) {
+            return "Boss Rush";
+        }
+        if (INFINITE_DUNGEON_ZONE_ID.equals(zoneId) && ENDGAME_MODE_CHALLENGE.equals(expeditionBoardMode)) {
+            return "Challenge";
         }
         if (INFINITE_DUNGEON_ZONE_ID.equals(zoneId) && warPhaseManager.isWarPhaseUnlocked(gameState)) {
             return expeditionBoardReputation >= 10 ? "Gold Descent" : expeditionBoardReputation >= 4 ? "Silver Descent" : "Bronze Descent";
@@ -4033,6 +4215,12 @@ public class GameScreen implements Screen {
         if ("verdant_fields".equals(destination.zoneId) && !worldStateManager.isFlagActive(gameState, "tutorial.frontier_outpost_banked")) {
             return "BANK_HAUL";
         }
+        if (INFINITE_DUNGEON_ZONE_ID.equals(destination.zoneId) && ENDGAME_MODE_BOSS_RUSH.equals(expeditionBoardMode)) {
+            return "BOSS_RUSH";
+        }
+        if (INFINITE_DUNGEON_ZONE_ID.equals(destination.zoneId) && ENDGAME_MODE_CHALLENGE.equals(expeditionBoardMode)) {
+            return "CHALLENGE_RUN";
+        }
         if (shouldOfferLargeDungeonExpedition(destination)) {
             return expeditionBoardReputation >= 10 ? "LARGE_DUNGEON_EXPEDITION_GOLD"
                 : expeditionBoardReputation >= 4 ? "LARGE_DUNGEON_EXPEDITION_SILVER"
@@ -4101,6 +4289,12 @@ public class GameScreen implements Screen {
         }
         if (contractKind != null && contractKind.startsWith("CONVOY_ESCORT")) {
             return destination.zoneId;
+        }
+        if ("BOSS_RUSH".equals(contractKind)) {
+            return "boss_rush_chain";
+        }
+        if ("CHALLENGE_RUN".equals(contractKind)) {
+            return getSelectedChallengeModifierId();
         }
         if (contractKind != null && contractKind.startsWith("LARGE_DUNGEON_EXPEDITION")) {
             return "floor:" + getLargeDungeonExpeditionTargetFloor(contractKind);
@@ -4340,6 +4534,15 @@ public class GameScreen implements Screen {
         } else if ("LARGE_DUNGEON_EXPEDITION_GOLD".equals(pinnedExpeditionContractKind)) {
             goldReward = 285;
             shardReward = 7;
+            reputationReward = 4;
+        } else if ("CHALLENGE_RUN".equals(pinnedExpeditionContractKind)) {
+            goldReward = 180;
+            shardReward = 6 + activeHardModeSeedIndex;
+            reputationReward = 3;
+            potionReward = 1;
+        } else if ("BOSS_RUSH".equals(pinnedExpeditionContractKind)) {
+            goldReward = 260;
+            shardReward = 8 + activeHardModeSeedIndex;
             reputationReward = 4;
         } else if ("PLAYER_CREATED_SUPPLY".equals(pinnedExpeditionContractKind)) {
             goldReward = 95;
@@ -4596,6 +4799,13 @@ public class GameScreen implements Screen {
                 + pinnedExpeditionContractTitle + "]: " + pinnedExpeditionContractText);
         }
         lines.add("Primary objective: " + getDestinationObjective(destination));
+        if (destination != null && INFINITE_DUNGEON_ZONE_ID.equals(destination.zoneId)) {
+            lines.add("Deployment profile: " + formatEndgameModeLabel(expeditionBoardMode)
+                + "  |  Hard seed " + getSelectedHardModeSeedLabel() + ".");
+            if (ENDGAME_MODE_CHALLENGE.equals(expeditionBoardMode)) {
+                lines.add("Challenge modifier: " + getSelectedChallengeModifierLabel() + ".");
+            }
+        }
         lines.addAll(getDestinationThreatLines(destination));
         List<String> questLines = getQuestJournalLines();
         int addedQuestLines = 0;
@@ -4640,6 +4850,13 @@ public class GameScreen implements Screen {
         }
         if ("town".equals(destination.zoneId)) {
             return "Prepare the next sortie, spend banked haul, and bring Ironhaven's next project online.";
+        }
+        if (destination != null && INFINITE_DUNGEON_ZONE_ID.equals(destination.zoneId) && ENDGAME_MODE_BOSS_RUSH.equals(expeditionBoardMode)) {
+            return "Boss rush order authorized. Break three chained endgame bosses in sequence and extract with the crew still standing.";
+        }
+        if (destination != null && INFINITE_DUNGEON_ZONE_ID.equals(destination.zoneId) && ENDGAME_MODE_CHALLENGE.equals(expeditionBoardMode)) {
+            return "Challenge run live. Clear the descent while honoring the " + getSelectedChallengeModifierLabel()
+                + " rule and bank the run for extra legacy payout.";
         }
         if (shouldOfferLargeDungeonExpedition(destination)) {
             int targetFloor = getLargeDungeonExpeditionTargetFloor(determinePinnedContractKind(destination));
@@ -4730,6 +4947,13 @@ public class GameScreen implements Screen {
             int targetFloor = getLargeDungeonExpeditionTargetFloor(determinePinnedContractKind(destination));
             lines.add("Threat band: scaling dungeon loop  |  Best floor " + gameState.getInfiniteDungeonBestFloor()
                 + "  |  Target floor " + targetFloor + ".");
+            lines.add("Mode profile: " + formatEndgameModeLabel(expeditionBoardMode)
+                + "  |  Hard seed " + getSelectedHardModeSeedLabel() + ".");
+            if (ENDGAME_MODE_CHALLENGE.equals(expeditionBoardMode)) {
+                lines.add("Challenge pressure: " + getSelectedChallengeModifierLabel() + " is active for this route.");
+            } else if (ENDGAME_MODE_BOSS_RUSH.equals(expeditionBoardMode)) {
+                lines.add("Boss chain: expect one endgame boss per floor for the first three gates.");
+            }
             lines.add("Large expedition: complete a stable descent to floor " + targetFloor
                 + " to certify the route for late-war strike crews.");
             lines.add("Run status: " + (gameState.isInfiniteDungeonRunActive()
@@ -4824,7 +5048,7 @@ public class GameScreen implements Screen {
         font.setColor(Color.WHITE);
         font.draw(batch, "Guild Charter", 212f, h - 128f);
         font.setColor(Color.LIGHT_GRAY);
-        font.draw(batch, "G or ESC close  |  Up/Down select  |  Enter choose active claim guild  |  P post charter  |  C create guild  |  Del personal mode", 212f, h - 154f);
+        font.draw(batch, "G or ESC close  |  Up/Down select  |  Enter choose active claim guild  |  P post charter  |  N commission NPC  |  C create guild  |  Del personal mode", 212f, h - 154f);
 
         String activeMode = activeClaimGuildId != null && !activeClaimGuildId.isEmpty()
             ? getGuildDisplayName(activeClaimGuildId)
@@ -4856,6 +5080,11 @@ public class GameScreen implements Screen {
             PlayerQuestContract activeContract = guild.getGuildId() != null ? getActivePlayerQuestContractForGuild(guild.getGuildId()) : null;
             if (activeContract != null) {
                 font.draw(batch, "Posted charter: " + activeContract.title + " [" + activeContract.kind + "]", 232f, y);
+                y -= 30f;
+            }
+            PlayerCreatedNpc steward = guild.getGuildId() != null ? getPlayerCreatedNpcForGuild(guild.getGuildId()) : null;
+            if (steward != null) {
+                font.draw(batch, "Commissioned NPC: " + steward.name + " [" + steward.role + "]", 232f, y);
                 y -= 30f;
             }
         }
@@ -4940,6 +5169,68 @@ public class GameScreen implements Screen {
         playerQuestContracts.add(contract);
         autosave();
         showStandaloneDialog("Guild Charter", "Posted charter: " + contract.title + ".");
+    }
+
+    private void createPlayerNpcForSelectedGuild() {
+        List<GuildDefinition> controllableGuilds = getControllableGuilds();
+        if (controllableGuilds.isEmpty()) {
+            showStandaloneDialog("Guild Charter", "Create or control a guild before commissioning a guild NPC.");
+            return;
+        }
+        clampGuildMenuSelection();
+        GuildDefinition guild = controllableGuilds.get(guildMenuSelectionIndex);
+        if (guild.getHallZoneId() == null || guild.getHallZoneId().isEmpty()
+            || guild.getHallClaimedSiteId() == null || guild.getHallClaimedSiteId().isEmpty()) {
+            showStandaloneDialog("Guild Charter", "That guild needs a claimed hall before it can commission an NPC.");
+            return;
+        }
+        if (getPlayerCreatedNpcForGuild(guild.getGuildId()) != null) {
+            showStandaloneDialog("Guild Charter", "That guild already has a commissioned NPC stationed in Ironhaven.");
+            return;
+        }
+        PlayerCreatedNpc createdNpc = buildPlayerCreatedNpc(guild);
+        playerCreatedNpcs.add(createdNpc);
+        autosave();
+        showStandaloneDialog("Guild Charter", createdNpc.name + " commissioned as " + createdNpc.role + " for " + guild.getDisplayName() + ".");
+    }
+
+    private PlayerCreatedNpc buildPlayerCreatedNpc(GuildDefinition guild) {
+        int ordinal = playerCreatedNpcs.size() + 1;
+        String[] roles = {"Quartermaster", "Warden", "Lorekeeper"};
+        String[] names = {"Morrow", "Tamsin", "Vale", "Orin", "Sera", "Ilex"};
+        String role = roles[Math.floorMod(ordinal - 1, roles.length)];
+        String name = names[Math.floorMod(ordinal - 1, names.length)] + " " + guild.getDisplayName().charAt(0) + ".";
+        PlayerCreatedNpc npc = new PlayerCreatedNpc();
+        npc.npcId = guild.getGuildId() + "_npc_" + ordinal;
+        npc.guildId = guild.getGuildId();
+        npc.zoneId = "town";
+        npc.role = role;
+        npc.name = name;
+        npc.dialog = buildPlayerCreatedNpcDialog(guild, role);
+        return npc;
+    }
+
+    private String buildPlayerCreatedNpcDialog(GuildDefinition guild, String role) {
+        String guildName = guild != null ? guild.getDisplayName() : "your guild";
+        if ("Quartermaster".equals(role)) {
+            return "I've turned " + guildName + "'s hall into a live supply spine. Give me a route and I'll keep the frontier fed.";
+        }
+        if ("Warden".equals(role)) {
+            return "Claims mean nothing if nobody can hold them. " + guildName + " now has a warden's eye on every live border.";
+        }
+        return "I catalog what " + guildName + " builds, loses, and learns. Empire survives by remembering.";
+    }
+
+    private PlayerCreatedNpc getPlayerCreatedNpcForGuild(String guildId) {
+        if (guildId == null || guildId.isEmpty()) {
+            return null;
+        }
+        for (PlayerCreatedNpc npc : playerCreatedNpcs) {
+            if (npc != null && guildId.equals(npc.guildId)) {
+                return npc;
+            }
+        }
+        return null;
     }
 
     private PlayerQuestContract buildNextPlayerQuestContract(GuildDefinition guild) {
@@ -5383,6 +5674,9 @@ public class GameScreen implements Screen {
         }
         gameState.setInfiniteDungeonRunActive(false);
         gameState.setInfiniteDungeonCurrentFloor(INFINITE_DUNGEON_START_FLOOR);
+        activeChallengeModifierId = null;
+        activeHardModeSeedIndex = 0;
+        expeditionBoardMode = ENDGAME_MODE_STANDARD;
         syncAct5EndgameState(sealedExit);
     }
 
@@ -5395,6 +5689,15 @@ public class GameScreen implements Screen {
         }
         if (gameState.getInfiniteDungeonBestFloor() >= 30) {
             worldStateManager.setFlag(gameState, "meta.floor30_cleared", true);
+        }
+        if (getGuildSettlementCount() >= 2) {
+            worldStateManager.setFlag(gameState, "frontier.guild_settlements_founded", true);
+        }
+        if (forgeLegacyEngine.areChallengeRunsUnlocked(gameState.getInfiniteDungeonBestFloor())) {
+            worldStateManager.setFlag(gameState, "frontier.challenge_doctrine_stable", true);
+        }
+        if (playerCreatedNpcs.size() >= 1 && gameState.getInfiniteDungeonBestFloor() >= 15) {
+            worldStateManager.setFlag(gameState, "frontier.legacy_command_online", true);
         }
         unlockLegendaryRobots(showUnlockDialog);
     }
@@ -5415,6 +5718,24 @@ public class GameScreen implements Screen {
             }
         }
         metaProgressionManager.save(metaProgressionState);
+    }
+
+    private void migrateLegacyLegendaryUnlocks() {
+        boolean changed = false;
+        for (int i = 0; i < Math.min(LEGENDARY_ROBOT_UNLOCK_IDS.length, LEGACY_LEGENDARY_ROBOT_IDS.length); i++) {
+            String currentId = LEGENDARY_ROBOT_UNLOCK_IDS[i];
+            String legacyId = LEGACY_LEGENDARY_ROBOT_IDS[i];
+            if (metaProgressionState.getUnlockedLegendaryRobotIds().contains(legacyId)) {
+                metaProgressionState.getUnlockedLegendaryRobotIds().remove(legacyId);
+                if (!metaProgressionState.getUnlockedLegendaryRobotIds().contains(currentId)) {
+                    metaProgressionState.getUnlockedLegendaryRobotIds().add(currentId);
+                }
+                changed = true;
+            }
+        }
+        if (changed) {
+            metaProgressionManager.save(metaProgressionState);
+        }
     }
 
     private int getTotalClaimedTerritories() {
@@ -6850,6 +7171,11 @@ public class GameScreen implements Screen {
         sf.setActiveRegionalIncidentsByZoneId(new HashMap<>(activeRegionalIncidentsByZoneId));
         sf.setActiveSettlementCrisesByZoneId(new HashMap<>(activeSettlementCrisesByZoneId));
         sf.setPlayerQuestContracts(buildPlayerQuestContractSaveData());
+        sf.setPlayerCreatedNpcs(buildPlayerCreatedNpcSaveData());
+        sf.setExpeditionBoardMode(expeditionBoardMode);
+        sf.setActiveChallengeModifierId(activeChallengeModifierId);
+        sf.setHardModeSeedIndex(selectedHardModeSeedIndex);
+        sf.setSelectedChallengeModifierIndex(selectedChallengeModifierIndex);
         sf.setCurrentZoneId(gameState.getCurrentZoneId());
         sf.setRobotEquipment(copyRobotEquipment(robotEquipment));
         sf.setCollectedRobotIds(new ArrayList<>(gameState.getCollectedRobotIds()));
@@ -6892,6 +7218,12 @@ public class GameScreen implements Screen {
         activeSettlementCrisesByZoneId.clear();
         activeSettlementCrisesByZoneId.putAll(saveFile.getActiveSettlementCrisesByZoneId());
         loadPlayerQuestContractsFromSave(saveFile);
+        loadPlayerCreatedNpcsFromSave(saveFile);
+        expeditionBoardMode = saveFile.getExpeditionBoardMode();
+        activeChallengeModifierId = saveFile.getActiveChallengeModifierId();
+        activeHardModeSeedIndex = saveFile.getHardModeSeedIndex();
+        selectedHardModeSeedIndex = saveFile.getHardModeSeedIndex();
+        selectedChallengeModifierIndex = saveFile.getSelectedChallengeModifierIndex();
         loadBaseStatesFromSave(saveFile);
         gameState.setInfiniteDungeonCurrentFloor(saveFile.getInfiniteDungeonCurrentFloor());
         gameState.setInfiniteDungeonBestFloor(saveFile.getInfiniteDungeonBestFloor());
@@ -6965,6 +7297,7 @@ public class GameScreen implements Screen {
         activeRobotIds = saveFile.getActiveRobotIds() != null
             ? new ArrayList<>(saveFile.getActiveRobotIds())
             : new ArrayList<>();
+        syncLegendaryRosterToCurrentIds();
         normalizeActiveRobotSlots();
         clampActiveRobotsToUnlockedSlots();
         gameState.setCollectedRobotIds(collectedRobotIds);
@@ -6985,6 +7318,31 @@ public class GameScreen implements Screen {
         restoreChestState(saveFile.getChests());
 
         refreshHud();
+    }
+
+    private void syncLegendaryRosterToCurrentIds() {
+        boolean changed = false;
+        for (int i = 0; i < Math.min(LEGENDARY_ROBOT_UNLOCK_IDS.length, LEGACY_LEGENDARY_ROBOT_IDS.length); i++) {
+            String currentId = LEGENDARY_ROBOT_UNLOCK_IDS[i];
+            String legacyId = LEGACY_LEGENDARY_ROBOT_IDS[i];
+            if (collectedRobotIds.remove(legacyId)) {
+                changed = true;
+            }
+            for (int slot = 0; slot < activeRobotIds.size(); slot++) {
+                if (legacyId.equals(activeRobotIds.get(slot))) {
+                    activeRobotIds.set(slot, currentId);
+                    changed = true;
+                }
+            }
+            if (metaProgressionState.getUnlockedLegendaryRobotIds().contains(currentId)
+                && !collectedRobotIds.contains(currentId)) {
+                collectedRobotIds.add(currentId);
+                changed = true;
+            }
+        }
+        if (changed) {
+            metaProgressionManager.save(metaProgressionState);
+        }
     }
 
     private void backfillLegacyFrontierAnnexUnlock() {
@@ -7266,8 +7624,32 @@ public class GameScreen implements Screen {
         gameState.setInfiniteDungeonRunActive(true);
         int shardReward = forgeLegacyEngine.getFloorClearReward()
             + (completedFloor % INFINITE_DUNGEON_BOSS_INTERVAL == 0 ? forgeLegacyEngine.getBossFloorReward() : 0);
+        if (activeHardModeSeedIndex > 0) {
+            shardReward += activeHardModeSeedIndex * 3;
+        }
+        if (activeChallengeModifierId != null) {
+            shardReward += 4;
+        }
+        if (isBossRushModeActive()) {
+            shardReward += 10;
+        }
         awardForgeShards(shardReward, "", "");
         handleLargeDungeonExpeditionProgress(completedFloor, false);
+        if (isBossRushModeActive() && completedFloor >= 3) {
+            worldStateManager.setFlag(gameState, "frontier.boss_rush_cleared", true);
+            completePinnedExpeditionContract("Boss rush cleared. The chain collapsed before your strike crew did.");
+            handleInfiniteDungeonRunEnd(true);
+            loadZone("town", "town_square", true);
+            return;
+        }
+        if (activeChallengeModifierId != null
+            && !pinnedExpeditionContractCompleted
+            && completedFloor >= Math.max(6, 4 + activeHardModeSeedIndex * 2)) {
+            if (activeHardModeSeedIndex > 0) {
+                worldStateManager.setFlag(gameState, "frontier.hard_seed_mastered", true);
+            }
+            completePinnedExpeditionContract("Challenge run certified. The Legacy Vault logged the modifier as a stable build line.");
+        }
         syncAct5EndgameState(true);
         regenerateInfiniteDungeonFloor("from_boss_gate", true);
         showStandaloneDialog("Bolt Simulation", completedFloor % INFINITE_DUNGEON_BOSS_INTERVAL == 0
@@ -8085,6 +8467,27 @@ public class GameScreen implements Screen {
         if (worldStateManager.isFlagActive(gameState, "meta.shard_run_unlocked") && !hasTownNpc("coda")) {
             npcs.add(new Npc("coda", "Coda", new Vector2(742f, 418f),
                 "The Legacy Vault records every collapse and every breakthrough. Bring me shards and I'll turn them into permanence."));
+        }
+        addPlayerCreatedTownNpcs();
+    }
+
+    private void addPlayerCreatedTownNpcs() {
+        if (!isHubTownZone()) {
+            return;
+        }
+        float baseX = 708f;
+        float baseY = 298f;
+        for (int i = 0; i < playerCreatedNpcs.size(); i++) {
+            PlayerCreatedNpc createdNpc = playerCreatedNpcs.get(i);
+            if (createdNpc == null || createdNpc.npcId == null || createdNpc.npcId.isEmpty() || hasTownNpc(createdNpc.npcId)) {
+                continue;
+            }
+            npcs.add(new Npc(
+                createdNpc.npcId,
+                createdNpc.name,
+                new Vector2(baseX + (i % 3) * 86f, baseY - (i / 3) * 62f),
+                createdNpc.dialog
+            ));
         }
     }
 
@@ -9151,10 +9554,40 @@ public class GameScreen implements Screen {
         if ("bolt_simulation".equals(npc.id)) {
             showStandaloneDialog("Bolt Simulation", "Best floor " + gameState.getInfiniteDungeonBestFloor()
                 + ". Challenge Runs " + (forgeLegacyEngine.areChallengeRunsUnlocked(gameState.getInfiniteDungeonBestFloor()) ? "ready" : "locked")
-                + ". Hard-mode seeds " + forgeLegacyEngine.getHardModeSeedsUnlocked(gameState.getInfiniteDungeonBestFloor()) + ".");
+                + ". Hard-mode seeds " + forgeLegacyEngine.getHardModeSeedsUnlocked(gameState.getInfiniteDungeonBestFloor())
+                + ". Current board profile: " + formatEndgameModeLabel(expeditionBoardMode) + ".");
+            return true;
+        }
+        PlayerCreatedNpc createdNpc = getPlayerCreatedNpcById(npc.id);
+        if (createdNpc != null) {
+            if (createdNpc.guildId != null && getActivePlayerQuestContractForGuild(createdNpc.guildId) == null) {
+                GuildDefinition guild = guildDefinitionsById.get(createdNpc.guildId);
+                if (guild != null) {
+                    PlayerQuestContract contract = buildNextPlayerQuestContract(guild);
+                    if (contract != null) {
+                        playerQuestContracts.add(contract);
+                        autosave();
+                        showStandaloneDialog(createdNpc.name, createdNpc.dialog + " I've posted a fresh charter: " + contract.title + ".");
+                        return true;
+                    }
+                }
+            }
+            showStandaloneDialog(createdNpc.name, createdNpc.dialog);
             return true;
         }
         return false;
+    }
+
+    private PlayerCreatedNpc getPlayerCreatedNpcById(String npcId) {
+        if (npcId == null || npcId.isEmpty()) {
+            return null;
+        }
+        for (PlayerCreatedNpc npc : playerCreatedNpcs) {
+            if (npc != null && npcId.equals(npc.npcId)) {
+                return npc;
+            }
+        }
+        return null;
     }
 
     public DialogueSystem.DialogueResult interactWithInteriorNpc(String npcId, String speakerName) {
@@ -9990,20 +10423,21 @@ public class GameScreen implements Screen {
         if (robotId == null || robotId.isEmpty()) {
             return "Reserve Bot";
         }
+        boolean legendary = metaProgressionState.getUnlockedLegendaryRobotIds().contains(robotId);
         for (int i = 0; i < activeRobotIds.size(); i++) {
             if (robotId.equals(activeRobotIds.get(i))) {
-                return getRobotName(i);
+                return legendary ? getRobotName(i) + " [Legendary]" : getRobotName(i);
             }
         }
         RobotProgressionState progressionState = getOrCreateRobotProgressionState(robotId);
         if (progressionState != null && progressionState.getDisplayName() != null && !progressionState.getDisplayName().isEmpty()) {
-            return progressionState.getDisplayName();
+            return legendary ? progressionState.getDisplayName() + " [Legendary]" : progressionState.getDisplayName();
         }
         RobotDefinition definition = robotDefinitions.get(robotId);
         if (definition != null && definition.getName() != null && !definition.getName().isEmpty()) {
-            return definition.getName();
+            return legendary ? definition.getName() + " [Legendary]" : definition.getName();
         }
-        return robotId;
+        return legendary ? robotId + " [Legendary]" : robotId;
     }
 
     private void syncCurrentZoneBaseDefenders() {
@@ -10272,6 +10706,24 @@ public class GameScreen implements Screen {
         return data;
     }
 
+    private List<SaveFile.PlayerCreatedNpcData> buildPlayerCreatedNpcSaveData() {
+        List<SaveFile.PlayerCreatedNpcData> data = new ArrayList<>();
+        for (PlayerCreatedNpc npc : playerCreatedNpcs) {
+            if (npc == null || npc.npcId == null || npc.npcId.isEmpty()) {
+                continue;
+            }
+            SaveFile.PlayerCreatedNpcData saved = new SaveFile.PlayerCreatedNpcData();
+            saved.setNpcId(npc.npcId);
+            saved.setGuildId(npc.guildId);
+            saved.setZoneId(npc.zoneId);
+            saved.setRole(npc.role);
+            saved.setName(npc.name);
+            saved.setDialog(npc.dialog);
+            data.add(saved);
+        }
+        return data;
+    }
+
     private void loadGuildsFromSave(SaveFile saveFile) {
         guildDefinitionsById.clear();
         if (saveFile == null) {
@@ -10332,6 +10784,26 @@ public class GameScreen implements Screen {
             contract.authorPlayerId = data.getAuthorPlayerId();
             contract.active = data.isActive();
             playerQuestContracts.add(contract);
+        }
+    }
+
+    private void loadPlayerCreatedNpcsFromSave(SaveFile saveFile) {
+        playerCreatedNpcs.clear();
+        if (saveFile == null) {
+            return;
+        }
+        for (SaveFile.PlayerCreatedNpcData data : saveFile.getPlayerCreatedNpcs()) {
+            if (data == null || data.getNpcId() == null || data.getNpcId().isEmpty()) {
+                continue;
+            }
+            PlayerCreatedNpc npc = new PlayerCreatedNpc();
+            npc.npcId = data.getNpcId();
+            npc.guildId = data.getGuildId();
+            npc.zoneId = data.getZoneId();
+            npc.role = data.getRole();
+            npc.name = data.getName();
+            npc.dialog = data.getDialog();
+            playerCreatedNpcs.add(npc);
         }
     }
 
@@ -11251,6 +11723,7 @@ public class GameScreen implements Screen {
         lines.add("Empire tier: " + forgeLegacyEngine.describeEmpireTier(territories, guildSettlements));
         lines.add("Territories held: " + territories);
         lines.add("Guild settlements: " + guildSettlements);
+        lines.add("Player-created NPCs: " + playerCreatedNpcs.size());
         lines.add("World event: " + getActiveWorldEventName());
         if (snapshot.isUnlocked()) {
             lines.add("Strategic map: territory " + snapshot.getTerritoryInfluence() + "%  |  risk " + snapshot.getSettlementAttackRisk()
@@ -11270,9 +11743,9 @@ public class GameScreen implements Screen {
         int bestFloor = gameState.getInfiniteDungeonBestFloor();
         int defeatedEndgameBosses = getDefeatedEndgameBossCount();
         lines.add("Legendary robots: " + metaProgressionState.getUnlockedLegendaryRobotIds().size() + "/3");
-        lines.add("Challenge runs: " + (forgeLegacyEngine.areChallengeRunsUnlocked(bestFloor) ? "Unlocked" : "Locked"));
+        lines.add("Challenge runs: " + (forgeLegacyEngine.areChallengeRunsUnlocked(bestFloor) ? "Unlocked [" + getSelectedChallengeModifierLabel() + "]" : "Locked"));
         lines.add("Boss rush: " + (forgeLegacyEngine.isBossRushUnlocked(defeatedEndgameBosses) ? "Unlocked" : defeatedEndgameBosses + "/2 bosses"));
-        lines.add("Hard mode seeds: " + forgeLegacyEngine.getHardModeSeedsUnlocked(bestFloor));
+        lines.add("Hard mode seeds: " + forgeLegacyEngine.getHardModeSeedsUnlocked(bestFloor) + " unlocked  |  Active seed " + getSelectedHardModeSeedLabel());
         return lines;
     }
 
@@ -13082,6 +13555,15 @@ public class GameScreen implements Screen {
         String targetId;
         String authorPlayerId;
         boolean active;
+    }
+
+    private static class PlayerCreatedNpc {
+        String npcId;
+        String guildId;
+        String zoneId;
+        String role;
+        String name;
+        String dialog;
     }
 
     private static class AnimationSet {

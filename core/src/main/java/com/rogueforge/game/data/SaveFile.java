@@ -57,6 +57,11 @@ public class SaveFile {
     private Map<String, String> activeRegionalIncidentsByZoneId;
     private Map<String, String> activeSettlementCrisesByZoneId;
     private List<PlayerQuestContractData> playerQuestContracts;
+    private List<PlayerCreatedNpcData> playerCreatedNpcs;
+    private String expeditionBoardMode = "STANDARD";
+    private String activeChallengeModifierId;
+    private int hardModeSeedIndex;
+    private int selectedChallengeModifierIndex;
 
     // Robot data: robotId -> Map of equipped items (slotType -> equipmentId)
     private Map<String, Map<String, String>> robotEquipment;
@@ -119,6 +124,7 @@ public class SaveFile {
         this.activeRegionalIncidentsByZoneId = new HashMap<>();
         this.activeSettlementCrisesByZoneId = new HashMap<>();
         this.playerQuestContracts = new ArrayList<>();
+        this.playerCreatedNpcs = new ArrayList<>();
     }
 
     public SaveFile(String playerName, int playerHp, int playerMaxHp, float playerX, float playerY,
@@ -158,6 +164,7 @@ public class SaveFile {
         this.activeWorldBossFrontsByZoneId = new HashMap<>();
         this.activeRegionalIncidentsByZoneId = new HashMap<>();
         this.activeSettlementCrisesByZoneId = new HashMap<>();
+        this.playerCreatedNpcs = new ArrayList<>();
     }
 
     // Getters
@@ -250,6 +257,29 @@ public class SaveFile {
             playerQuestContracts = new ArrayList<>();
         }
         return playerQuestContracts;
+    }
+
+    public List<PlayerCreatedNpcData> getPlayerCreatedNpcs() {
+        if (playerCreatedNpcs == null) {
+            playerCreatedNpcs = new ArrayList<>();
+        }
+        return playerCreatedNpcs;
+    }
+
+    public String getExpeditionBoardMode() {
+        return expeditionBoardMode != null && !expeditionBoardMode.isEmpty() ? expeditionBoardMode : "STANDARD";
+    }
+
+    public String getActiveChallengeModifierId() {
+        return activeChallengeModifierId;
+    }
+
+    public int getHardModeSeedIndex() {
+        return Math.max(0, hardModeSeedIndex);
+    }
+
+    public int getSelectedChallengeModifierIndex() {
+        return Math.max(0, selectedChallengeModifierIndex);
     }
 
     public long getCurrencyBalance() {
@@ -543,6 +573,26 @@ public class SaveFile {
 
     public void setPlayerQuestContracts(List<PlayerQuestContractData> playerQuestContracts) {
         this.playerQuestContracts = playerQuestContracts != null ? playerQuestContracts : new ArrayList<>();
+    }
+
+    public void setPlayerCreatedNpcs(List<PlayerCreatedNpcData> playerCreatedNpcs) {
+        this.playerCreatedNpcs = playerCreatedNpcs != null ? playerCreatedNpcs : new ArrayList<>();
+    }
+
+    public void setExpeditionBoardMode(String expeditionBoardMode) {
+        this.expeditionBoardMode = expeditionBoardMode != null && !expeditionBoardMode.isEmpty() ? expeditionBoardMode : "STANDARD";
+    }
+
+    public void setActiveChallengeModifierId(String activeChallengeModifierId) {
+        this.activeChallengeModifierId = activeChallengeModifierId;
+    }
+
+    public void setHardModeSeedIndex(int hardModeSeedIndex) {
+        this.hardModeSeedIndex = Math.max(0, hardModeSeedIndex);
+    }
+
+    public void setSelectedChallengeModifierIndex(int selectedChallengeModifierIndex) {
+        this.selectedChallengeModifierIndex = Math.max(0, selectedChallengeModifierIndex);
     }
 
     public void setCurrencyBalance(long currencyBalance) {
@@ -1449,6 +1499,63 @@ public class SaveFile {
 
         public void setActive(boolean active) {
             this.active = active;
+        }
+    }
+
+    public static class PlayerCreatedNpcData {
+        private String npcId;
+        private String guildId;
+        private String zoneId;
+        private String role;
+        private String name;
+        private String dialog;
+
+        public String getNpcId() {
+            return npcId;
+        }
+
+        public void setNpcId(String npcId) {
+            this.npcId = npcId;
+        }
+
+        public String getGuildId() {
+            return guildId;
+        }
+
+        public void setGuildId(String guildId) {
+            this.guildId = guildId;
+        }
+
+        public String getZoneId() {
+            return zoneId;
+        }
+
+        public void setZoneId(String zoneId) {
+            this.zoneId = zoneId;
+        }
+
+        public String getRole() {
+            return role;
+        }
+
+        public void setRole(String role) {
+            this.role = role;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public String getDialog() {
+            return dialog;
+        }
+
+        public void setDialog(String dialog) {
+            this.dialog = dialog;
         }
     }
 

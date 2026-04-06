@@ -160,6 +160,22 @@
     ]
   },
   {
+    "id": "empire_ascendant",
+    "title": "Empire Ascendant",
+    "act": 5,
+    "mainQuest": true,
+    "autoStart": false,
+    "startStepId": "speak_bram_after_origin",
+    "steps": [
+      { "id": "speak_bram_after_origin", "objective": "Return to Ironhaven and speak with Bram about what comes after Origin." },
+      { "id": "stabilize_legacy_descent", "objective": "Open the Legacy Descent and establish the new endgame command loop.", "completionWorldFlag": "meta.shard_run_unlocked" },
+      { "id": "charter_the_empire", "objective": "Found a wider guild settlement network across the frontier.", "completionWorldFlag": "frontier.guild_settlements_founded" },
+      { "id": "prove_the_doctrine", "objective": "Unlock the challenge-run doctrine and show Ironhaven it can hold.", "completionWorldFlag": "frontier.challenge_doctrine_stable" },
+      { "id": "break_the_boss_chain", "objective": "Clear a full boss rush to prove your empire can survive repeated endgame pressure.", "completionWorldFlag": "frontier.boss_rush_cleared" },
+      { "id": "master_a_hard_seed", "objective": "Stabilize at least one hard-mode seed and bring the data home.", "completionWorldFlag": "frontier.hard_seed_mastered" }
+    ]
+  },
+  {
     "id": "field_medic",
     "title": "Field Medic",
     "category": "recruitment",

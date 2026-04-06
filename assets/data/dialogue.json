@@ -2938,5 +2938,28 @@
         "text": "Hold more ground out there and Ironhaven gets sharper in here. That's the deal."
       }
     ]
+  },
+  {
+    "id": "bram_empire_ascendant_start",
+    "npcId": "bram",
+    "priority": 70,
+    "requiredQuestId": "empire_ascendant",
+    "requiredQuestState": "speak_bram_after_origin",
+    "lines": [
+      {
+        "speaker": "Bram",
+        "text": "Origin bought us breathing room, not a future."
+      },
+      {
+        "speaker": "Bram",
+        "text": "If Ironhaven is going to last, we need more than one strong crew. We need settlements, guild officers, hard routes, and a command loop that keeps getting stronger after every collapse."
+      },
+      {
+        "speaker": "Bram",
+        "text": "Take the Legacy Descent seriously. Build the frontier like you expect to rule it. Then prove your doctrine in the hardest runs we can field."
+      }
+    ],
+    "setQuestId": "empire_ascendant",
+    "setQuestStep": "stabilize_legacy_descent"
   }
 ]

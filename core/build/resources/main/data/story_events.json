@@ -48,6 +48,48 @@
     "text": "Challenge loop initialized. Descend, adapt, and return stronger. The dungeon does not end; it measures."
   },
   {
+    "id": "act5_empire_briefing",
+    "triggerType": "BOSS_DEFEAT",
+    "triggerId": "origin_core_s",
+    "onceFlag": "event.act5_empire_briefed",
+    "speaker": "Bram",
+    "text": "Origin is gone, but peace won't build itself. Ironhaven needs an empire now: settlements, guild charters, hard routes, and crews who can master the depths instead of merely surviving them.",
+    "setQuestId": "empire_ascendant",
+    "setQuestStep": "speak_bram_after_origin"
+  },
+  {
+    "id": "act5_legacy_vault_briefing",
+    "triggerType": "ZONE_ENTER",
+    "triggerId": "infinite_dungeon",
+    "onceFlag": "event.act5_legacy_vault_briefed",
+    "speaker": "Coda",
+    "text": "This is not just a dungeon anymore. It is a foundry for permanence. Every floor you hold becomes doctrine for the empire you are trying to build."
+  },
+  {
+    "id": "act5_guild_empire_briefing",
+    "triggerType": "BOSS_DEFEAT",
+    "triggerId": "origin_core_s",
+    "onceFlag": "event.act5_guild_empire_briefed",
+    "speaker": "Commander Rex",
+    "text": "One outpost is survival. Multiple guild settlements are logistics, territory, and command. Start thinking like someone who expects to keep the whole frontier."
+  },
+  {
+    "id": "act5_boss_rush_briefing",
+    "triggerType": "BOSS_DEFEAT",
+    "triggerId": "the_unmaker_s",
+    "onceFlag": "event.act5_boss_rush_briefed",
+    "speaker": "Bolt Simulation",
+    "text": "Two endgame apex signatures confirmed. Boss-rush sequencing is now available for crews who want to stress-test perfected builds."
+  },
+  {
+    "id": "act5_hard_seed_briefing",
+    "triggerType": "BOSS_DEFEAT",
+    "triggerId": "apex_predator_s",
+    "onceFlag": "event.act5_hard_seed_briefed",
+    "speaker": "Coda",
+    "text": "The Vault has enough data to seed harder worlds now. Expect warped rules, stronger opposition, and better permanence when you endure them."
+  },
+  {
     "id": "shadow_caves_boss",
     "triggerType": "BOSS_DEFEAT",
     "triggerId": "rusted_sovereign_c",
@@ -106,6 +148,8 @@
     "text": "Origin collapses into silence. For the first time in ages, the world feels like it might belong to the living again.",
     "setWorldFlag": "frontier.the_void_cleared",
     "completeQuestId": "origin_descent",
+    "setQuestId": "empire_ascendant",
+    "setQuestStep": "speak_bram_after_origin",
     "rewardExperience": 250
   },
   {
