@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GameEntityComponentTest {
@@ -72,5 +73,29 @@ class GameEntityComponentTest {
 
         assertEquals(132f, transform.getWorldPosition().x);
         assertEquals(66f, transform.getWorldPosition().y);
+    }
+
+    @Test
+    void gameEntitySupportsTypedComponentAddAndRemove() {
+        PlayerEntity player = new PlayerEntity(new Vector2(1f, 2f));
+        ProficiencyComponent replacement = new ProficiencyComponent();
+
+        player.addComponent(ProficiencyComponent.class, replacement);
+
+        assertSame(replacement, player.getComponent(ProficiencyComponent.class));
+        assertSame(replacement, player.removeComponent(ProficiencyComponent.class));
+    }
+
+    @Test
+    void npcEntityExposesTransformAndProficiencyComponents() {
+        NpcEntity npc = new NpcEntity("quartermaster", "Quartermaster", new Vector2(20f, 30f), "Welcome.");
+
+        TransformComponent transform = npc.requireComponent(TransformComponent.class);
+        ProficiencyComponent proficiency = npc.requireComponent(ProficiencyComponent.class);
+
+        assertNotNull(proficiency);
+        assertEquals(20f, transform.position.x);
+        assertEquals(30f, transform.position.y);
+        assertEquals("quartermaster", npc.getEntityId());
     }
 }

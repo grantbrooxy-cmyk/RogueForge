@@ -1,5 +1,8 @@
 package com.rogueforge.game.combat;
 
+import com.rogueforge.game.entity.GameEntity;
+import com.rogueforge.game.entity.component.ProficiencyComponent;
+import com.rogueforge.game.entity.component.StatsComponent;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -8,8 +11,7 @@ import java.util.Set;
 /**
  * Shared runtime implementation for battle combatants.
  */
-public abstract class AbstractBattleCombatant implements BattleCombatant {
-    private final String id;
+public abstract class AbstractBattleCombatant extends GameEntity implements BattleCombatant {
     private final String name;
     private final boolean ally;
     private final int partyIndex;
@@ -26,6 +28,8 @@ public abstract class AbstractBattleCombatant implements BattleCombatant {
     private final Object sourceReference;
     private final Set<Element> elementalBreaks = new HashSet<>();
     private final Set<String> uniqueBoosts;
+    private final StatsComponent statsComponent = new StatsComponent();
+    private final ProficiencyComponent proficiencyComponent = new ProficiencyComponent();
 
     private float health;
     private final float maxHealth;
@@ -41,7 +45,9 @@ public abstract class AbstractBattleCombatant implements BattleCombatant {
                                       float intelligence, float stamina, List<AbilityInstance> abilities,
                                       List<Element> weaknesses, List<Element> resistances, List<Element> absorbs,
                                       int rewardGold, int rewardExperience, Object sourceReference, List<String> uniqueBoosts) {
-        this.id = id;
+        super(id);
+        addComponent(StatsComponent.class, statsComponent);
+        addComponent(ProficiencyComponent.class, proficiencyComponent);
         this.name = name;
         this.ally = ally;
         this.partyIndex = partyIndex;
@@ -65,11 +71,12 @@ public abstract class AbstractBattleCombatant implements BattleCombatant {
         if (uniqueBoosts != null) {
             this.uniqueBoosts.addAll(uniqueBoosts);
         }
+        syncComponents();
     }
 
     @Override
     public String getId() {
-        return id;
+        return getEntityId();
     }
 
     @Override
@@ -118,31 +125,37 @@ public abstract class AbstractBattleCombatant implements BattleCombatant {
 
     @Override
     public float getHealth() {
+        syncComponents();
         return health;
     }
 
     @Override
     public float getMaxHealth() {
+        syncComponents();
         return maxHealth;
     }
 
     @Override
     public float getAgility() {
+        syncComponents();
         return agility;
     }
 
     @Override
     public float getStrength() {
+        syncComponents();
         return strength;
     }
 
     @Override
     public float getIntelligence() {
+        syncComponents();
         return intelligence;
     }
 
     @Override
     public float getStamina() {
+        syncComponents();
         return stamina;
     }
 
@@ -228,11 +241,13 @@ public abstract class AbstractBattleCombatant implements BattleCombatant {
     @Override
     public void applyDirectDamage(float amount) {
         health = Math.max(0f, health - Math.max(1f, amount));
+        syncComponents();
     }
 
     @Override
     public void heal(float amount) {
         health = Math.min(maxHealth, health + Math.max(0f, amount));
+        syncComponents();
     }
 
     @Override
@@ -259,5 +274,24 @@ public abstract class AbstractBattleCombatant implements BattleCombatant {
         elementalBreaks.addAll(source.elementalBreaks);
         lastElementHit = source.lastElementHit;
         consecutiveElementHits = source.consecutiveElementHits;
+        syncComponents();
+    }
+
+    public StatsComponent stats() {
+        syncComponents();
+        return statsComponent;
+    }
+
+    public ProficiencyComponent proficiency() {
+        return proficiencyComponent;
+    }
+
+    private void syncComponents() {
+        statsComponent.currentHealth = health;
+        statsComponent.maxHealth = maxHealth;
+        statsComponent.agility = agility;
+        statsComponent.strength = strength;
+        statsComponent.intelligence = intelligence;
+        statsComponent.stamina = stamina;
     }
 }

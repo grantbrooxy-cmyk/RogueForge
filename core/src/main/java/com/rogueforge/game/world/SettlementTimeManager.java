@@ -47,6 +47,10 @@ public class SettlementTimeManager {
     }
 
     public String describePhase() {
+        return describePhase(timeOfDayHours);
+    }
+
+    public static String describePhase(float timeOfDayHours) {
         if (timeOfDayHours < 6f) {
             return "Night";
         }

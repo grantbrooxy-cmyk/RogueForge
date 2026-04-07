@@ -21,10 +21,16 @@ public class ZoneLoader {
     }
 
     public LoadedZoneContent load(ZoneDefinition definition) {
-        return load(definition, 0L, null);
+        return load(definition, 0L, null, null);
     }
 
     public LoadedZoneContent load(ZoneDefinition definition, long worldSeed, FrontierZoneGenerator frontierZoneGenerator) {
+        return load(definition, worldSeed, frontierZoneGenerator, null);
+    }
+
+    public LoadedZoneContent load(ZoneDefinition definition, long worldSeed,
+                                  FrontierZoneGenerator frontierZoneGenerator,
+                                  WorldGenerator worldGenerator) {
         if (definition == null) {
             throw new IllegalArgumentException("Zone definition is required");
         }
@@ -32,6 +38,9 @@ public class ZoneLoader {
         TmxWorldLoader.LoadedZone loadedZone = worldLoader.load(definition);
         if (definition.isExpansiveFrontier() && frontierZoneGenerator != null) {
             loadedZone = frontierZoneGenerator.generate(definition, loadedZone, worldSeed);
+            if (worldGenerator != null) {
+                loadedZone = worldGenerator.decorate(definition, loadedZone, worldSeed);
+            }
         }
         String tilemapPath = definition.getTilemapPath();
         TiledMap tiledMap = null;

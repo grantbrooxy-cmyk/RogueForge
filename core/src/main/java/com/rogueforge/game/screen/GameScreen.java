@@ -23,6 +23,7 @@ import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import com.rogueforge.game.core.GameContext;
+import com.rogueforge.game.core.EventHandler;
 import com.rogueforge.game.core.RogueForgeGame;
 import com.rogueforge.game.core.ScreenManager;
 import com.rogueforge.game.core.GameLoop;
@@ -40,6 +41,7 @@ import com.rogueforge.game.engine.base.PlacedStructure;
 import com.rogueforge.game.engine.base.StructureCategory;
 import com.rogueforge.game.engine.base.StructureDefinition;
 import com.rogueforge.game.engine.GameEngineServices;
+import com.rogueforge.game.engine.TimeSystem;
 import com.rogueforge.game.engine.meta.CyberneticBonuses;
 import com.rogueforge.game.engine.meta.CyberneticEnhancementEngine;
 import com.rogueforge.game.engine.meta.DeathDraftResult;
@@ -63,6 +65,7 @@ import com.rogueforge.game.engine.world.FrontierZoneGenerator;
 import com.rogueforge.game.engine.world.InfiniteDungeonLayoutGenerator;
 import com.rogueforge.game.engine.world.EnvironmentalInteractionSystem;
 import com.rogueforge.game.engine.world.TmxWorldLoader;
+import com.rogueforge.game.engine.world.WorldGenerator;
 import com.rogueforge.game.engine.world.ZoneLoader;
 import com.rogueforge.game.combat.AbilityDefinition;
 import com.rogueforge.game.combat.AbilityRegistry;
@@ -79,8 +82,11 @@ import com.rogueforge.game.data.MonsterDefinition;
 import com.rogueforge.game.data.SaveFile;
 import com.rogueforge.game.data.ShopDefinition;
 import com.rogueforge.game.data.ShopEntryDefinition;
+import com.rogueforge.game.data.StaticDataPaths;
 import com.rogueforge.game.data.StoryEventDefinition;
 import com.rogueforge.game.data.ZoneDefinition;
+import com.rogueforge.game.entity.NpcEntity;
+import com.rogueforge.game.event.NpcScheduleEvent;
 import com.rogueforge.game.economy.ShopInventory;
 import com.rogueforge.game.persistence.SaveManager;
 import com.rogueforge.game.persistence.SettingsManager;
@@ -242,7 +248,7 @@ public class GameScreen implements Screen {
     private static final String[] GRADE_ORDER = {"G", "F", "E", "D", "C", "B", "A", "S", "S+", "S++", "S+++"};
     private final RobotCompanion[] robots = new RobotCompanion[ROBOT_COUNT];
     private final List<House> houses = new ArrayList<>();
-    private final List<Npc> npcs = new ArrayList<>();
+    private final List<NpcEntity> npcs = new ArrayList<>();
     private final List<EquipmentItem> equipmentCatalog = new ArrayList<>();
     private final List<String> ownedEquipmentIds = new ArrayList<>();
     private final Vector2 lastMoveDirection = new Vector2(0f, -1f);
@@ -266,7 +272,9 @@ public class GameScreen implements Screen {
     private final ZoneLoader zoneLoader;
     private final InfiniteDungeonLayoutGenerator infiniteDungeonLayoutGenerator;
     private final FrontierZoneGenerator frontierZoneGenerator;
+    private final WorldGenerator worldGenerator;
     private final EnvironmentalInteractionSystem environmentalInteractionSystem;
+    private final TimeSystem timeSystem;
     private final SettingsManager settingsManager;
     private final SaveManager saveManager;
     private final MetaProgressionManager metaProgressionManager;
@@ -289,7 +297,7 @@ public class GameScreen implements Screen {
     private FrontierTerrainSampler frontierTerrainSampler;
     private FrontierBiomeCatalog frontierBiomeCatalog;
     private final FrontierChunkManager frontierChunkManager = new FrontierChunkManager();
-    private final SettlementTimeManager settlementTimeManager = new SettlementTimeManager();
+    private final SettlementTimeManager settlementTimeManager;
     private final Vector2 floatingOriginOffset = new Vector2();
     private final Rectangle localWorldBounds = new Rectangle();
     private String difficultyMode = "NORMAL";
@@ -347,12 +355,34 @@ public class GameScreen implements Screen {
     private int activeHardModeSeedIndex = 0;
     private static final String OPENING_HOME_INTRO_FLAG = "intro.player_home_seen";
     private static final String[] QUEST_MENU_TABS = {"Quests", "Command", "War", "Map", "Materials", "Shards", "Blueprints", "Items"};
+    private static final String[] WATCHED_DEFINITION_PATHS = {
+        StaticDataPaths.ABILITIES,
+        StaticDataPaths.ZONES,
+        StaticDataPaths.MONSTERS,
+        StaticDataPaths.ROBOTS,
+        StaticDataPaths.FORGE_COMPONENTS,
+        StaticDataPaths.BLUEPRINT_FRAGMENTS,
+        StaticDataPaths.FORGE_RECIPES,
+        StaticDataPaths.STORY_EVENTS,
+        StaticDataPaths.SHOPS,
+        StaticDataPaths.EQUIPMENT,
+        StaticDataPaths.QUESTS,
+        StaticDataPaths.DIALOGUE,
+        StaticDataPaths.WORLD_STATE,
+        StaticDataPaths.RECRUITMENT,
+        StaticDataPaths.SETTLEMENT_UPGRADES,
+        StaticDataPaths.SETTLEMENT_NPC_SCHEDULES
+    };
     private boolean pendingOpeningCutscene = false;
     private final List<DialogueSystem.DialoguePage> activeDialogueSequence = new ArrayList<>();
     private int activeDialogueSequenceIndex = 0;
     private int dialogPageIndex = 0;
     private String dialogPageTrackingText = null;
     private String dialogPageTrackingSpeaker = null;
+    private final Map<String, Long> watchedDefinitionTimestamps = new HashMap<>();
+    private final List<String> changedDefinitionPaths = new ArrayList<>();
+    private float definitionWatchPollTimer;
+    private boolean pendingNpcScheduleRefresh = true;
 
     private boolean isPaused = false;
     private boolean battleActive = false;
@@ -385,7 +415,9 @@ public class GameScreen implements Screen {
         this.worldLoader = engineServices.getWorldLoader();
         this.infiniteDungeonLayoutGenerator = engineServices.getInfiniteDungeonLayoutGenerator();
         this.frontierZoneGenerator = engineServices.getFrontierZoneGenerator();
+        this.worldGenerator = engineServices.getWorldGenerator();
         this.environmentalInteractionSystem = engineServices.getEnvironmentalInteractionSystem();
+        this.timeSystem = engineServices.getTimeSystem();
         this.settingsManager = engineServices.getSettingsManager();
         this.saveManager = engineServices.getSaveManager();
         this.metaProgressionManager = engineServices.getMetaProgressionManager();
@@ -396,6 +428,8 @@ public class GameScreen implements Screen {
         this.settlementManager = engineServices.getSettlementManager();
         this.dynamicWorldEventSystem = engineServices.getDynamicWorldEventSystem();
         this.warPhaseManager = engineServices.getWarPhaseManager();
+        this.settlementTimeManager = timeSystem.getClock();
+        game.getEventBus().subscribe(this);
         this.gameLoop = new GameLoop();
         this.gameCamera = new OrthographicCamera();
         this.uiCamera = new OrthographicCamera();
@@ -465,6 +499,7 @@ public class GameScreen implements Screen {
         loadStoryEvents();
         loadShopDefinitions();
         ensureRobotProgressionStates();
+        initializeDefinitionWatcher();
         initializeActiveRobotHealthForNewRun();
         loadZone(currentZoneId, saveFile == null ? "home_spawn" : "town_square", true);
 
@@ -584,6 +619,7 @@ public class GameScreen implements Screen {
     @Override
     public void render(float delta) {
         handleDefinitionReloadShortcut();
+        pollDefinitionWatcher(delta);
 
         if (!isPaused && !battleActive) {
             if (questMenuOpen) {
@@ -720,7 +756,7 @@ public class GameScreen implements Screen {
             updateNpcSchedules(delta);
             updateAttackEffects(delta);
             updateGoldPopups(delta);
-            settlementTimeManager.update(delta);
+            timeSystem.update(delta);
             survivalTime += delta;
 
             // Check player death
@@ -2667,7 +2703,7 @@ public class GameScreen implements Screen {
         batch.setProjectionMatrix(gameCamera.combined);
         batch.begin();
         int npcIndex = 0;
-        for (Npc npc : npcs) {
+        for (NpcEntity npc : npcs) {
             if (shouldUseFrontierStreaming() && !isWithinActiveFrontierWorld(npc.pos)) {
                 npcIndex++;
                 continue;
@@ -7140,6 +7176,7 @@ public class GameScreen implements Screen {
 
     @Override
     public void dispose() {
+        game.getEventBus().unsubscribe(this);
         hudOverlay.dispose();
         debugOverlay.dispose();
         batch.dispose();
@@ -7238,6 +7275,12 @@ public class GameScreen implements Screen {
             "Incidents: " + activeRegionalIncidentsByZoneId.size(),
             "Crises: " + activeSettlementCrisesByZoneId.size(),
             "Pinned contract: " + (pinnedExpeditionContractTitle != null ? pinnedExpeditionContractTitle : "none")
+        )));
+        sections.add(new DebugOverlay.DebugSection("Hot Reload", List.of(
+            "Watch files: " + WATCHED_DEFINITION_PATHS.length,
+            changedDefinitionPaths.isEmpty()
+                ? "Definitions stable. Press R or Ctrl+R to reload."
+                : changedDefinitionPaths.size() + " changed file(s) detected. Press R to reload."
         )));
         sections.add(new DebugOverlay.DebugSection("Robot Field Skills", buildRobotDebugLines()));
         return sections;
@@ -7471,7 +7514,7 @@ public class GameScreen implements Screen {
         questManager.syncProgress(gameState, worldStateManager);
         loadZone(currentZoneId, null, true);
         if (saveFile.getSettlementTimeOfDayHours() != null) {
-            settlementTimeManager.setTimeOfDayHours(saveFile.getSettlementTimeOfDayHours());
+            timeSystem.setTimeOfDayHours(saveFile.getSettlementTimeOfDayHours());
         }
         if (saveFile.getFloatingOriginX() != null || saveFile.getFloatingOriginY() != null) {
             Vector2 savedOriginShift = new Vector2(
@@ -7482,6 +7525,7 @@ public class GameScreen implements Screen {
                 applyFloatingOriginShift(savedOriginShift);
             }
         }
+        cameraController.syncFloatingOrigin(floatingOriginOffset);
         playerHealth = saveFile.getPlayerHp();
         playerMaxHealth = saveFile.getPlayerMaxHp() > 0 ? saveFile.getPlayerMaxHp() : playerMaxHealth;
         float savedPlayerX = saveFile.getPlayerX();
@@ -8410,7 +8454,7 @@ public class GameScreen implements Screen {
         currentZoneDefinition = definition;
         floatingOriginOffset.setZero();
         disposeCurrentTiledMap();
-        ZoneLoader.LoadedZoneContent loadedZone = zoneLoader.load(definition, worldSeed, frontierZoneGenerator);
+        ZoneLoader.LoadedZoneContent loadedZone = zoneLoader.load(definition, worldSeed, frontierZoneGenerator, worldGenerator);
         applyLoadedZoneMap(loadedZone);
         currentZone = loadedZone.getZone();
         frontierTerrainSampler = definition.isExpansiveFrontier() ? new FrontierTerrainSampler(worldSeed) : null;
@@ -8427,6 +8471,8 @@ public class GameScreen implements Screen {
         }
         localWorldBounds.set(0f, 0f, currentZone.pixelWidth, currentZone.pixelHeight);
         cameraController.setMapBounds(localWorldBounds.x, localWorldBounds.y, localWorldBounds.width, localWorldBounds.height);
+        cameraController.resetFloatingOrigin();
+        cameraController.syncFloatingOrigin(floatingOriginOffset);
         cameraController.enableFloatingOrigin(definition.isExpansiveFrontier());
         cameraController.configureFloatingOrigin(WORLD_VIEW_WIDTH * 2.5f, WORLD_VIEW_WIDTH);
         if (definition.isExpansiveFrontier()) {
@@ -8457,10 +8503,11 @@ public class GameScreen implements Screen {
                 && !worldStateManager.isFlagActive(gameState, npcData.requiredWorldFlag)) {
                 continue;
             }
-            npcs.add(new Npc(npcData.id, npcData.name, new Vector2(npcData.position), ""));
+            npcs.add(new NpcEntity(npcData.id, npcData.name, new Vector2(npcData.position), ""));
         }
 
         addSettlementTownContent();
+        pendingNpcScheduleRefresh = true;
 
         Vector2 resolvedSpawn = resolvePlayerSpawn(spawnId);
         if (resolvedSpawn != null) {
@@ -8556,7 +8603,7 @@ public class GameScreen implements Screen {
         houses.clear();
         npcs.clear();
         for (TmxWorldLoader.NpcData npcData : currentZone.npcs) {
-            npcs.add(new Npc(npcData.id, npcData.name, new Vector2(npcData.position), ""));
+            npcs.add(new NpcEntity(npcData.id, npcData.name, new Vector2(npcData.position), ""));
         }
         Vector2 resolvedSpawn = resolvePlayerSpawn(spawnId);
         if (resolvedSpawn != null) {
@@ -8643,60 +8690,60 @@ public class GameScreen implements Screen {
         House herbalist = findHouseById(2);
 
         if (worldStateManager.isFlagActive(gameState, "settlement.workshop_tools")) {
-            npcs.add(new Npc("quartermaster", "Quartermaster",
+            npcs.add(new NpcEntity("quartermaster", "Quartermaster",
                 workshop != null ? new Vector2(workshop.x + workshop.width + 22f, workshop.y + 22f) : new Vector2(280f, 210f),
                 "The forge rail is live again. Toma's workshop can finally stock heavy chassis parts."));
         }
         if (worldStateManager.isFlagActive(gameState, "settlement.watchtower_network")) {
-            npcs.add(new Npc("lookout", "Lookout",
+            npcs.add(new NpcEntity("lookout", "Lookout",
                 lodge != null ? new Vector2(lodge.x + lodge.width + 18f, lodge.y + lodge.height - 6f) : new Vector2(190f, 270f),
                 "The watchtower lamps are sweeping farther every night. Routes that used to vanish now stay marked."));
         }
         if (worldStateManager.isFlagActive(gameState, "settlement.survey_drones")) {
-            npcs.add(new Npc("dispatcher", "Dispatcher",
+            npcs.add(new NpcEntity("dispatcher", "Dispatcher",
                 workshop != null ? new Vector2(workshop.x - 18f, workshop.y + workshop.height - 4f) : new Vector2(235f, 250f),
                 "Survey drones are airborne again. Bring me fresh route intel and I'll keep Ironhaven's map board honest."));
         }
         if (worldStateManager.isFlagActive(gameState, "settlement.frontier_annex")) {
             if (!hasTownNpc("hale")) {
-                npcs.add(new Npc("hale", "Hale",
+                npcs.add(new NpcEntity("hale", "Hale",
                     new Vector2(currentZone != null ? currentZone.pixelWidth - 620f : 1298f, 638f),
                     "The annex is hungry for fresh salvage. Bring a live haul home and we keep the east line moving."));
             }
             if (!hasTownNpc("vesa")) {
-                npcs.add(new Npc("vesa", "Vesa",
+                npcs.add(new NpcEntity("vesa", "Vesa",
                     new Vector2(currentZone != null ? currentZone.pixelWidth - 492f : 1428f, 580f),
                     "Every crate that clears this yard means another crew can push deeper tomorrow."));
             }
         }
         if (worldStateManager.isFlagActive(gameState, "settlement.tavern_open") && !hasTownNpc("innkeeper_tamsin")) {
-            npcs.add(new Npc("innkeeper_tamsin", "Tamsin", new Vector2(162f, 494f),
+            npcs.add(new NpcEntity("innkeeper_tamsin", "Tamsin", new Vector2(162f, 494f),
                 "If Ironhaven is going to grow, it needs a room where crews can trade rumors before the next push."));
         }
         if (worldStateManager.isFlagActive(gameState, "settlement.hangar_open") && !hasTownNpc("hangar_keeper")) {
-            npcs.add(new Npc("hangar_keeper", "Hangar Keeper", new Vector2(334f, 350f),
+            npcs.add(new NpcEntity("hangar_keeper", "Hangar Keeper", new Vector2(334f, 350f),
                 "Reserve frames, spare chassis, field swaps. The hangar keeps your roster ready for the next climb."));
         }
         if (worldStateManager.isFlagActive(gameState, "settlement.training_grounds_open") && !hasTownNpc("commander_rex")) {
-            npcs.add(new Npc("commander_rex", "Commander Rex", new Vector2(612f, 348f),
+            npcs.add(new NpcEntity("commander_rex", "Commander Rex", new Vector2(612f, 348f),
                 "A stronger team starts with disciplined drills and clean command lines."));
         }
         if (worldStateManager.isFlagActive(gameState, "settlement.archive_open") && !hasTownNpc("professor_cogs")) {
-            npcs.add(new Npc("professor_cogs", "Professor Cogs", new Vector2(944f, 344f),
+            npcs.add(new NpcEntity("professor_cogs", "Professor Cogs", new Vector2(944f, 344f),
                 "The archive remembers what the field forgets."));
         }
         if (worldStateManager.isFlagActive(gameState, "settlement.workshop_tools") && !hasTownNpc("master_silas")) {
-            npcs.add(new Npc("master_silas", "Master Silas",
+            npcs.add(new NpcEntity("master_silas", "Master Silas",
                 workshop != null ? new Vector2(workshop.x + workshop.width + 84f, workshop.y + 64f) : new Vector2(430f, 232f),
                 "The workshop is awake. Now we see whether your salvage deserves the fire."));
         }
         if (worldStateManager.isFlagActive(gameState, "settlement.apothecary_stock") && !hasTownNpc("elena_apothecary")) {
-            npcs.add(new Npc("elena_apothecary", "Elena",
+            npcs.add(new NpcEntity("elena_apothecary", "Elena",
                 herbalist != null ? new Vector2(herbalist.x + 92f, herbalist.y - 28f) : new Vector2(1028f, 226f),
                 "Every deep push is paid for twice: once in steel, once in recovery."));
         }
         if (worldStateManager.isFlagActive(gameState, "meta.shard_run_unlocked") && !hasTownNpc("coda")) {
-            npcs.add(new Npc("coda", "Coda", new Vector2(742f, 418f),
+            npcs.add(new NpcEntity("coda", "Coda", new Vector2(742f, 418f),
                 "The Legacy Vault records every collapse and every breakthrough. Bring me shards and I'll turn them into permanence."));
         }
         addPlayerCreatedTownNpcs();
@@ -8714,7 +8761,7 @@ public class GameScreen implements Screen {
             if (createdNpc == null || createdNpc.npcId == null || createdNpc.npcId.isEmpty() || hasTownNpc(createdNpc.npcId)) {
                 continue;
             }
-            npcs.add(new Npc(
+            npcs.add(new NpcEntity(
                 createdNpc.npcId,
                 createdNpc.name,
                 new Vector2(baseX + (i % 3) * 86f, baseY - (i / 3) * 62f),
@@ -8728,7 +8775,7 @@ public class GameScreen implements Screen {
         if (!isHubTownZone()) {
             return;
         }
-        for (Npc npc : npcs) {
+        for (NpcEntity npc : npcs) {
             if (npc == null) {
                 continue;
             }
@@ -8758,7 +8805,7 @@ public class GameScreen implements Screen {
         if (npcId == null || npcId.isEmpty()) {
             return false;
         }
-        for (Npc npc : npcs) {
+        for (NpcEntity npc : npcs) {
             if (npcId.equals(npc.id)) {
                 return true;
             }
@@ -8766,11 +8813,25 @@ public class GameScreen implements Screen {
         return false;
     }
 
+    @EventHandler
+    public void onNpcScheduleEvent(NpcScheduleEvent event) {
+        if (event == null || !isHubTownZone()) {
+            return;
+        }
+        if (event.isPhaseChanged()) {
+            pendingNpcScheduleRefresh = true;
+        }
+    }
+
     private void updateNpcSchedules(float delta) {
         if (!isHubTownZone() || npcs.isEmpty()) {
             return;
         }
-        for (Npc npc : npcs) {
+        if (pendingNpcScheduleRefresh) {
+            applyTownNpcSchedules();
+            pendingNpcScheduleRefresh = false;
+        }
+        for (NpcEntity npc : npcs) {
             if (npc == null) {
                 continue;
             }
@@ -8819,6 +8880,7 @@ public class GameScreen implements Screen {
         if (frontierTerrainSampler != null) {
             frontierTerrainSampler.setWorldOriginOffset(floatingOriginOffset.x, floatingOriginOffset.y);
         }
+        cameraController.syncFloatingOrigin(floatingOriginOffset);
         shiftVector(playerPos, shift);
         for (RobotCompanion robot : robots) {
             if (robot != null) {
@@ -8832,14 +8894,11 @@ public class GameScreen implements Screen {
             shiftVector(enemy.pos, shift);
             shiftVector(enemy.patrolTarget, shift);
         }
-        for (Npc npc : npcs) {
+        for (NpcEntity npc : npcs) {
             if (npc == null) {
                 continue;
             }
-            shiftVector(npc.pos, shift);
-            shiftVector(npc.homePosition, shift);
-            shiftVector(npc.dayPosition, shift);
-            shiftVector(npc.eveningPosition, shift);
+            npc.applyFloatingOriginShift(shift);
         }
         if (currentZone != null) {
             if (currentZone.safeCenter != null) {
@@ -9462,7 +9521,8 @@ public class GameScreen implements Screen {
     private void handleDefinitionReloadShortcut() {
         boolean ctrlHeld = Gdx.input.isKeyPressed(Input.Keys.CONTROL_LEFT)
             || Gdx.input.isKeyPressed(Input.Keys.CONTROL_RIGHT);
-        if (ctrlHeld && Gdx.input.isKeyJustPressed(Input.Keys.R)) {
+        boolean debugReload = debugOverlay.isVisible() && Gdx.input.isKeyJustPressed(Input.Keys.R);
+        if ((ctrlHeld && Gdx.input.isKeyJustPressed(Input.Keys.R)) || debugReload) {
             reloadDefinitionData();
         }
     }
@@ -9486,7 +9546,50 @@ public class GameScreen implements Screen {
         settlementManager.reloadDefinitions();
         currentZoneDefinition = currentZoneId != null ? zoneDefinitions.get(currentZoneId) : null;
         applyTownNpcSchedules();
+        refreshDefinitionWatcherTimestamps();
         showStandaloneDialog("Debug", "Definition data reloaded from assets/data.");
+    }
+
+    private void initializeDefinitionWatcher() {
+        watchedDefinitionTimestamps.clear();
+        changedDefinitionPaths.clear();
+        refreshDefinitionWatcherTimestamps();
+    }
+
+    private void refreshDefinitionWatcherTimestamps() {
+        for (String path : WATCHED_DEFINITION_PATHS) {
+            watchedDefinitionTimestamps.put(path, resolveDefinitionTimestamp(path));
+        }
+        changedDefinitionPaths.clear();
+    }
+
+    private void pollDefinitionWatcher(float delta) {
+        if (delta <= 0f) {
+            return;
+        }
+        definitionWatchPollTimer += delta;
+        if (definitionWatchPollTimer < 1f) {
+            return;
+        }
+        definitionWatchPollTimer = 0f;
+        for (String path : WATCHED_DEFINITION_PATHS) {
+            long previous = watchedDefinitionTimestamps.getOrDefault(path, 0L);
+            long current = resolveDefinitionTimestamp(path);
+            if (current > 0L && previous > 0L && current != previous && !changedDefinitionPaths.contains(path)) {
+                changedDefinitionPaths.add(path);
+            }
+        }
+    }
+
+    private long resolveDefinitionTimestamp(String path) {
+        if (path == null || path.isEmpty()) {
+            return 0L;
+        }
+        try {
+            return Gdx.files.internal(path).lastModified();
+        } catch (RuntimeException ignored) {
+            return 0L;
+        }
     }
 
     private void addEquipmentToCatalog(EquipmentItem item) {
@@ -9935,10 +10038,10 @@ public class GameScreen implements Screen {
     }
 
     private void interactWithNpc() {
-        Npc nearbyNpc = null;
+        NpcEntity nearbyNpc = null;
         float nearestDistance = 70f;
 
-        for (Npc npc : npcs) {
+        for (NpcEntity npc : npcs) {
             float distance = playerPos.dst(npc.pos);
             if (distance < nearestDistance) {
                 nearestDistance = distance;
@@ -9966,7 +10069,7 @@ public class GameScreen implements Screen {
         }
     }
 
-    private boolean handleAct5NpcInteraction(Npc npc) {
+    private boolean handleAct5NpcInteraction(NpcEntity npc) {
         if (npc == null || npc.id == null || npc.id.isEmpty()) {
             return false;
         }
@@ -13890,91 +13993,6 @@ public class GameScreen implements Screen {
     /**
      * Simple static NPC with a single dialogue line.
      */
-    private static class Npc {
-        String id;
-        String name;
-        Vector2 pos;
-        String dialog;
-        Vector2 spawnPos;
-        Vector2 homePosition;
-        Vector2 morningPosition;
-        Vector2 dayPosition;
-        Vector2 eveningPosition;
-        Vector2 nightPosition;
-        String morningActivity = "Opening up";
-        String dayActivity = "On duty";
-        String eveningActivity = "Winding down";
-        String nightActivity = "Resting";
-
-        Npc(String id, String name, Vector2 pos, String dialog) {
-            this.id = id;
-            this.name = name;
-            this.pos = pos;
-            this.dialog = dialog;
-            this.spawnPos = pos != null ? new Vector2(pos) : new Vector2();
-            this.homePosition = pos != null ? new Vector2(pos) : new Vector2();
-            this.morningPosition = pos != null ? new Vector2(pos) : new Vector2();
-            this.dayPosition = pos != null ? new Vector2(pos) : new Vector2();
-            this.eveningPosition = pos != null ? new Vector2(pos) : new Vector2();
-            this.nightPosition = pos != null ? new Vector2(pos) : new Vector2();
-        }
-
-        void setSchedule(Vector2 homePosition, Vector2 morningPosition, Vector2 dayPosition,
-                         Vector2 eveningPosition, Vector2 nightPosition,
-                         String morningActivity, String dayActivity,
-                         String eveningActivity, String nightActivity) {
-            this.homePosition = homePosition != null ? homePosition : new Vector2(pos);
-            this.morningPosition = morningPosition != null ? morningPosition : new Vector2(this.homePosition);
-            this.dayPosition = dayPosition != null ? dayPosition : new Vector2(pos);
-            this.eveningPosition = eveningPosition != null ? eveningPosition : new Vector2(pos);
-            this.nightPosition = nightPosition != null ? nightPosition : new Vector2(this.homePosition);
-            if (morningActivity != null && !morningActivity.isEmpty()) {
-                this.morningActivity = morningActivity;
-            }
-            if (dayActivity != null && !dayActivity.isEmpty()) {
-                this.dayActivity = dayActivity;
-            }
-            if (eveningActivity != null && !eveningActivity.isEmpty()) {
-                this.eveningActivity = eveningActivity;
-            }
-            if (nightActivity != null && !nightActivity.isEmpty()) {
-                this.nightActivity = nightActivity;
-            }
-        }
-
-        Vector2 getScheduledPosition(float timeOfDayHours) {
-            if (timeOfDayHours < 6f) {
-                return nightPosition;
-            }
-            if (timeOfDayHours < 9f) {
-                return morningPosition;
-            }
-            if (timeOfDayHours < 17f) {
-                return dayPosition;
-            }
-            if (timeOfDayHours < 20f) {
-                return eveningPosition;
-            }
-            return nightPosition;
-        }
-
-        String getCurrentActivity(float timeOfDayHours) {
-            if (timeOfDayHours < 6f) {
-                return nightActivity;
-            }
-            if (timeOfDayHours < 9f) {
-                return morningActivity;
-            }
-            if (timeOfDayHours < 17f) {
-                return dayActivity;
-            }
-            if (timeOfDayHours < 20f) {
-                return eveningActivity;
-            }
-            return nightActivity;
-        }
-    }
-
     static class InteriorNpc {
         String id;
         String name;

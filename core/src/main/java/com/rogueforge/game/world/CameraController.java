@@ -45,6 +45,9 @@ public class CameraController {
 
     public void enableFloatingOrigin(boolean enabled) {
         this.floatingOriginEnabled = enabled;
+        if (!enabled) {
+            resetFloatingOrigin();
+        }
     }
 
     public void configureFloatingOrigin(float threshold, float snap) {
@@ -142,6 +145,16 @@ public class CameraController {
 
     public Vector2 getFloatingOrigin() {
         return new Vector2(floatingOrigin);
+    }
+
+    public void resetFloatingOrigin() {
+        floatingOrigin.setZero();
+        pendingWorldShift.setZero();
+    }
+
+    public void syncFloatingOrigin(Vector2 originOffset) {
+        floatingOrigin.set(originOffset != null ? originOffset : Vector2.Zero);
+        pendingWorldShift.setZero();
     }
 
     public boolean isShaking() {

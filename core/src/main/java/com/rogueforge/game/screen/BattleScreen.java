@@ -27,6 +27,7 @@ import com.rogueforge.game.combat.Element;
 import com.rogueforge.game.combat.ElementalSystem;
 import com.rogueforge.game.combat.MonsterCombatant;
 import com.rogueforge.game.combat.PlayerCombatant;
+import com.rogueforge.game.combat.RobotCombatant;
 import com.rogueforge.game.combat.StatusEffectType;
 import com.rogueforge.game.combat.WeaponType;
 import com.rogueforge.game.core.RogueForgeGame;
@@ -173,7 +174,7 @@ public class BattleScreen implements Screen {
                 int partySlot = encounter.robotPartySlots != null && i < encounter.robotPartySlots.length
                     ? encounter.robotPartySlots[i]
                     : i;
-                combatants.add(new PlayerCombatant(
+                combatants.add(new RobotCombatant(
                     "ally_" + i,
                     encounter.robotNames[i],
                     partySlot,

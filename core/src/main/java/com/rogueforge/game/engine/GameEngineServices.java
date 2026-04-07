@@ -9,6 +9,7 @@ import com.rogueforge.game.engine.world.EnvironmentalInteractionSystem;
 import com.rogueforge.game.engine.world.FrontierZoneGenerator;
 import com.rogueforge.game.engine.world.InfiniteDungeonLayoutGenerator;
 import com.rogueforge.game.engine.world.TmxWorldLoader;
+import com.rogueforge.game.engine.world.WorldGenerator;
 import com.rogueforge.game.persistence.MetaProgressionManager;
 import com.rogueforge.game.persistence.SaveManager;
 import com.rogueforge.game.persistence.SettingsManager;
@@ -42,7 +43,9 @@ public class GameEngineServices implements ServiceLifecycle {
         registerService(TmxWorldLoader.class, new TmxWorldLoader());
         registerService(InfiniteDungeonLayoutGenerator.class, new InfiniteDungeonLayoutGenerator());
         registerService(FrontierZoneGenerator.class, new FrontierZoneGenerator());
+        registerService(WorldGenerator.class, new WorldGenerator());
         registerService(EnvironmentalInteractionSystem.class, new EnvironmentalInteractionSystem());
+        registerService(TimeSystem.class, new TimeSystem(eventBus));
         registerService(SettingsManager.class, settingsManager != null ? settingsManager : new SettingsManager());
         registerService(SaveManager.class, saveManager != null ? saveManager : new SaveManager());
         registerService(MetaProgressionManager.class, metaProgressionManager != null ? metaProgressionManager : new MetaProgressionManager());
@@ -111,7 +114,11 @@ public class GameEngineServices implements ServiceLifecycle {
 
     public FrontierZoneGenerator getFrontierZoneGenerator() { return getService(FrontierZoneGenerator.class); }
 
+    public WorldGenerator getWorldGenerator() { return getService(WorldGenerator.class); }
+
     public EnvironmentalInteractionSystem getEnvironmentalInteractionSystem() { return getService(EnvironmentalInteractionSystem.class); }
+
+    public TimeSystem getTimeSystem() { return getService(TimeSystem.class); }
 
     public SettingsManager getSettingsManager() { return getService(SettingsManager.class); }
 
