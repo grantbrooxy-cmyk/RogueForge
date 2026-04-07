@@ -18,6 +18,9 @@ public class RobotProgressionState {
     private List<String> knownAbilityIds = new ArrayList<>();
     private Map<String, AbilityProgressionState> abilityProgression = new HashMap<>();
     private Map<String, WeaponProficiencyState> weaponProficiencies = new HashMap<>();
+    private Map<String, Integer> usageProfile = new HashMap<>();
+    private String personalityArchetype = "Balanced";
+    private String evolutionPath = "standard";
 
     public RobotProgressionState() {
     }
@@ -106,5 +109,63 @@ public class RobotProgressionState {
             abilityProgression.put(abilityId, state);
         }
         return state;
+    }
+
+    public Map<String, Integer> getUsageProfile() {
+        return usageProfile;
+    }
+
+    public void setUsageProfile(Map<String, Integer> usageProfile) {
+        this.usageProfile = usageProfile != null ? usageProfile : new HashMap<>();
+        refreshPersonalityArchetype();
+    }
+
+    public String getPersonalityArchetype() {
+        return personalityArchetype != null && !personalityArchetype.isEmpty() ? personalityArchetype : "Balanced";
+    }
+
+    public void setPersonalityArchetype(String personalityArchetype) {
+        this.personalityArchetype = personalityArchetype != null && !personalityArchetype.isEmpty()
+            ? personalityArchetype
+            : "Balanced";
+    }
+
+    public String getEvolutionPath() {
+        return evolutionPath != null && !evolutionPath.isEmpty() ? evolutionPath : "standard";
+    }
+
+    public void setEvolutionPath(String evolutionPath) {
+        this.evolutionPath = evolutionPath != null && !evolutionPath.isEmpty() ? evolutionPath : "standard";
+    }
+
+    public void recordUsage(String usageKey, int amount) {
+        if (usageKey == null || usageKey.isEmpty() || amount <= 0) {
+            return;
+        }
+        usageProfile.put(usageKey, usageProfile.getOrDefault(usageKey, 0) + amount);
+        refreshPersonalityArchetype();
+    }
+
+    public void refreshPersonalityArchetype() {
+        int support = usageProfile.getOrDefault("support", 0);
+        int assault = usageProfile.getOrDefault("assault", 0);
+        int control = usageProfile.getOrDefault("control", 0);
+        int defense = usageProfile.getOrDefault("defense", 0);
+        if (support > assault && support >= control && support >= defense) {
+            personalityArchetype = "Caretaker";
+            evolutionPath = "harmonic";
+        } else if (control > assault && control >= defense) {
+            personalityArchetype = "Tactician";
+            evolutionPath = "oracle";
+        } else if (defense > assault) {
+            personalityArchetype = "Bulwark";
+            evolutionPath = "aegis";
+        } else if (assault > 0) {
+            personalityArchetype = "Berserker";
+            evolutionPath = "feral";
+        } else {
+            personalityArchetype = "Balanced";
+            evolutionPath = "standard";
+        }
     }
 }

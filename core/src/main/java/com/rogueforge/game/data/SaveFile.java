@@ -12,7 +12,9 @@ import java.util.Map;
  * Contains all player, robot, and progression data for a save game.
  */
 public class SaveFile {
-    private int version = 8;
+    public static final int CURRENT_VERSION = 9;
+
+    private int version = CURRENT_VERSION;
 
     private String playerName;
     private int playerHp;

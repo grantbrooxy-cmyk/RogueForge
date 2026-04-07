@@ -5,15 +5,21 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import com.rogueforge.game.data.DefinitionRegistries;
+import com.rogueforge.game.engine.ServiceLifecycle;
 
 /**
  * Manages settlement upgrades and their reward payloads.
  */
-public class SettlementManager {
+public class SettlementManager implements ServiceLifecycle {
     private final Map<String, SettlementUpgradeDefinition> definitions = new HashMap<>();
     private final Map<String, SettlementNpcScheduleDefinition> npcSchedules = new HashMap<>();
 
     public SettlementManager() {
+        reloadDefinitions();
+    }
+
+    @Override
+    public void initialize() {
         reloadDefinitions();
     }
 

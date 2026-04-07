@@ -126,6 +126,12 @@ public class AbilityInstance {
         return ProficiencyTracker.abilityPowerMultiplier(getProficiencyLevel());
     }
 
+    public AbilityInstance copy() {
+        AbilityInstance copy = new AbilityInstance(definition, progressionState);
+        copy.setCurrentCooldown(currentCooldown);
+        return copy;
+    }
+
     @Override
     public String toString() {
         return "AbilityInstance{" +

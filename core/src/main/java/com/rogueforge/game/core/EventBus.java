@@ -1,5 +1,7 @@
 package com.rogueforge.game.core;
 
+import com.badlogic.gdx.utils.Pool;
+import com.badlogic.gdx.utils.Pools;
 import java.lang.invoke.CallSite;
 import java.lang.invoke.LambdaMetafactory;
 import java.lang.invoke.MethodHandle;
@@ -175,6 +177,7 @@ public class EventBus {
             snapshot = bucket != null ? bucket.snapshot : null;
         }
         if (snapshot == null || snapshot.length == 0) {
+            recycleIfPoolable(event);
             return;
         }
         for (EventListener listener : snapshot) {
@@ -184,6 +187,13 @@ public class EventBus {
                 System.err.println("Error firing event: " + e.getMessage());
                 e.printStackTrace();
             }
+        }
+        recycleIfPoolable(event);
+    }
+
+    private void recycleIfPoolable(Object event) {
+        if (event instanceof Pool.Poolable) {
+            Pools.free(event);
         }
     }
 

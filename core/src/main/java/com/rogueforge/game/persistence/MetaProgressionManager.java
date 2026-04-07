@@ -4,12 +4,21 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.utils.Json;
 import com.rogueforge.game.data.MetaProgressionState;
+import com.rogueforge.game.engine.ServiceLifecycle;
 
 /**
  * Persists cross-run roguelite progression.
  */
-public class MetaProgressionManager {
+public class MetaProgressionManager implements ServiceLifecycle {
     private final Json json = new Json();
+
+    @Override
+    public void initialize() {
+        FileHandle file = Gdx.files.local(PersistencePaths.META_PROGRESSION);
+        if (!file.parent().exists()) {
+            file.parent().mkdirs();
+        }
+    }
 
     public MetaProgressionState load() {
         FileHandle file = Gdx.files.local(PersistencePaths.META_PROGRESSION);

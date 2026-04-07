@@ -7,6 +7,7 @@ import com.rogueforge.game.core.EventBus;
 import com.rogueforge.game.data.MonsterDefinition;
 import com.rogueforge.game.entity.component.PositionComponent;
 import com.rogueforge.game.entity.component.StatsComponent;
+import com.rogueforge.game.entity.component.TransformComponent;
 import com.rogueforge.game.event.LootDropEvent;
 
 public class MonsterEntity extends GameEntity {
@@ -39,6 +40,7 @@ public class MonsterEntity extends GameEntity {
 
     public MonsterEntity(MonsterDefinition definition, Vector2 startPosition, EventBus eventBus) {
         super(definition != null ? definition.getId() : null);
+        registerComponent(TransformComponent.class, positionComponent);
         registerComponent(PositionComponent.class, positionComponent);
         registerComponent(StatsComponent.class, statsComponent);
         this.definition = definition;

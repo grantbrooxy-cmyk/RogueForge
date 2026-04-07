@@ -4,6 +4,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.utils.Json;
 import com.rogueforge.game.data.SaveFile;
+import com.rogueforge.game.engine.ServiceLifecycle;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -11,7 +12,7 @@ import java.util.List;
  * Manages game save/load operations.
  * Handles multiple save slots plus autosave.
  */
-public class SaveManager {
+public class SaveManager implements ServiceLifecycle {
 
     public static final int MAX_SLOTS = 3;
     public static final int AUTOSAVE_SLOT = 0;
@@ -22,6 +23,10 @@ public class SaveManager {
 
     public SaveManager() {
         this.json = new Json();
+    }
+
+    @Override
+    public void initialize() {
         ensureSaveDirectory();
     }
 
@@ -45,6 +50,10 @@ public class SaveManager {
         if (slot < 0 || slot > MAX_SLOTS) {
             throw new IllegalArgumentException("Invalid save slot: " + slot);
         }
+        if (data != null) {
+            upgradeLoadedSave(data);
+            data.setVersion(SaveFile.CURRENT_VERSION);
+        }
 
         FileHandle saveFile = getSaveFile(slot);
         String jsonData = json.prettyPrint(data);
@@ -65,7 +74,67 @@ public class SaveManager {
 
         FileHandle saveFile = getSaveFile(slot);
         String jsonData = saveFile.readString();
-        return json.fromJson(SaveFile.class, jsonData);
+        SaveFile loaded = json.fromJson(SaveFile.class, jsonData);
+        return upgradeLoadedSave(loaded);
+    }
+
+    static SaveFile upgradeLoadedSave(SaveFile saveFile) {
+        if (saveFile == null) {
+            return null;
+        }
+
+        int loadedVersion = Math.max(1, saveFile.getVersion());
+        if (loadedVersion < 8) {
+            if (saveFile.getPlayerWorldX() == null) {
+                saveFile.setPlayerWorldX(saveFile.getPlayerX());
+            }
+            if (saveFile.getPlayerWorldY() == null) {
+                saveFile.setPlayerWorldY(saveFile.getPlayerY());
+            }
+            if (saveFile.getFloatingOriginX() == null) {
+                saveFile.setFloatingOriginX(0f);
+            }
+            if (saveFile.getFloatingOriginY() == null) {
+                saveFile.setFloatingOriginY(0f);
+            }
+            if (saveFile.getSettlementTimeOfDayHours() == null) {
+                saveFile.setSettlementTimeOfDayHours(12f);
+            }
+        }
+
+        saveFile.setQuestStates(saveFile.getQuestStates());
+        saveFile.setBestiaryScanLevels(saveFile.getBestiaryScanLevels());
+        saveFile.setWorldStateFlags(saveFile.getWorldStateFlags());
+        saveFile.setSettlementUpgrades(saveFile.getSettlementUpgrades());
+        saveFile.setRobotProgressionStates(saveFile.getRobotProgressionStates());
+        saveFile.setForgeComponents(saveFile.getForgeComponents());
+        saveFile.setUnbankedForgeComponents(saveFile.getUnbankedForgeComponents());
+        saveFile.setShardInventory(saveFile.getShardInventory());
+        saveFile.setUnbankedShardInventory(saveFile.getUnbankedShardInventory());
+        saveFile.setBlueprintFragments(saveFile.getBlueprintFragments());
+        saveFile.setUnbankedBlueprintFragments(saveFile.getUnbankedBlueprintFragments());
+        saveFile.setDefeatedBossIds(saveFile.getDefeatedBossIds());
+        saveFile.setHarvestedFrontierFeatureIds(saveFile.getHarvestedFrontierFeatureIds());
+        saveFile.setClaimedFrontierBaseSiteIds(saveFile.getClaimedFrontierBaseSiteIds());
+        saveFile.setBaseStates(saveFile.getBaseStates());
+        saveFile.setGuilds(saveFile.getGuilds());
+        saveFile.setFactionInfluenceById(saveFile.getFactionInfluenceById());
+        saveFile.setActiveWorldBossFrontsByZoneId(saveFile.getActiveWorldBossFrontsByZoneId());
+        saveFile.setActiveRegionalIncidentsByZoneId(saveFile.getActiveRegionalIncidentsByZoneId());
+        saveFile.setActiveSettlementCrisesByZoneId(saveFile.getActiveSettlementCrisesByZoneId());
+        saveFile.setPlayerQuestContracts(saveFile.getPlayerQuestContracts());
+        saveFile.setPlayerCreatedNpcs(saveFile.getPlayerCreatedNpcs());
+        saveFile.setOwnedEquipmentIds(saveFile.getOwnedEquipmentIds());
+        saveFile.setKeyItems(saveFile.getKeyItems());
+        saveFile.setPlayerEquipment(saveFile.getPlayerEquipment());
+        saveFile.setRobotEquipment(saveFile.getRobotEquipment());
+        saveFile.setCollectedRobotIds(saveFile.getCollectedRobotIds());
+        saveFile.setActiveRobotIds(saveFile.getActiveRobotIds());
+        if (saveFile.getCurrentZoneId() == null || saveFile.getCurrentZoneId().isEmpty()) {
+            saveFile.setCurrentZoneId("town");
+        }
+        saveFile.setVersion(SaveFile.CURRENT_VERSION);
+        return saveFile;
     }
 
     /**

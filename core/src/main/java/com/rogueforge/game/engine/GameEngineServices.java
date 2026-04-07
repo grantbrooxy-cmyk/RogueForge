@@ -1,68 +1,135 @@
 package com.rogueforge.game.engine;
 
+import com.rogueforge.game.core.EventBus;
 import com.rogueforge.game.engine.base.BaseBuildingEngine;
 import com.rogueforge.game.engine.base.BaseDefenseDirector;
 import com.rogueforge.game.engine.meta.CyberneticEnhancementEngine;
 import com.rogueforge.game.engine.social.GuildPermissionsEngine;
+import com.rogueforge.game.engine.world.EnvironmentalInteractionSystem;
 import com.rogueforge.game.engine.world.FrontierZoneGenerator;
 import com.rogueforge.game.engine.world.InfiniteDungeonLayoutGenerator;
 import com.rogueforge.game.engine.world.TmxWorldLoader;
+import com.rogueforge.game.persistence.MetaProgressionManager;
 import com.rogueforge.game.persistence.SaveManager;
 import com.rogueforge.game.persistence.SettingsManager;
 import com.rogueforge.game.world.DialogueSystem;
 import com.rogueforge.game.world.QuestManager;
 import com.rogueforge.game.world.RobotRecruitmentManager;
 import com.rogueforge.game.world.SettlementManager;
+import com.rogueforge.game.world.DynamicWorldEventSystem;
 import com.rogueforge.game.world.WarPhaseManager;
 import com.rogueforge.game.world.WorldStateManager;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * Shared runtime services for reusable engine systems and managers.
  */
-public class GameEngineServices {
-    private final BaseBuildingEngine baseBuildingEngine = new BaseBuildingEngine();
-    private final BaseDefenseDirector baseDefenseDirector = new BaseDefenseDirector();
-    private final CyberneticEnhancementEngine cyberneticEnhancementEngine = new CyberneticEnhancementEngine();
-    private final GuildPermissionsEngine guildPermissionsEngine = new GuildPermissionsEngine();
-    private final TmxWorldLoader worldLoader = new TmxWorldLoader();
-    private final InfiniteDungeonLayoutGenerator infiniteDungeonLayoutGenerator = new InfiniteDungeonLayoutGenerator();
-    private final FrontierZoneGenerator frontierZoneGenerator = new FrontierZoneGenerator();
-    private final SettingsManager settingsManager = new SettingsManager();
-    private final SaveManager saveManager = new SaveManager();
-    private final QuestManager questManager = new QuestManager();
-    private final DialogueSystem dialogueSystem = new DialogueSystem();
-    private final WorldStateManager worldStateManager = new WorldStateManager();
-    private final RobotRecruitmentManager recruitmentManager = new RobotRecruitmentManager();
-    private final SettlementManager settlementManager = new SettlementManager();
-    private final WarPhaseManager warPhaseManager = new WarPhaseManager();
+public class GameEngineServices implements ServiceLifecycle {
+    private final Map<Class<?>, Object> services = new LinkedHashMap<>();
+    private boolean initialized;
 
-    public BaseBuildingEngine getBaseBuildingEngine() { return baseBuildingEngine; }
+    public GameEngineServices() {
+        this(new EventBus(), new SettingsManager(), new SaveManager(), new MetaProgressionManager());
+    }
 
-    public BaseDefenseDirector getBaseDefenseDirector() { return baseDefenseDirector; }
+    public GameEngineServices(EventBus eventBus, SettingsManager settingsManager, SaveManager saveManager, MetaProgressionManager metaProgressionManager) {
+        registerService(BaseBuildingEngine.class, new BaseBuildingEngine());
+        registerService(BaseDefenseDirector.class, new BaseDefenseDirector());
+        registerService(CyberneticEnhancementEngine.class, new CyberneticEnhancementEngine());
+        registerService(GuildPermissionsEngine.class, new GuildPermissionsEngine());
+        registerService(TmxWorldLoader.class, new TmxWorldLoader());
+        registerService(InfiniteDungeonLayoutGenerator.class, new InfiniteDungeonLayoutGenerator());
+        registerService(FrontierZoneGenerator.class, new FrontierZoneGenerator());
+        registerService(EnvironmentalInteractionSystem.class, new EnvironmentalInteractionSystem());
+        registerService(SettingsManager.class, settingsManager != null ? settingsManager : new SettingsManager());
+        registerService(SaveManager.class, saveManager != null ? saveManager : new SaveManager());
+        registerService(MetaProgressionManager.class, metaProgressionManager != null ? metaProgressionManager : new MetaProgressionManager());
+        registerService(QuestManager.class, new QuestManager());
+        registerService(DialogueSystem.class, new DialogueSystem());
+        registerService(WorldStateManager.class, new WorldStateManager());
+        registerService(RobotRecruitmentManager.class, new RobotRecruitmentManager());
+        registerService(SettlementManager.class, new SettlementManager());
+        registerService(DynamicWorldEventSystem.class, new DynamicWorldEventSystem(eventBus));
+        registerService(WarPhaseManager.class, new WarPhaseManager());
+    }
 
-    public CyberneticEnhancementEngine getCyberneticEnhancementEngine() { return cyberneticEnhancementEngine; }
+    public final <T> void registerService(Class<T> type, T service) {
+        if (type == null || service == null) {
+            throw new IllegalArgumentException("Service type and instance are required.");
+        }
+        services.put(type, service);
+    }
 
-    public GuildPermissionsEngine getGuildPermissionsEngine() { return guildPermissionsEngine; }
+    public <T> T getService(Class<T> type) {
+        Object service = services.get(type);
+        if (service == null) {
+            throw new IllegalArgumentException("No service registered for " + type.getSimpleName());
+        }
+        return type.cast(service);
+    }
 
-    public TmxWorldLoader getWorldLoader() { return worldLoader; }
+    public Collection<Object> getAllServices() {
+        return services.values();
+    }
 
-    public InfiniteDungeonLayoutGenerator getInfiniteDungeonLayoutGenerator() { return infiniteDungeonLayoutGenerator; }
+    @Override
+    public void initialize() {
+        if (initialized) {
+            return;
+        }
+        initialized = true;
+        for (Object service : services.values()) {
+            if (service instanceof ServiceLifecycle) {
+                ((ServiceLifecycle) service).initialize();
+            }
+        }
+    }
 
-    public FrontierZoneGenerator getFrontierZoneGenerator() { return frontierZoneGenerator; }
+    @Override
+    public void dispose() {
+        for (Object service : services.values()) {
+            if (service instanceof ServiceLifecycle) {
+                ((ServiceLifecycle) service).dispose();
+            }
+        }
+        initialized = false;
+    }
 
-    public SettingsManager getSettingsManager() { return settingsManager; }
+    public BaseBuildingEngine getBaseBuildingEngine() { return getService(BaseBuildingEngine.class); }
 
-    public SaveManager getSaveManager() { return saveManager; }
+    public BaseDefenseDirector getBaseDefenseDirector() { return getService(BaseDefenseDirector.class); }
 
-    public QuestManager getQuestManager() { return questManager; }
+    public CyberneticEnhancementEngine getCyberneticEnhancementEngine() { return getService(CyberneticEnhancementEngine.class); }
 
-    public DialogueSystem getDialogueSystem() { return dialogueSystem; }
+    public GuildPermissionsEngine getGuildPermissionsEngine() { return getService(GuildPermissionsEngine.class); }
 
-    public WorldStateManager getWorldStateManager() { return worldStateManager; }
+    public TmxWorldLoader getWorldLoader() { return getService(TmxWorldLoader.class); }
 
-    public RobotRecruitmentManager getRecruitmentManager() { return recruitmentManager; }
+    public InfiniteDungeonLayoutGenerator getInfiniteDungeonLayoutGenerator() { return getService(InfiniteDungeonLayoutGenerator.class); }
 
-    public SettlementManager getSettlementManager() { return settlementManager; }
+    public FrontierZoneGenerator getFrontierZoneGenerator() { return getService(FrontierZoneGenerator.class); }
 
-    public WarPhaseManager getWarPhaseManager() { return warPhaseManager; }
+    public EnvironmentalInteractionSystem getEnvironmentalInteractionSystem() { return getService(EnvironmentalInteractionSystem.class); }
+
+    public SettingsManager getSettingsManager() { return getService(SettingsManager.class); }
+
+    public SaveManager getSaveManager() { return getService(SaveManager.class); }
+
+    public MetaProgressionManager getMetaProgressionManager() { return getService(MetaProgressionManager.class); }
+
+    public QuestManager getQuestManager() { return getService(QuestManager.class); }
+
+    public DialogueSystem getDialogueSystem() { return getService(DialogueSystem.class); }
+
+    public WorldStateManager getWorldStateManager() { return getService(WorldStateManager.class); }
+
+    public RobotRecruitmentManager getRecruitmentManager() { return getService(RobotRecruitmentManager.class); }
+
+    public SettlementManager getSettlementManager() { return getService(SettlementManager.class); }
+
+    public DynamicWorldEventSystem getDynamicWorldEventSystem() { return getService(DynamicWorldEventSystem.class); }
+
+    public WarPhaseManager getWarPhaseManager() { return getService(WarPhaseManager.class); }
 }

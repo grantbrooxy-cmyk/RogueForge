@@ -32,6 +32,8 @@ import com.rogueforge.game.combat.WeaponType;
 import com.rogueforge.game.core.RogueForgeGame;
 import com.rogueforge.game.core.ScreenManager;
 import com.rogueforge.game.progression.ProficiencyTracker;
+import com.rogueforge.game.ui.BattleCommandPanel;
+import com.rogueforge.game.ui.BattleInspectorPanel;
 import com.rogueforge.game.ui.BattleTimelinePanel;
 import com.rogueforge.game.ui.DebugOverlay;
 import java.util.Arrays;
@@ -81,6 +83,8 @@ public class BattleScreen implements Screen {
     private final Map<String, Integer> bossPhases = new HashMap<>();
     private final Stage hudStage;
     private final BattleTimelinePanel timelinePanel;
+    private final BattleCommandPanel commandPanel;
+    private final BattleInspectorPanel inspectorPanel;
     private final DebugOverlay debugOverlay;
     private final InputAdapter battleInputProcessor = new InputAdapter() {
         @Override
@@ -88,7 +92,7 @@ public class BattleScreen implements Screen {
             return handleBattleInput(keycode);
         }
     };
-    private InputMultiplexer inputMultiplexer;
+    private InputContextRouter inputContextRouter;
 
     private Mode mode = Mode.ROOT;
     private int selectedIndex;
@@ -99,6 +103,11 @@ public class BattleScreen implements Screen {
     private boolean closingToResults;
     private float actionDelay;
     private int healingPotions;
+    private final List<ImpactBurst> impactBursts = new ArrayList<>();
+    private float battleShakeIntensity;
+    private float battleShakeTimer;
+    private float awakeningBannerTimer;
+    private String awakeningBannerText;
 
     public BattleScreen(RogueForgeGame game, ScreenManager screenManager, GameScreen gameScreen, Encounter encounter) {
         this.game = game;
@@ -118,8 +127,12 @@ public class BattleScreen implements Screen {
         this.smallFont.getData().setScale(0.95f);
         this.hudStage = new Stage(new ScreenViewport());
         this.timelinePanel = new BattleTimelinePanel(bodyFont, smallFont);
+        this.commandPanel = new BattleCommandPanel(bodyFont, bodyFont, smallFont);
+        this.inspectorPanel = new BattleInspectorPanel(bodyFont, bodyFont, smallFont);
         this.hudStage.addActor(timelinePanel);
-        this.debugOverlay = new DebugOverlay(this::buildDebugOverlayLines);
+        this.hudStage.addActor(commandPanel);
+        this.hudStage.addActor(inspectorPanel);
+        this.debugOverlay = new DebugOverlay(this::buildDebugOverlaySections, true);
         this.combatResolver = new CombatResolver(game.getEventBus());
         this.healingPotions = encounter.healingPotions;
         this.bestiaryManager.importData(gameScreen.getBestiaryScanLevels());
@@ -227,17 +240,20 @@ public class BattleScreen implements Screen {
 
     @Override
     public void show() {
-        inputMultiplexer = new InputMultiplexer();
-        inputMultiplexer.addProcessor(debugOverlay.getInputProcessor());
-        inputMultiplexer.addProcessor(hudStage);
-        inputMultiplexer.addProcessor(battleInputProcessor);
-        Gdx.input.setInputProcessor(inputMultiplexer);
+        inputContextRouter = new InputContextRouter();
+        inputContextRouter.addSharedProcessor(debugOverlay.getInputProcessor());
+        inputContextRouter.setProcessors(InputContext.COMBAT_COMMAND, hudStage, battleInputProcessor);
+        inputContextRouter.setProcessors(InputContext.COMBAT_TARGETING, hudStage, battleInputProcessor);
+        inputContextRouter.setProcessors(InputContext.COMBAT_RESULTS, hudStage, battleInputProcessor);
+        inputContextRouter.activate(resolveInputContext());
     }
 
     @Override
     public void render(float delta) {
         actionDelay = Math.max(0f, actionDelay - delta);
+        updateImpactFeedback(delta);
         camera.setToOrtho(false, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        applyBattleShake();
         if (!closingToResults) {
             tickBattleFlow();
         }
@@ -252,9 +268,9 @@ public class BattleScreen implements Screen {
         drawBattleAtmosphere(w, h);
         drawPanels(w, h);
         drawCombatants(w, h);
-        drawActionPanel(w, h);
-        drawBattleLog(w, h);
-        updateTimelinePanel(w, h);
+        updateScene2dHud(w, h);
+        drawImpactBursts();
+        drawAwakeningBanner(h);
         hudStage.act(delta);
         hudStage.draw();
         debugOverlay.render();
@@ -611,6 +627,7 @@ public class BattleScreen implements Screen {
         if (elementalOutcome.triggeredBreak) {
             battleLog.add(target.getName() + "'s " + move.element.name() + " guard breaks.");
         }
+        triggerImpactFeedback(target, damage, elementalOutcome.triggeredBreak, move.element);
         applyPostHitUniqueEffects(actor, target, damage, false, move.name);
         awardWeaponProgress(actor, gameScreen.getEquippedWeaponType(actor.getPartyIndex()), move.name);
         endTurn(actor, adjustedSpeedCost(actor, move.speedCost));
@@ -713,6 +730,7 @@ public class BattleScreen implements Screen {
                         battleLog.add(target.getName() + "'s " + definition.getElement().name() + " guard breaks.");
                     }
                 }
+                triggerImpactFeedback(target, damage, triggeredBreak, definition.getElement());
                 break;
             case HEAL:
                 int healAmount = combatResolver.resolveHealing(actor, definition, ability.getPowerMultiplier());
@@ -898,11 +916,13 @@ public class BattleScreen implements Screen {
                     + " on " + target.getName() + " for " + damage + " damage.");
                 applyEnemyAbilityStatus(target, enemyAbility);
             }
+            triggerImpactFeedback(target, damage, damageResult.elementalBreak(), enemyAbility.getElement());
             speedCost = 95;
         } else {
             int damage = combatResolver.resolvePhysicalDamage(actor, target, 1.2f);
             combatResolver.applyDamage(target, damage);
             battleLog.add(actor.getName() + " strikes " + target.getName() + " for " + damage + " damage.");
+            triggerImpactFeedback(target, damage, false, Element.NONE);
         }
         endTurn(actor, speedCost);
     }
@@ -1283,7 +1303,10 @@ public class BattleScreen implements Screen {
         abilityXpGains.put(key, abilityXpGains.getOrDefault(key, 0) + xpAmount);
         if (levelsGained > 0) {
             masteryUnlocks.add(key + " proficiency reached Lv." + ability.getProficiencyLevel() + ".");
+            awakeningBannerText = key + " awakened";
+            awakeningBannerTimer = 1.2f;
         }
+        gameScreen.recordRobotUsage(actor.getPartyIndex(), usageKeyForAbility(ability.getDefinition()), 1);
         List<String> newUnlocks = gameScreen.applyAbilityMasteryUnlocks(actor.getPartyIndex());
         masteryUnlocks.addAll(newUnlocks);
         if (!newUnlocks.isEmpty()) {
@@ -1304,6 +1327,7 @@ public class BattleScreen implements Screen {
         String key = actor.getName() + ": " + weaponType.name();
         weaponXpGains.put(key, weaponXpGains.getOrDefault(key, 0)
             + com.rogueforge.game.progression.WeaponProficiencyTracker.xpForAttack());
+        gameScreen.recordRobotUsage(actor.getPartyIndex(), "assault", 1);
         if (gain != null && gain.toLevel > gain.fromLevel) {
             masteryUnlocks.add(actor.getName() + " raised " + weaponType.name() + " proficiency to Lv." + gain.toLevel
                 + " with " + actionName + ".");
@@ -1603,40 +1627,244 @@ public class BattleScreen implements Screen {
         timelinePanel.setPosition(w - 235f, h - 62f);
     }
 
-    private List<String> buildDebugOverlayLines() {
+    private void updateScene2dHud(float w, float h) {
+        updateTimelinePanel(w, h);
+        commandPanel.updateOptions(
+            "Commands",
+            getCurrentOptions(),
+            selectedIndex,
+            "Enter confirm  |  Esc back  |  Arrows move"
+        );
+        commandPanel.setPosition(28f, 42f);
+        inspectorPanel.updateContent(
+            "Battle Feed",
+            buildInspectorDetails(),
+            buildRecentBattleLogLines()
+        );
+        inspectorPanel.setPosition(w * 0.5f + 36f, 26f);
+        inputContextRouter.activate(resolveInputContext());
+    }
+
+    private void updateImpactFeedback(float delta) {
+        battleShakeTimer = Math.max(0f, battleShakeTimer - delta);
+        awakeningBannerTimer = Math.max(0f, awakeningBannerTimer - delta);
+        for (int i = impactBursts.size() - 1; i >= 0; i--) {
+            ImpactBurst burst = impactBursts.get(i);
+            burst.life -= delta;
+            burst.radius += delta * 90f;
+            if (burst.life <= 0f) {
+                impactBursts.remove(i);
+            }
+        }
+    }
+
+    private void applyBattleShake() {
+        if (battleShakeTimer <= 0f) {
+            return;
+        }
+        float strength = battleShakeIntensity * (battleShakeTimer / 0.28f);
+        camera.position.x += (float) ((Math.random() - 0.5f) * strength);
+        camera.position.y += (float) ((Math.random() - 0.5f) * strength);
+        camera.update();
+    }
+
+    private void triggerImpactFeedback(BattleCombatant target, int damage, boolean elementalBreak, Element element) {
+        if (damage <= 0) {
+            return;
+        }
+        battleShakeIntensity = Math.max(battleShakeIntensity, damage >= 30 ? 14f : damage >= 18 ? 8f : 4f);
+        battleShakeTimer = 0.28f;
+        impactBursts.add(new ImpactBurst(
+            target != null && target.isAlly() ? 220f : 980f,
+            480f,
+            burstColorFor(elementalBreak, element),
+            elementalBreak ? 1.1f : 0.55f
+        ));
+        if (elementalBreak) {
+            impactBursts.add(new ImpactBurst( target != null && target.isAlly() ? 220f : 980f,
+                480f,
+                new Color(1f, 0.95f, 0.68f, 1f),
+                1.35f
+            ));
+        }
+    }
+
+    private Color burstColorFor(boolean elementalBreak, Element element) {
+        if (elementalBreak) {
+            return new Color(1f, 0.75f, 0.35f, 1f);
+        }
+        if (element == Element.FIRE) {
+            return new Color(1f, 0.45f, 0.28f, 1f);
+        }
+        if (element == Element.LIGHTNING) {
+            return new Color(0.78f, 0.9f, 1f, 1f);
+        }
+        if (element == Element.ICE) {
+            return new Color(0.7f, 0.92f, 1f, 1f);
+        }
+        if (element == Element.EARTH) {
+            return new Color(0.72f, 0.58f, 0.34f, 1f);
+        }
+        return new Color(1f, 1f, 1f, 1f);
+    }
+
+    private String usageKeyForAbility(AbilityDefinition definition) {
+        if (definition == null) {
+            return "control";
+        }
+        switch (definition.getType()) {
+            case HEAL:
+            case BUFF:
+                return "support";
+            case DEBUFF:
+            case UTILITY:
+                return "control";
+            case DAMAGE:
+            default:
+                return "assault";
+        }
+    }
+
+    private void drawImpactBursts() {
+        if (impactBursts.isEmpty()) {
+            return;
+        }
+        shapeRenderer.setProjectionMatrix(camera.combined);
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        for (ImpactBurst burst : impactBursts) {
+            float alpha = Math.max(0f, burst.life);
+            shapeRenderer.setColor(burst.color.r, burst.color.g, burst.color.b, alpha);
+            shapeRenderer.circle(burst.x, burst.y, burst.radius * burst.scale, 18);
+        }
+        shapeRenderer.end();
+    }
+
+    private void drawAwakeningBanner(float h) {
+        if (awakeningBannerTimer <= 0f || awakeningBannerText == null || awakeningBannerText.isEmpty()) {
+            return;
+        }
+        batch.begin();
+        titleFont.setColor(1f, 0.92f, 0.62f, Math.min(1f, awakeningBannerTimer));
+        titleFont.draw(batch, awakeningBannerText, 64f, h - 122f);
+        batch.end();
+    }
+
+    private InputContext resolveInputContext() {
+        if (closingToResults) {
+            return InputContext.COMBAT_RESULTS;
+        }
+        return mode == Mode.TARGET_ENEMY || mode == Mode.TARGET_ALLY || mode == Mode.ANALYZE_TARGET
+            ? InputContext.COMBAT_TARGETING
+            : InputContext.COMBAT_COMMAND;
+    }
+
+    private List<DebugOverlay.DebugSection> buildDebugOverlaySections() {
+        List<DebugOverlay.DebugSection> sections = new ArrayList<>();
+        sections.add(new DebugOverlay.DebugSection("Battle", List.of(
+            "FPS: " + Gdx.graphics.getFramesPerSecond(),
+            "Zone: " + gameScreen.getCurrentZoneId(),
+            "Seed: " + gameScreen.getWorldSeed(),
+            "Input: " + resolveInputContext().name(),
+            "Action delay: " + String.format("%.2f", actionDelay),
+            "Heap: " + getUsedHeapMegabytes() + " MB / " + getMaxHeapMegabytes() + " MB"
+        )));
+        sections.add(new DebugOverlay.DebugSection("Field State", List.of(
+            "Allies: " + livingAllies().size() + "  Enemies: " + livingEnemies().size(),
+            "Mode: " + mode.name() + "  Selected: " + selectedIndex,
+            "Active actor: " + (activeActor != null ? activeActor.getName() : "none"),
+            "Timeline lead: " + describeTimelineLead()
+        )));
+        sections.add(new DebugOverlay.DebugSection("Statuses", buildStatusDebugLines()));
+        return sections;
+    }
+
+    private List<String> buildInspectorDetails() {
         List<String> lines = new ArrayList<>();
-        lines.add("FPS: " + Gdx.graphics.getFramesPerSecond());
-        lines.add("Zone: " + gameScreen.getCurrentZoneId());
-        lines.add("Seed: " + gameScreen.getWorldSeed());
-        lines.add("Allies: " + livingAllies().size() + "  Enemies: " + livingEnemies().size());
-        lines.add("Mode: " + mode.name() + "  Selected: " + selectedIndex);
-        lines.add("Action delay: " + String.format("%.2f", actionDelay));
+        BattleCombatant focus = activeActor != null ? activeActor : firstTimelineCombatant();
+        if (focus == null) {
+            lines.add("Waiting for initiative.");
+            return lines;
+        }
+        lines.add("Actor: " + focus.getName() + "  HP " + (int) focus.getHealth() + "/" + (int) focus.getMaxHealth());
+        lines.add("Class: " + focus.getCombatClass() + "  SPD " + (int) focus.getEffectiveSpeed());
+        lines.add("Effects: " + buildCombatantEffectSummary(focus));
+        lines.add("Weak: " + buildElementSummary(focus.getWeaknesses()) + "  Res: " + buildElementSummary(focus.getResistances()));
+        lines.add("Unique: " + (focus.getUniqueBoosts().isEmpty() ? "none" : String.join(", ", focus.getUniqueBoosts())));
         return lines;
     }
 
-    private void drawActionPanel(float w, float h) {
-        batch.begin();
-        bodyFont.setColor(Color.WHITE);
-        bodyFont.draw(batch, "Commands", 48f, 180f);
-        String[] options = getCurrentOptions();
-        for (int i = 0; i < options.length; i++) {
-            bodyFont.setColor(i == selectedIndex ? new Color(1f, 0.9f, 0.55f, 1f) : Color.WHITE);
-            bodyFont.draw(batch, (i + 1) + ". " + options[i], 48f, 148f - (i * 22f));
+    private List<String> buildRecentBattleLogLines() {
+        List<String> lines = new ArrayList<>();
+        for (int i = battleLog.size() - 1; i >= 0 && lines.size() < 6; i--) {
+            lines.add(battleLog.get(i));
         }
-        smallFont.setColor(Color.LIGHT_GRAY);
-        smallFont.draw(batch, "Enter to confirm, Esc to back, Arrow keys to move.", w * 0.38f, 52f);
-        batch.end();
+        return lines;
     }
 
-    private void drawBattleLog(float w, float h) {
-        batch.begin();
-        bodyFont.setColor(Color.WHITE);
-        bodyFont.draw(batch, "Battle Log", w * 0.52f, 180f);
-        for (int i = 0; i < battleLog.size(); i++) {
-            smallFont.setColor(Color.WHITE);
-            smallFont.draw(batch, battleLog.get(battleLog.size() - 1 - i), w * 0.52f, 148f - (i * 18f));
+    private String buildCombatantEffectSummary(BattleCombatant combatant) {
+        if (combatant == null || combatant.getStatusEffectManager().getActiveEffects().isEmpty()) {
+            return "none";
         }
-        batch.end();
+        List<String> names = new ArrayList<>();
+        combatant.getStatusEffectManager().getActiveEffects().forEach(effect ->
+            names.add(effect.getType().name() + "(" + effect.getRemainingTurns() + ")"));
+        return String.join(", ", names);
+    }
+
+    private String buildElementSummary(List<Element> elements) {
+        if (elements == null || elements.isEmpty()) {
+            return "-";
+        }
+        List<String> names = new ArrayList<>();
+        for (Element element : elements) {
+            if (element != null && element != Element.NONE) {
+                names.add(element.name());
+            }
+        }
+        return names.isEmpty() ? "-" : String.join("/", names);
+    }
+
+    private String describeTimelineLead() {
+        List<BattleCombatant> turns = battleState.getTurnTimeline().getNextTurns(battleState.getCombatants(), 3);
+        if (turns.isEmpty()) {
+            return "none";
+        }
+        List<String> names = new ArrayList<>();
+        for (BattleCombatant turn : turns) {
+            names.add(turn.getName());
+        }
+        return String.join(" -> ", names);
+    }
+
+    private BattleCombatant firstTimelineCombatant() {
+        List<BattleCombatant> turns = battleState.getTurnTimeline().getNextTurns(battleState.getCombatants(), 1);
+        return turns.isEmpty() ? null : turns.get(0);
+    }
+
+    private long getUsedHeapMegabytes() {
+        Runtime runtime = Runtime.getRuntime();
+        return (runtime.totalMemory() - runtime.freeMemory()) / (1024L * 1024L);
+    }
+
+    private long getMaxHeapMegabytes() {
+        return Runtime.getRuntime().maxMemory() / (1024L * 1024L);
+    }
+
+    private List<String> buildStatusDebugLines() {
+        List<String> lines = new ArrayList<>();
+        for (BattleCombatant combatant : battleState.getCombatants()) {
+            if (combatant == null || !combatant.isAlive()) {
+                continue;
+            }
+            lines.add(combatant.getName() + ": " + buildCombatantEffectSummary(combatant));
+            if (lines.size() >= 6) {
+                break;
+            }
+        }
+        if (lines.isEmpty()) {
+            lines.add("No active status effects.");
+        }
+        return lines;
     }
 
     private String join(String[] values) {
@@ -1758,5 +1986,22 @@ public class BattleScreen implements Screen {
         int damage;
         float multiplier;
         boolean triggeredBreak;
+    }
+
+    private static class ImpactBurst {
+        final float x;
+        final float y;
+        final Color color;
+        float life;
+        float radius = 14f;
+        final float scale;
+
+        ImpactBurst(float x, float y, Color color, float scale) {
+            this.x = x;
+            this.y = y;
+            this.color = color;
+            this.life = 0.45f;
+            this.scale = scale;
+        }
     }
 }

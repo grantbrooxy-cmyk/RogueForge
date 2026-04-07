@@ -39,6 +39,7 @@ class SaveFileTest {
         assertNotNull(saveFile.getActiveRegionalIncidentsByZoneId());
         assertNotNull(saveFile.getActiveSettlementCrisesByZoneId());
         assertNotNull(saveFile.getPlayerQuestContracts());
+        assertEquals(SaveFile.CURRENT_VERSION, saveFile.getVersion());
         assertEquals(0L, saveFile.getWorldSeed());
         assertEquals(1, saveFile.getForgeCoreLevel());
         assertEquals(0, saveFile.getInfiniteDungeonCurrentFloor());

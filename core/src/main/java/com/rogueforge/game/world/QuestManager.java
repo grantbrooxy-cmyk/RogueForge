@@ -2,6 +2,7 @@ package com.rogueforge.game.world;
 
 import com.rogueforge.game.core.GameState;
 import com.rogueforge.game.data.DefinitionRegistries;
+import com.rogueforge.game.engine.ServiceLifecycle;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -10,7 +11,7 @@ import java.util.Map;
 /**
  * Manages structured quest progress and current objectives.
  */
-public class QuestManager {
+public class QuestManager implements ServiceLifecycle {
     public static final String NOT_STARTED = "NOT_STARTED";
     public static final String COMPLETED = "__COMPLETED__";
     private static final String IRONHAVEN_ARRIVAL_QUEST = "ironhaven_arrival";
@@ -21,6 +22,11 @@ public class QuestManager {
 
     public QuestManager() {
         loadDefinitions();
+    }
+
+    @Override
+    public void initialize() {
+        reloadDefinitions();
     }
 
     public void reloadDefinitions() {

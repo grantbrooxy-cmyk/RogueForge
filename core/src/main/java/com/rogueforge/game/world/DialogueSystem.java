@@ -2,6 +2,7 @@ package com.rogueforge.game.world;
 
 import com.rogueforge.game.core.GameState;
 import com.rogueforge.game.data.DefinitionRegistries;
+import com.rogueforge.game.engine.ServiceLifecycle;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -9,10 +10,15 @@ import java.util.List;
 /**
  * Resolves dialogue content from JSON based on current game state.
  */
-public class DialogueSystem {
+public class DialogueSystem implements ServiceLifecycle {
     private final List<DialogueDefinition> definitions = new ArrayList<>();
 
     public DialogueSystem() {
+        reloadDefinitions();
+    }
+
+    @Override
+    public void initialize() {
         reloadDefinitions();
     }
 

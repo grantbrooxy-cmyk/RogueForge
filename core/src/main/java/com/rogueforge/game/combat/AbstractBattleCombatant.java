@@ -248,4 +248,16 @@ public abstract class AbstractBattleCombatant implements BattleCombatant {
         }
         return modified;
     }
+
+    void copyRuntimeStateFrom(BattleCombatant other) {
+        if (!(other instanceof AbstractBattleCombatant)) {
+            return;
+        }
+        AbstractBattleCombatant source = (AbstractBattleCombatant) other;
+        statusEffectManager.copyFrom(source.statusEffectManager);
+        elementalBreaks.clear();
+        elementalBreaks.addAll(source.elementalBreaks);
+        lastElementHit = source.lastElementHit;
+        consecutiveElementHits = source.consecutiveElementHits;
+    }
 }

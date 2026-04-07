@@ -16,15 +16,17 @@ public class GameInputProcessor implements InputProcessor {
 
     @Override
     public boolean keyDown(int keycode) {
+        InputContext context = gameScreen.getCurrentInputContext();
         if (keycode == Input.Keys.ESCAPE) {
             gameScreen.handlePauseInput();
             return true;
         }
-        if (keycode == Input.Keys.I) {
+        if (keycode == Input.Keys.I && context == InputContext.EXPLORATION) {
             gameScreen.openWorkshop();
             return true;
         }
-        if (keycode == Input.Keys.ENTER) {
+        if (keycode == Input.Keys.ENTER
+            && (context == InputContext.DIALOG || context == InputContext.SETTLEMENT || context == InputContext.BUILD)) {
             gameScreen.dismissMessages();
             return true;
         }

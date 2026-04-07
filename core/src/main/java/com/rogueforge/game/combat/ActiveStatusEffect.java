@@ -38,4 +38,8 @@ public class ActiveStatusEffect {
         remainingTurns--;
         return remainingTurns <= 0;
     }
+
+    public ActiveStatusEffect copy() {
+        return new ActiveStatusEffect(type, remainingTurns, magnitude);
+    }
 }

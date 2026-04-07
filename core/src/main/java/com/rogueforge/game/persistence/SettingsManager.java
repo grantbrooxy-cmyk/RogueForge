@@ -4,18 +4,24 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.utils.Json;
 import com.rogueforge.game.data.SettingsConfig;
+import com.rogueforge.game.engine.ServiceLifecycle;
 
 /**
  * Manages game settings persistence and application.
  * Loads, saves, and applies user preferences.
  */
-public class SettingsManager {
+public class SettingsManager implements ServiceLifecycle {
     private SettingsConfig currentConfig;
     private Json json;
 
     public SettingsManager() {
         this.json = new Json();
         this.currentConfig = new SettingsConfig();
+    }
+
+    @Override
+    public void initialize() {
+        load();
     }
 
     /**

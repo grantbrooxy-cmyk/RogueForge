@@ -3,7 +3,7 @@ package com.rogueforge.game.entity.component;
 /**
  * Robot-specific identity and deployment data.
  */
-public class RobotCoreComponent {
+public class RobotCoreComponent implements Component {
     public String robotId;
     public String robotName;
     public String role;

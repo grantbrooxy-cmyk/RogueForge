@@ -55,6 +55,9 @@ public class AssetLoadingScreen implements Screen {
     public void render(float delta) {
         boolean loaded = context.updateAssetLoading();
         float progress = context.getLoadingProgress();
+        int queuedAssets = context.getAssets().getQueuedAssets();
+        int loadedAssets = context.getAssets().getLoadedAssets();
+        int totalAssets = Math.max(loadedAssets, loadedAssets + queuedAssets);
         float w = Gdx.graphics.getWidth();
         float h = Gdx.graphics.getHeight();
 
@@ -78,6 +81,12 @@ public class AssetLoadingScreen implements Screen {
         String progressText = Math.round(progress * 100f) + "%";
         layout.setText(bodyFont, progressText);
         bodyFont.draw(batch, layout, (w - layout.width) / 2f, h * 0.36f);
+        String queueText = "Loaded " + loadedAssets + " / " + Math.max(1, totalAssets) + " startup assets";
+        layout.setText(bodyFont, queueText);
+        bodyFont.draw(batch, layout, (w - layout.width) / 2f, h * 0.31f);
+        String statusText = loaded ? "Finalizing startup..." : "Queueing textures and menu assets...";
+        layout.setText(bodyFont, statusText);
+        bodyFont.draw(batch, layout, (w - layout.width) / 2f, h * 0.26f);
         batch.end();
 
         if (loaded) {

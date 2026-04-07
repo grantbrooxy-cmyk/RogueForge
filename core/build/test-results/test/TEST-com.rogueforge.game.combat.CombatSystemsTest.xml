@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.rogueforge.game.combat.CombatSystemsTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-04-06T23:07:12" hostname="Grants-MacBook-Pro.local" time="0.058">
+  <properties/>
+  <testcase name="combatStatsClampDamageHealingAndAliveState()" classname="com.rogueforge.game.combat.CombatSystemsTest" time="0.015"/>
+  <testcase name="statusEffectManagerAppliesDotsBuffsRestrictionsAndExpiry()" classname="com.rogueforge.game.combat.CombatSystemsTest" time="0.012"/>
+  <testcase name="combatResolverHandlesDeterministicCasesEventsAndDamageResults()" classname="com.rogueforge.game.combat.CombatSystemsTest" time="0.017"/>
+  <testcase name="combatSystemOwnsBattleStateAndResolver()" classname="com.rogueforge.game.combat.CombatSystemsTest" time="0.003"/>
+  <testcase name="combatSimulationPreviewsAbilityDamageWithoutMutatingLiveBattleState()" classname="com.rogueforge.game.combat.CombatSystemsTest" time="0.007"/>
+  <testcase name="elementalSystemRecognizesWeaknessResistanceAbsorbAndBreak()" classname="com.rogueforge.game.combat.CombatSystemsTest" time="0.0"/>
+  <testcase name="battleCombatantTracksClassBoostsBreaksAndHealing()" classname="com.rogueforge.game.combat.CombatSystemsTest" time="0.001"/>
+  <testcase name="turnTimelineOrdersByTickSpeedAndRemovals()" classname="com.rogueforge.game.combat.CombatSystemsTest" time="0.0"/>
+  <testcase name="bestiaryManagerCapsAndCopiesScanData()" classname="com.rogueforge.game.combat.CombatSystemsTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

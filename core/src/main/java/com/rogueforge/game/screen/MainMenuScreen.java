@@ -17,6 +17,7 @@ import com.rogueforge.game.core.GameContext;
 import com.rogueforge.game.core.RogueForgeGame;
 import com.rogueforge.game.core.ScreenManager;
 import com.rogueforge.game.data.SaveFile;
+import com.rogueforge.game.engine.GameEngineServices;
 import com.rogueforge.game.persistence.SaveManager;
 import com.rogueforge.game.persistence.SettingsManager;
 
@@ -38,6 +39,7 @@ public class MainMenuScreen implements Screen {
     private final BitmapFont buttonFont;
     private final OrthographicCamera camera;
     private final GlyphLayout layout;
+    private final GameEngineServices engineServices;
     private final SaveManager saveManager;
     private final SettingsManager settingsManager;
     private final Texture backgroundTexture;
@@ -61,13 +63,14 @@ public class MainMenuScreen implements Screen {
         this.context = context;
         this.game = context.getGame();
         this.screenManager = context.getScreenManager();
+        this.engineServices = context.getEngineServices();
         this.batch = new SpriteBatch();
         this.shapeRenderer = new ShapeRenderer();
         this.camera = new OrthographicCamera();
         this.camera.setToOrtho(false, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         this.layout = new GlyphLayout();
-        this.saveManager = context.getSaveManager();
-        this.settingsManager = context.getSettingsManager();
+        this.saveManager = engineServices.getSaveManager();
+        this.settingsManager = engineServices.getSettingsManager();
         this.backgroundTexture = loadTexture(BACKGROUND_TEXTURE_PATH);
         this.uiTexture = createUiTexture();
 

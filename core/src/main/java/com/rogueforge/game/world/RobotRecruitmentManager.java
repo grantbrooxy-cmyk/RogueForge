@@ -2,6 +2,7 @@ package com.rogueforge.game.world;
 
 import com.rogueforge.game.core.GameState;
 import com.rogueforge.game.data.DefinitionRegistries;
+import com.rogueforge.game.engine.ServiceLifecycle;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -9,10 +10,15 @@ import java.util.Map;
 /**
  * Handles robot recruitment events in the world.
  */
-public class RobotRecruitmentManager {
+public class RobotRecruitmentManager implements ServiceLifecycle {
     private final Map<String, RecruitmentDefinition> definitions = new HashMap<>();
 
     public RobotRecruitmentManager() {
+        reloadDefinitions();
+    }
+
+    @Override
+    public void initialize() {
         reloadDefinitions();
     }
 

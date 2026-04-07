@@ -16,6 +16,10 @@ public class StoryEventDefinition {
     private String setQuestStep;
     private String completeQuestId;
     private String settlementUpgradeId;
+    private String socialFactionId;
+    private int socialReputationDelta;
+    private int minimumForgeCoreLevel;
+    private String requiredTimePhase;
     private int rewardExperience;
 
     public String getId() {
@@ -64,6 +68,22 @@ public class StoryEventDefinition {
 
     public String getSettlementUpgradeId() {
         return settlementUpgradeId;
+    }
+
+    public String getSocialFactionId() {
+        return socialFactionId;
+    }
+
+    public int getSocialReputationDelta() {
+        return socialReputationDelta;
+    }
+
+    public int getMinimumForgeCoreLevel() {
+        return minimumForgeCoreLevel;
+    }
+
+    public String getRequiredTimePhase() {
+        return requiredTimePhase;
     }
 
     public int getRewardExperience() {

@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CombatSystemsTest {
@@ -272,10 +273,63 @@ class CombatSystemsTest {
         CombatSystem combatSystem = new CombatSystem(List.of(ally, enemy), resolver);
 
         assertEquals(resolver, combatSystem.getCombatResolver());
+        assertNotNull(combatSystem.getCombatSimulation());
         assertEquals(2, combatSystem.getCombatants().size());
         assertEquals(1, combatSystem.getAllies().size());
         assertEquals(1, combatSystem.getEnemies().size());
         assertEquals("ally", combatSystem.getCurrentActor().getId());
+    }
+
+    @Test
+    void combatSimulationPreviewsAbilityDamageWithoutMutatingLiveBattleState() {
+        BattleCombatant caster = combatant("caster", "Support", 100f, 22f, 18f, 28f, 14f);
+        BattleCombatant target = new MonsterCombatant(
+            "enemy",
+            "Enemy",
+            0,
+            "C",
+            "AI",
+            "Enemy",
+            80f,
+            80f,
+            10f,
+            10f,
+            10f,
+            10f,
+            new ArrayList<>(),
+            List.of(Element.WATER),
+            List.of(),
+            List.of(),
+            0,
+            0,
+            null,
+            List.of()
+        );
+        AbilityDefinition pulse = new AbilityDefinition(
+            "pulse",
+            "Pulse",
+            AbilityDefinition.AbilityType.DAMAGE,
+            AbilityDefinition.TargetType.SINGLE_ENEMY,
+            4f,
+            24f,
+            0f,
+            "Preview pulse"
+        );
+        pulse.setElement(Element.WATER);
+
+        CombatSystem combatSystem = new CombatSystem(List.of(caster, target), new CombatResolver(new EventBus()));
+        CombatSimulationResult result = combatSystem.getCombatSimulation().simulateAbility(
+            combatSystem.getCombatants(),
+            caster,
+            target,
+            pulse,
+            1f
+        );
+
+        assertTrue(result.getAppliedDamage() > 0);
+        assertTrue(result.getTargetHealthAfter() < target.getHealth());
+        assertFalse(result.getProjectedTurnOrder().isEmpty());
+        assertEquals(80f, target.getHealth());
     }
 
     private static BattleCombatant combatant(String id, String combatClass, float hp, float agility,

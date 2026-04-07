@@ -14,6 +14,7 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.rogueforge.game.core.GameContext;
 import com.rogueforge.game.core.RogueForgeGame;
 import com.rogueforge.game.core.ScreenManager;
+import com.rogueforge.game.engine.GameEngineServices;
 import com.rogueforge.game.persistence.SettingsManager;
 
 /**
@@ -27,6 +28,7 @@ public class OptionsScreen implements Screen {
     private final GameContext context;
     private final RogueForgeGame game;
     private final ScreenManager screenManager;
+    private final GameEngineServices engineServices;
     private final SettingsManager settingsManager;
     private final SpriteBatch batch;
     private final ShapeRenderer shapeRenderer;
@@ -56,7 +58,8 @@ public class OptionsScreen implements Screen {
         this.context = context;
         this.game = context.getGame();
         this.screenManager = context.getScreenManager();
-        this.settingsManager = context.getSettingsManager();
+        this.engineServices = context.getEngineServices();
+        this.settingsManager = engineServices.getSettingsManager();
         this.batch = new SpriteBatch();
         this.shapeRenderer = new ShapeRenderer();
         this.camera = new OrthographicCamera();

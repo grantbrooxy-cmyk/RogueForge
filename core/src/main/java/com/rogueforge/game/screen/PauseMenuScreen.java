@@ -16,6 +16,7 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.rogueforge.game.core.GameContext;
 import com.rogueforge.game.core.RogueForgeGame;
 import com.rogueforge.game.core.ScreenManager;
+import com.rogueforge.game.engine.GameEngineServices;
 import com.rogueforge.game.persistence.SaveManager;
 import com.rogueforge.game.data.SaveFile;
 
@@ -30,6 +31,7 @@ public class PauseMenuScreen implements Screen {
     private final RogueForgeGame game;
     private final ScreenManager screenManager;
     private final GameScreen gameScreen;
+    private final GameEngineServices engineServices;
     private final SaveManager saveManager;
     private final SpriteBatch batch;
     private final ShapeRenderer shapeRenderer;
@@ -67,7 +69,8 @@ public class PauseMenuScreen implements Screen {
         this.game = context.getGame();
         this.screenManager = context.getScreenManager();
         this.gameScreen = gameScreen;
-        this.saveManager = context.getSaveManager();
+        this.engineServices = context.getEngineServices();
+        this.saveManager = engineServices.getSaveManager();
         this.batch = new SpriteBatch();
         this.shapeRenderer = new ShapeRenderer();
         this.camera = new OrthographicCamera();

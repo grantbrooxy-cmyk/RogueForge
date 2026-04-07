@@ -11,6 +11,12 @@ public class SettlementNpcScheduleDefinition {
     private float dayOffsetY;
     private float eveningOffsetX;
     private float eveningOffsetY;
+    private float nightOffsetX;
+    private float nightOffsetY;
+    private String morningActivity;
+    private String dayActivity;
+    private String eveningActivity;
+    private String nightActivity;
 
     public SettlementNpcScheduleDefinition() {
     }
@@ -41,5 +47,29 @@ public class SettlementNpcScheduleDefinition {
 
     public float getEveningOffsetY() {
         return eveningOffsetY;
+    }
+
+    public float getNightOffsetX() {
+        return nightOffsetX;
+    }
+
+    public float getNightOffsetY() {
+        return nightOffsetY;
+    }
+
+    public String getMorningActivity() {
+        return morningActivity;
+    }
+
+    public String getDayActivity() {
+        return dayActivity;
+    }
+
+    public String getEveningActivity() {
+        return eveningActivity;
+    }
+
+    public String getNightActivity() {
+        return nightActivity;
     }
 }

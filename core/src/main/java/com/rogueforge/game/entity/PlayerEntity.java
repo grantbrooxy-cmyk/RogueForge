@@ -7,7 +7,9 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Vector2;
 import com.rogueforge.game.entity.component.InventoryComponent;
 import com.rogueforge.game.entity.component.PositionComponent;
+import com.rogueforge.game.entity.component.ProficiencyComponent;
 import com.rogueforge.game.entity.component.StatsComponent;
+import com.rogueforge.game.entity.component.TransformComponent;
 
 public class PlayerEntity extends GameEntity {
     public enum AnimationState {
@@ -26,12 +28,15 @@ public class PlayerEntity extends GameEntity {
     private final PositionComponent positionComponent = new PositionComponent();
     private final StatsComponent statsComponent = new StatsComponent();
     private final InventoryComponent inventoryComponent = new InventoryComponent();
+    private final ProficiencyComponent proficiencyComponent = new ProficiencyComponent();
 
     public PlayerEntity(Vector2 startPosition) {
         super("player");
+        registerComponent(TransformComponent.class, positionComponent);
         registerComponent(PositionComponent.class, positionComponent);
         registerComponent(StatsComponent.class, statsComponent);
         registerComponent(InventoryComponent.class, inventoryComponent);
+        registerComponent(ProficiencyComponent.class, proficiencyComponent);
         this.position = new Vector2(startPosition);
         this.velocity = new Vector2(0, 0);
         this.speed = 200f;
@@ -167,6 +172,10 @@ public class PlayerEntity extends GameEntity {
 
     public InventoryComponent inventory() {
         return inventoryComponent;
+    }
+
+    public ProficiencyComponent proficiency() {
+        return proficiencyComponent;
     }
 
     private void syncComponents() {

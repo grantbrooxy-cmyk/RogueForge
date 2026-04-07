@@ -8,10 +8,12 @@ import java.util.List;
 public class CombatSystem {
     private final BattleState battleState;
     private final CombatResolver combatResolver;
+    private final CombatSimulation combatSimulation;
 
     public CombatSystem(List<BattleCombatant> combatants, CombatResolver combatResolver) {
         this.battleState = new BattleState(combatants);
         this.combatResolver = combatResolver;
+        this.combatSimulation = new CombatSimulation(combatResolver);
     }
 
     public BattleState getBattleState() {
@@ -20,6 +22,10 @@ public class CombatSystem {
 
     public CombatResolver getCombatResolver() {
         return combatResolver;
+    }
+
+    public CombatSimulation getCombatSimulation() {
+        return combatSimulation;
     }
 
     public List<BattleCombatant> getCombatants() {

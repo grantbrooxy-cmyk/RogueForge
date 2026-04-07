@@ -1,11 +1,11 @@
 package com.rogueforge.game.combat;
 
+import com.badlogic.gdx.utils.Pools;
 import com.rogueforge.game.core.EventBus;
 import com.rogueforge.game.core.EventPriority;
 import com.rogueforge.game.event.DamageDealtEvent;
 import com.rogueforge.game.event.EntityKilledEvent;
 
-import java.util.List;
 import java.util.List;
 
 /**
@@ -211,7 +211,7 @@ public class CombatResolver {
      */
     public void checkDeath(CombatStats stats, Object entity) {
         if (!stats.isAlive()) {
-            EntityKilledEvent event = new EntityKilledEvent(entity);
+            EntityKilledEvent event = Pools.obtain(EntityKilledEvent.class).init(entity);
             eventBus.queue(event, EventPriority.HIGH);
         }
     }
@@ -235,15 +235,15 @@ public class CombatResolver {
     }
 
     private void fireDamageEvent(Object source, Object target, float damage) {
-        eventBus.fire(new DamageDealtEvent(source, target, damage));
+        eventBus.fire(Pools.obtain(DamageDealtEvent.class).init(source, target, damage));
     }
 
     private void queueDamageEvent(Object source, Object target, float damage) {
-        eventBus.queue(new DamageDealtEvent(source, target, damage), EventPriority.HIGH);
+        eventBus.queue(Pools.obtain(DamageDealtEvent.class).init(source, target, damage), EventPriority.HIGH);
     }
 
     private void queueEntityKilledEvent(Object entity) {
-        eventBus.queue(new EntityKilledEvent(entity), EventPriority.NORMAL);
+        eventBus.queue(Pools.obtain(EntityKilledEvent.class).init(entity), EventPriority.NORMAL);
     }
 
     private Object resolveEventReference(BattleCombatant combatant) {

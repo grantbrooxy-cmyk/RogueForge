@@ -1,5 +1,6 @@
 package com.rogueforge.game.entity;
 
+import com.rogueforge.game.entity.component.Component;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -12,7 +13,7 @@ import java.util.Map;
  * without committing the whole project to a full ECS yet.</p>
  */
 public abstract class GameEntity {
-    private final Map<Class<?>, Object> components = new LinkedHashMap<>();
+    private final Map<Class<? extends Component>, Component> components = new LinkedHashMap<>();
     private String entityId;
 
     protected GameEntity() {
@@ -22,7 +23,7 @@ public abstract class GameEntity {
         this.entityId = entityId;
     }
 
-    protected <T> T registerComponent(Class<T> type, T component) {
+    protected <T extends Component> T registerComponent(Class<T> type, T component) {
         if (type == null || component == null) {
             throw new IllegalArgumentException("Component type and instance are required.");
         }
@@ -30,12 +31,12 @@ public abstract class GameEntity {
         return component;
     }
 
-    public <T> T getComponent(Class<T> type) {
-        Object component = components.get(type);
+    public <T extends Component> T getComponent(Class<T> type) {
+        Component component = components.get(type);
         return component != null ? type.cast(component) : null;
     }
 
-    public <T> T requireComponent(Class<T> type) {
+    public <T extends Component> T requireComponent(Class<T> type) {
         T component = getComponent(type);
         if (component == null) {
             throw new IllegalStateException("Missing component: " + type.getSimpleName());
@@ -43,11 +44,11 @@ public abstract class GameEntity {
         return component;
     }
 
-    public boolean hasComponent(Class<?> type) {
+    public boolean hasComponent(Class<? extends Component> type) {
         return components.containsKey(type);
     }
 
-    public Collection<Object> getComponents() {
+    public Collection<Component> getComponents() {
         return Collections.unmodifiableCollection(components.values());
     }
 

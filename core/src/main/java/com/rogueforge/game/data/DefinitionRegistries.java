@@ -89,6 +89,7 @@ public final class DefinitionRegistries {
             collector.requireText(definition.getTriggerType(), "triggerType");
             collector.requireText(definition.getTriggerId(), "triggerId");
             collector.requireText(definition.getText(), "text");
+            collector.require(definition.getMinimumForgeCoreLevel() >= 0, "minimumForgeCoreLevel must be >= 0.");
         }
     );
 

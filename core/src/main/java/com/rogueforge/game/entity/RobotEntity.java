@@ -4,8 +4,10 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Vector2;
 import com.rogueforge.game.entity.component.InventoryComponent;
 import com.rogueforge.game.entity.component.PositionComponent;
+import com.rogueforge.game.entity.component.ProficiencyComponent;
 import com.rogueforge.game.entity.component.RobotCoreComponent;
 import com.rogueforge.game.entity.component.StatsComponent;
+import com.rogueforge.game.entity.component.TransformComponent;
 import com.rogueforge.game.robot.RobotDefinition;
 import java.util.List;
 
@@ -31,13 +33,16 @@ public class RobotEntity extends GameEntity {
     private final StatsComponent statsComponent = new StatsComponent();
     private final InventoryComponent inventoryComponent = new InventoryComponent();
     private final RobotCoreComponent robotCoreComponent = new RobotCoreComponent();
+    private final ProficiencyComponent proficiencyComponent = new ProficiencyComponent();
 
     public RobotEntity(RobotDefinition definition, Vector2 startPosition) {
         super(definition != null ? definition.getId() : null);
+        registerComponent(TransformComponent.class, positionComponent);
         registerComponent(PositionComponent.class, positionComponent);
         registerComponent(StatsComponent.class, statsComponent);
         registerComponent(InventoryComponent.class, inventoryComponent);
         registerComponent(RobotCoreComponent.class, robotCoreComponent);
+        registerComponent(ProficiencyComponent.class, proficiencyComponent);
         this.definition = definition;
         this.position = new Vector2(startPosition);
         this.velocity = new Vector2(0, 0);
@@ -201,6 +206,10 @@ public class RobotEntity extends GameEntity {
     public RobotCoreComponent robotCore() {
         syncComponents();
         return robotCoreComponent;
+    }
+
+    public ProficiencyComponent proficiency() {
+        return proficiencyComponent;
     }
 
     private void syncComponents() {

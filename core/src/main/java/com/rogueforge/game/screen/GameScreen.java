@@ -61,6 +61,7 @@ import com.rogueforge.game.engine.world.FrontierBiomeDefinition;
 import com.rogueforge.game.engine.world.FrontierChunkManager;
 import com.rogueforge.game.engine.world.FrontierZoneGenerator;
 import com.rogueforge.game.engine.world.InfiniteDungeonLayoutGenerator;
+import com.rogueforge.game.engine.world.EnvironmentalInteractionSystem;
 import com.rogueforge.game.engine.world.TmxWorldLoader;
 import com.rogueforge.game.engine.world.ZoneLoader;
 import com.rogueforge.game.combat.AbilityDefinition;
@@ -102,6 +103,7 @@ import com.rogueforge.game.world.SettlementNpcScheduleDefinition;
 import com.rogueforge.game.world.SettlementState;
 import com.rogueforge.game.world.SettlementTimeManager;
 import com.rogueforge.game.world.SettlementUpgradeDefinition;
+import com.rogueforge.game.world.DynamicWorldEventSystem;
 import com.rogueforge.game.world.WarPhaseManager;
 import com.rogueforge.game.world.WarPhaseSnapshot;
 import com.rogueforge.game.world.WorldStateManager;
@@ -264,6 +266,7 @@ public class GameScreen implements Screen {
     private final ZoneLoader zoneLoader;
     private final InfiniteDungeonLayoutGenerator infiniteDungeonLayoutGenerator;
     private final FrontierZoneGenerator frontierZoneGenerator;
+    private final EnvironmentalInteractionSystem environmentalInteractionSystem;
     private final SettingsManager settingsManager;
     private final SaveManager saveManager;
     private final MetaProgressionManager metaProgressionManager;
@@ -272,6 +275,7 @@ public class GameScreen implements Screen {
     private final WorldStateManager worldStateManager;
     private final RobotRecruitmentManager recruitmentManager;
     private final SettlementManager settlementManager;
+    private final DynamicWorldEventSystem dynamicWorldEventSystem;
     private final WarPhaseManager warPhaseManager;
     private final Map<String, Boolean> openedChestStates = new HashMap<>();
     private final List<String> harvestedFrontierFeatureIds = new ArrayList<>();
@@ -352,8 +356,9 @@ public class GameScreen implements Screen {
 
     private boolean isPaused = false;
     private boolean battleActive = false;
+    private final List<String> pendingRobotAwakeningMessages = new ArrayList<>();
     private GameInputProcessor gameInputProcessor;
-    private InputMultiplexer inputMultiplexer;
+    private InputContextRouter inputContextRouter;
     private final DebugOverlay debugOverlay;
 
     public GameScreen(RogueForgeGame game, ScreenManager screenManager) {
@@ -380,14 +385,16 @@ public class GameScreen implements Screen {
         this.worldLoader = engineServices.getWorldLoader();
         this.infiniteDungeonLayoutGenerator = engineServices.getInfiniteDungeonLayoutGenerator();
         this.frontierZoneGenerator = engineServices.getFrontierZoneGenerator();
-        this.settingsManager = context.getSettingsManager();
-        this.saveManager = context.getSaveManager();
-        this.metaProgressionManager = context.getMetaProgressionManager();
+        this.environmentalInteractionSystem = engineServices.getEnvironmentalInteractionSystem();
+        this.settingsManager = engineServices.getSettingsManager();
+        this.saveManager = engineServices.getSaveManager();
+        this.metaProgressionManager = engineServices.getMetaProgressionManager();
         this.questManager = engineServices.getQuestManager();
         this.dialogueSystem = engineServices.getDialogueSystem();
         this.worldStateManager = engineServices.getWorldStateManager();
         this.recruitmentManager = engineServices.getRecruitmentManager();
         this.settlementManager = engineServices.getSettlementManager();
+        this.dynamicWorldEventSystem = engineServices.getDynamicWorldEventSystem();
         this.warPhaseManager = engineServices.getWarPhaseManager();
         this.gameLoop = new GameLoop();
         this.gameCamera = new OrthographicCamera();
@@ -398,7 +405,7 @@ public class GameScreen implements Screen {
         this.gameViewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
         this.uiViewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
         this.hudOverlay = new HUDOverlay(game);
-        this.debugOverlay = new DebugOverlay(this::buildDebugOverlayLines);
+        this.debugOverlay = new DebugOverlay(this::buildDebugOverlaySections, true);
         this.batch = new SpriteBatch();
         this.shapeRenderer = new ShapeRenderer();
         this.font = new BitmapFont();
@@ -500,13 +507,15 @@ public class GameScreen implements Screen {
         if (gameInputProcessor == null) {
             gameInputProcessor = new GameInputProcessor(this);
         }
-        if (inputMultiplexer == null) {
-            inputMultiplexer = new InputMultiplexer();
+        if (inputContextRouter == null) {
+            inputContextRouter = new InputContextRouter();
+            inputContextRouter.addSharedProcessor(debugOverlay.getInputProcessor());
+            inputContextRouter.setProcessors(InputContext.EXPLORATION, gameInputProcessor);
+            inputContextRouter.setProcessors(InputContext.DIALOG, gameInputProcessor);
+            inputContextRouter.setProcessors(InputContext.SETTLEMENT, gameInputProcessor);
+            inputContextRouter.setProcessors(InputContext.BUILD, gameInputProcessor);
         }
-        inputMultiplexer.clear();
-        inputMultiplexer.addProcessor(debugOverlay.getInputProcessor());
-        inputMultiplexer.addProcessor(gameInputProcessor);
-        Gdx.input.setInputProcessor(inputMultiplexer);
+        inputContextRouter.activate(resolveInputContext());
     }
 
     private void loadVisualAssets() {
@@ -7190,17 +7199,98 @@ public class GameScreen implements Screen {
     public String getCurrentZoneId() { return currentZoneId; }
     public long getWorldSeed() { return worldSeed; }
 
-    private List<String> buildDebugOverlayLines() {
+    public InputContext getCurrentInputContext() {
+        return resolveInputContext();
+    }
+
+    private InputContext resolveInputContext() {
+        if (hasActiveDialog()) {
+            return InputContext.DIALOG;
+        }
+        if (buildModeOpen) {
+            return InputContext.BUILD;
+        }
+        if (questMenuOpen || expeditionBoardOpen || guildMenuOpen || isPaused) {
+            return InputContext.SETTLEMENT;
+        }
+        return InputContext.EXPLORATION;
+    }
+
+    private List<DebugOverlay.DebugSection> buildDebugOverlaySections() {
+        List<DebugOverlay.DebugSection> sections = new ArrayList<>();
+        sections.add(new DebugOverlay.DebugSection("World", List.of(
+            "FPS: " + Gdx.graphics.getFramesPerSecond(),
+            "Zone: " + (currentZoneId != null ? currentZoneId : "none"),
+            "Seed: " + worldSeed,
+            "Player: (" + (int) playerPos.x + ", " + (int) playerPos.y + ")",
+            "Floating origin: (" + (int) floatingOriginOffset.x + ", " + (int) floatingOriginOffset.y + ")"
+        )));
+        sections.add(new DebugOverlay.DebugSection("Runtime", List.of(
+            "Input: " + resolveInputContext().name(),
+            "Enemies: " + countAliveEnemies() + "/" + enemies.size(),
+            "NPCs: " + npcs.size() + "  Robots: " + countAliveRobots(),
+            "Battle active: " + battleActive + "  Build mode: " + buildModeOpen,
+            "Chunks: " + frontierChunkManager.getActiveChunks().size() + "  Regions: " + frontierChunkManager.getActiveRegions().size(),
+            "Heap: " + getUsedHeapMegabytes() + " MB / " + getMaxHeapMegabytes() + " MB"
+        )));
+        sections.add(new DebugOverlay.DebugSection("World Events", List.of(
+            "Boss fronts: " + activeWorldBossFrontsByZoneId.size(),
+            "Incidents: " + activeRegionalIncidentsByZoneId.size(),
+            "Crises: " + activeSettlementCrisesByZoneId.size(),
+            "Pinned contract: " + (pinnedExpeditionContractTitle != null ? pinnedExpeditionContractTitle : "none")
+        )));
+        sections.add(new DebugOverlay.DebugSection("Robot Field Skills", buildRobotDebugLines()));
+        return sections;
+    }
+
+    private List<String> buildRobotDebugLines() {
         List<String> lines = new ArrayList<>();
-        lines.add("FPS: " + Gdx.graphics.getFramesPerSecond());
-        lines.add("Zone: " + (currentZoneId != null ? currentZoneId : "none"));
-        lines.add("Seed: " + worldSeed);
-        lines.add("Player: (" + (int) playerPos.x + ", " + (int) playerPos.y + ")");
-        lines.add("Floating origin: (" + (int) floatingOriginOffset.x + ", " + (int) floatingOriginOffset.y + ")");
-        lines.add("Active enemies: " + countAliveEnemies() + "/" + enemies.size());
-        lines.add("NPCs: " + npcs.size() + "  Robots: " + countAliveRobots());
-        lines.add("Battle active: " + battleActive + "  Build mode: " + buildModeOpen);
+        for (int i = 0; i < ROBOT_COUNT; i++) {
+            if (!hasActiveRobotAt(i)) {
+                continue;
+            }
+            RobotProgressionState progressionState = getRobotProgressionStateForPartyIndex(i);
+            lines.add(getRobotName(i) + " Lv" + getRobotLevel(i)
+                + " [" + getRobotClass(i) + "]"
+                + " {" + (progressionState != null ? progressionState.getPersonalityArchetype() : "Balanced") + "}"
+                + "  " + buildRobotFieldRoleSummary(i));
+        }
+        if (lines.isEmpty()) {
+            lines.add("No active robots.");
+        }
         return lines;
+    }
+
+    private String buildRobotFieldRoleSummary(int index) {
+        String robotClass = getRobotClass(index);
+        int tier = Math.max(1, getRobotEvolutionTier(index));
+        List<String> tags = new ArrayList<>();
+        if (robotClass.contains("Scout")) {
+            tags.add("hack " + tier);
+            tags.add("scan " + (tier + 1));
+        }
+        if (robotClass.contains("Support")) {
+            tags.add("field " + tier);
+            tags.add("scan " + tier);
+        }
+        if (robotClass.contains("Vanguard")) {
+            tags.add("mine " + (tier + 1));
+            tags.add("labor " + tier);
+        }
+        if (robotClass.contains("Striker")) {
+            tags.add("demo " + tier);
+            tags.add("cut " + tier);
+        }
+        return tags.isEmpty() ? "generalist" : String.join(", ", tags);
+    }
+
+    private long getUsedHeapMegabytes() {
+        Runtime runtime = Runtime.getRuntime();
+        return (runtime.totalMemory() - runtime.freeMemory()) / (1024L * 1024L);
+    }
+
+    private long getMaxHeapMegabytes() {
+        return Runtime.getRuntime().maxMemory() / (1024L * 1024L);
     }
 
     private int countAliveEnemies() {
@@ -7726,6 +7816,10 @@ public class GameScreen implements Screen {
         }
         handleBattleStoryEvents(result);
         handleInfiniteDungeonBattleResolution(result);
+        if (!pendingRobotAwakeningMessages.isEmpty()) {
+            showStandaloneDialog("Awakening", String.join(" ", pendingRobotAwakeningMessages));
+            pendingRobotAwakeningMessages.clear();
+        }
 
         if (!hasLivingPartyMember()) {
             screenManager.pop();
@@ -7824,6 +7918,7 @@ public class GameScreen implements Screen {
             }
         }
         boolean milestoneTriggered = false;
+        List<String> dynamicWorldReactionLines = new ArrayList<>();
         for (String enemyId : defeatedEnemyIds) {
             if (!isBossMonster(enemyId)) {
                 continue;
@@ -7833,8 +7928,12 @@ public class GameScreen implements Screen {
             }
             handlePinnedContractBossDefeat(enemyId);
             triggerStoryEvents("BOSS_DEFEAT", enemyId);
+            applyDynamicWorldEvents(enemyId, dynamicWorldReactionLines);
         }
         questManager.syncProgress(gameState, worldStateManager);
+        if (!dynamicWorldReactionLines.isEmpty()) {
+            showStandaloneDialog("World Bulletin", String.join(" ", dynamicWorldReactionLines));
+        }
         if (milestoneTriggered) {
             refreshHud();
         }
@@ -7959,6 +8058,12 @@ public class GameScreen implements Screen {
         if (definition == null) {
             return false;
         }
+        if (definition.getMinimumForgeCoreLevel() > 0 && getForgeCoreLevel() < definition.getMinimumForgeCoreLevel()) {
+            return false;
+        }
+        if (!settlementTimeManager.isWithinPhase(definition.getRequiredTimePhase())) {
+            return false;
+        }
         String onceFlag = definition.getOnceFlag();
         if (onceFlag != null && !onceFlag.isEmpty() && worldStateManager.isFlagActive(gameState, onceFlag)) {
             return false;
@@ -7988,6 +8093,10 @@ public class GameScreen implements Screen {
         }
         if (definition.getRewardExperience() > 0) {
             addExperience(definition.getRewardExperience());
+        }
+        if (definition.getSocialFactionId() != null && !definition.getSocialFactionId().isEmpty()
+            && definition.getSocialReputationDelta() != 0) {
+            adjustFactionInfluence(definition.getSocialFactionId(), definition.getSocialReputationDelta());
         }
         if (definition.getSpeaker() != null && !definition.getSpeaker().isEmpty()) {
             showStandaloneDialog(definition.getSpeaker(), definition.getText());
@@ -8067,6 +8176,15 @@ public class GameScreen implements Screen {
                 }
             }
         }
+    }
+
+    public void recordRobotUsage(int partyIndex, String usageKey, int amount) {
+        RobotProgressionState state = getRobotProgressionStateForPartyIndex(partyIndex);
+        if (state == null) {
+            return;
+        }
+        state.recordUsage(usageKey, amount);
+        gameState.putRobotProgressionState(state);
     }
 
     private void applyRobotHealth(float[] values, int[] slotIndices) {
@@ -8619,11 +8737,19 @@ public class GameScreen implements Screen {
                 Vector2 base = new Vector2(npc.spawnPos);
                 npc.setSchedule(
                     new Vector2(base.x + schedule.getHomeOffsetX(), base.y + schedule.getHomeOffsetY()),
+                    new Vector2(base.x + schedule.getHomeOffsetX(), base.y + schedule.getHomeOffsetY()),
                     new Vector2(base.x + schedule.getDayOffsetX(), base.y + schedule.getDayOffsetY()),
-                    new Vector2(base.x + schedule.getEveningOffsetX(), base.y + schedule.getEveningOffsetY())
+                    new Vector2(base.x + schedule.getEveningOffsetX(), base.y + schedule.getEveningOffsetY()),
+                    new Vector2(base.x + schedule.getNightOffsetX(), base.y + schedule.getNightOffsetY()),
+                    schedule.getMorningActivity(),
+                    schedule.getDayActivity(),
+                    schedule.getEveningActivity(),
+                    schedule.getNightActivity()
                 );
             } else {
-                npc.setSchedule(new Vector2(npc.spawnPos), new Vector2(npc.spawnPos), new Vector2(npc.spawnPos));
+                npc.setSchedule(new Vector2(npc.spawnPos), new Vector2(npc.spawnPos), new Vector2(npc.spawnPos),
+                    new Vector2(npc.spawnPos), new Vector2(npc.spawnPos),
+                    "Opening up", "On duty", "Winding down", "Resting");
             }
         }
     }
@@ -9572,6 +9698,8 @@ public class GameScreen implements Screen {
         gameState.setCollectedRobotIds(collectedRobotIds);
         gameState.removeRobotProgressionState(oldRobotId);
         gameState.putRobotProgressionState(state);
+        pendingRobotAwakeningMessages.add(state.getDisplayName() + " awakens along the "
+            + state.getEvolutionPath() + " path as a " + state.getPersonalityArchetype() + " frame.");
     }
 
     private void mergeDefinitionAbilities(RobotProgressionState state, RobotDefinition definition) {
@@ -10108,7 +10236,9 @@ public class GameScreen implements Screen {
             if ("claim_outpost_site".equals(feature.interactionType)) {
                 return tryClaimFrontierBaseSite(feature);
             }
-            if (hasWorldInteractionCapability(feature.interactionType)) {
+            EnvironmentalInteractionSystem.InteractionResolution interaction =
+                environmentalInteractionSystem.evaluate(feature, buildWorldInteractionProfile());
+            if (interaction.canInteract()) {
                 if (feature.completionWorldFlag != null && !feature.completionWorldFlag.isEmpty()) {
                     worldStateManager.setFlag(gameState, feature.completionWorldFlag, true);
                 }
@@ -10123,7 +10253,9 @@ public class GameScreen implements Screen {
             showStandaloneDialog(feature.label != null && !feature.label.isEmpty() ? feature.label : "Frontier",
                 feature.blockedMessage != null && !feature.blockedMessage.isEmpty()
                 ? feature.blockedMessage
-                : "Your current crew can't clear this obstacle yet.");
+                : interaction.getBlockedMessage() != null && !interaction.getBlockedMessage().isEmpty()
+                    ? interaction.getBlockedMessage()
+                    : "Your current crew can't clear this obstacle yet.");
             return true;
         }
         return false;
@@ -10175,32 +10307,17 @@ public class GameScreen implements Screen {
         switch (feature.interactionType) {
             case "shop":
                 return "Shop";
-            case "scan_hidden_path":
-                return "Scan";
-            case "burn_barrier":
-                return "Burn Away";
-            case "strength_boulder":
-                return "Clear";
-            case "harvest_resource":
-                return "Harvest";
             case "claim_outpost_site":
                 return "Survey";
             default:
-                return "Interact";
+                return environmentalInteractionSystem.getActionLabel(feature, buildWorldInteractionProfile());
         }
     }
 
     private boolean hasWorldInteractionCapability(String interactionType) {
-        switch (interactionType) {
-            case "scan_hidden_path":
-                return hasAnyActiveAbility("scan", "deep_scan");
-            case "burn_barrier":
-                return hasAnyActiveAbility("rapid_fire", "storm_barrage", "limit_breaker");
-            case "strength_boulder":
-                return hasAnyActiveAbility("power_strike", "seismic_break", "limit_breaker", "shield_wall", "bulwark_matrix");
-            default:
-                return false;
-        }
+        TmxWorldLoader.Feature feature = new TmxWorldLoader.Feature();
+        feature.interactionType = interactionType;
+        return environmentalInteractionSystem.canInteract(feature, buildWorldInteractionProfile());
     }
 
     private boolean tryHarvestResourceFeature(TmxWorldLoader.Feature feature) {
@@ -10208,12 +10325,21 @@ public class GameScreen implements Screen {
             showStandaloneDialog("Frontier", "This node cannot be harvested yet.");
             return true;
         }
+        EnvironmentalInteractionSystem.InteractionResolution interaction =
+            environmentalInteractionSystem.evaluate(feature, buildWorldInteractionProfile());
+        if (!interaction.canInteract()) {
+            showStandaloneDialog(feature.label != null ? feature.label : "Frontier",
+                interaction.getBlockedMessage() != null ? interaction.getBlockedMessage() : "Your crew can't work this node yet.");
+            return true;
+        }
         if (isHarvestedFrontierFeature(feature.persistentStateId)) {
             showStandaloneDialog(feature.label != null ? feature.label : "Frontier", "This node has already been stripped clean.");
             return true;
         }
         harvestedFrontierFeatureIds.add(feature.persistentStateId);
-        int harvestedAmount = Math.max(1, Math.max(1, feature.resourceAmount) + getCyberneticBonuses().getHarvestYieldBonus());
+        int harvestedAmount = Math.max(1, Math.max(1, feature.resourceAmount)
+            + getCyberneticBonuses().getHarvestYieldBonus()
+            + interaction.getYieldBonus());
         addForgeComponentLoot(feature.resourceId, harvestedAmount);
         showStandaloneDialog(feature.label != null && !feature.label.isEmpty() ? feature.label : "Frontier",
             feature.interactionMessage != null && !feature.interactionMessage.isEmpty()
@@ -10222,6 +10348,118 @@ public class GameScreen implements Screen {
         refreshHud();
         bankExpeditionHaulIfPossible(true);
         return true;
+    }
+
+    private void applyDynamicWorldEvents(String bossId, List<String> bulletinLines) {
+        List<DynamicWorldEventSystem.DynamicWorldEvent> events = dynamicWorldEventSystem.handleBossClear(
+            bossId,
+            currentZoneId,
+            zoneDefinitions.values(),
+            gameState,
+            worldStateManager
+        );
+        for (DynamicWorldEventSystem.DynamicWorldEvent event : events) {
+            applyDynamicWorldEvent(event, bulletinLines);
+        }
+    }
+
+    private void applyDynamicWorldEvent(DynamicWorldEventSystem.DynamicWorldEvent event, List<String> bulletinLines) {
+        if (event == null) {
+            return;
+        }
+        switch (event.getType()) {
+            case CONTRACT:
+                registerDynamicQuestContract(event);
+                break;
+            case AMBUSH:
+                if (event.getZoneId() != null && !event.getZoneId().isEmpty()) {
+                    activeRegionalIncidentsByZoneId.put(event.getZoneId(), determineRegionalIncidentType(event.getZoneId()));
+                }
+                break;
+            case WORLD_CHANGE:
+                if (event.getZoneId() != null && !event.getZoneId().isEmpty()) {
+                    activeWorldBossFrontsByZoneId.remove(event.getZoneId());
+                }
+                break;
+            default:
+                break;
+        }
+        if (bulletinLines != null && event.getDescription() != null && !event.getDescription().isEmpty()) {
+            bulletinLines.add(event.getDescription());
+        }
+    }
+
+    private void registerDynamicQuestContract(DynamicWorldEventSystem.DynamicWorldEvent event) {
+        if (event == null || event.getZoneId() == null || event.getZoneId().isEmpty()) {
+            return;
+        }
+        PlayerQuestContract existing = getActivePlayerQuestContractForZone(event.getZoneId());
+        if (existing != null) {
+            return;
+        }
+        PlayerQuestContract contract = new PlayerQuestContract();
+        contract.contractId = "dynamic_" + event.getZoneId() + "_" + (playerQuestContracts.size() + 1);
+        contract.zoneId = event.getZoneId();
+        contract.guildId = "dynamic_world";
+        contract.kind = event.getContractKind() != null ? event.getContractKind() : "DYNAMIC_WORLD";
+        contract.title = event.getContractTitle() != null ? event.getContractTitle() : event.getTitle();
+        contract.description = event.getContractDescription() != null ? event.getContractDescription() : event.getDescription();
+        contract.targetId = event.getZoneId();
+        contract.authorPlayerId = "World";
+        contract.active = true;
+        playerQuestContracts.add(contract);
+    }
+
+    private EnvironmentalInteractionSystem.InteractionProfile buildWorldInteractionProfile() {
+        Set<String> activeAbilityIds = new LinkedHashSet<>();
+        Map<String, Integer> proficiencyLevels = new HashMap<>();
+        addWorldProficiency(proficiencyLevels, "field_ops", Math.max(1, playerLevel / 8));
+        addWorldProficiency(proficiencyLevels, "labor", 1);
+        for (int i = 0; i < ROBOT_COUNT; i++) {
+            if (!hasActiveRobotAt(i)) {
+                continue;
+            }
+            RobotProgressionState progressionState = getRobotProgressionStateForPartyIndex(i);
+            if (progressionState != null && progressionState.getKnownAbilityIds() != null) {
+                activeAbilityIds.addAll(progressionState.getKnownAbilityIds());
+            }
+            int proficiencyLevel = Math.max(1, getRobotLevel(i) / 4);
+            String robotClass = getRobotClass(i);
+            if (robotClass.contains("Scout")) {
+                addWorldProficiency(proficiencyLevels, "analysis", proficiencyLevel);
+                addWorldProficiency(proficiencyLevels, "hacking", proficiencyLevel);
+            }
+            if (robotClass.contains("Support")) {
+                addWorldProficiency(proficiencyLevels, "analysis", proficiencyLevel);
+                addWorldProficiency(proficiencyLevels, "field_ops", proficiencyLevel);
+            }
+            if (robotClass.contains("Vanguard")) {
+                addWorldProficiency(proficiencyLevels, "labor", proficiencyLevel);
+                addWorldProficiency(proficiencyLevels, "mining", proficiencyLevel);
+            }
+            if (robotClass.contains("Striker")) {
+                addWorldProficiency(proficiencyLevels, "demolition", proficiencyLevel);
+                addWorldProficiency(proficiencyLevels, "field_ops", proficiencyLevel);
+            }
+        }
+        if (activeAbilityIds.contains("deep_scan")) {
+            addWorldProficiency(proficiencyLevels, "analysis", 2);
+            addWorldProficiency(proficiencyLevels, "hacking", 1);
+        }
+        if (activeAbilityIds.contains("seismic_break")) {
+            addWorldProficiency(proficiencyLevels, "mining", 2);
+        }
+        if (activeAbilityIds.contains("rapid_fire")) {
+            addWorldProficiency(proficiencyLevels, "demolition", 1);
+        }
+        return new EnvironmentalInteractionSystem.InteractionProfile(activeAbilityIds, proficiencyLevels);
+    }
+
+    private void addWorldProficiency(Map<String, Integer> proficiencyLevels, String proficiencyId, int amount) {
+        if (proficiencyLevels == null || proficiencyId == null || proficiencyId.isEmpty() || amount <= 0) {
+            return;
+        }
+        proficiencyLevels.put(proficiencyId, proficiencyLevels.getOrDefault(proficiencyId, 0) + amount);
     }
 
     private boolean tryClaimFrontierBaseSite(TmxWorldLoader.Feature feature) {
@@ -13659,8 +13897,14 @@ public class GameScreen implements Screen {
         String dialog;
         Vector2 spawnPos;
         Vector2 homePosition;
+        Vector2 morningPosition;
         Vector2 dayPosition;
         Vector2 eveningPosition;
+        Vector2 nightPosition;
+        String morningActivity = "Opening up";
+        String dayActivity = "On duty";
+        String eveningActivity = "Winding down";
+        String nightActivity = "Resting";
 
         Npc(String id, String name, Vector2 pos, String dialog) {
             this.id = id;
@@ -13669,24 +13913,65 @@ public class GameScreen implements Screen {
             this.dialog = dialog;
             this.spawnPos = pos != null ? new Vector2(pos) : new Vector2();
             this.homePosition = pos != null ? new Vector2(pos) : new Vector2();
+            this.morningPosition = pos != null ? new Vector2(pos) : new Vector2();
             this.dayPosition = pos != null ? new Vector2(pos) : new Vector2();
             this.eveningPosition = pos != null ? new Vector2(pos) : new Vector2();
+            this.nightPosition = pos != null ? new Vector2(pos) : new Vector2();
         }
 
-        void setSchedule(Vector2 homePosition, Vector2 dayPosition, Vector2 eveningPosition) {
+        void setSchedule(Vector2 homePosition, Vector2 morningPosition, Vector2 dayPosition,
+                         Vector2 eveningPosition, Vector2 nightPosition,
+                         String morningActivity, String dayActivity,
+                         String eveningActivity, String nightActivity) {
             this.homePosition = homePosition != null ? homePosition : new Vector2(pos);
+            this.morningPosition = morningPosition != null ? morningPosition : new Vector2(this.homePosition);
             this.dayPosition = dayPosition != null ? dayPosition : new Vector2(pos);
             this.eveningPosition = eveningPosition != null ? eveningPosition : new Vector2(pos);
+            this.nightPosition = nightPosition != null ? nightPosition : new Vector2(this.homePosition);
+            if (morningActivity != null && !morningActivity.isEmpty()) {
+                this.morningActivity = morningActivity;
+            }
+            if (dayActivity != null && !dayActivity.isEmpty()) {
+                this.dayActivity = dayActivity;
+            }
+            if (eveningActivity != null && !eveningActivity.isEmpty()) {
+                this.eveningActivity = eveningActivity;
+            }
+            if (nightActivity != null && !nightActivity.isEmpty()) {
+                this.nightActivity = nightActivity;
+            }
         }
 
         Vector2 getScheduledPosition(float timeOfDayHours) {
-            if (timeOfDayHours < 8f) {
-                return homePosition;
+            if (timeOfDayHours < 6f) {
+                return nightPosition;
             }
-            if (timeOfDayHours < 18f) {
+            if (timeOfDayHours < 9f) {
+                return morningPosition;
+            }
+            if (timeOfDayHours < 17f) {
                 return dayPosition;
             }
-            return eveningPosition;
+            if (timeOfDayHours < 20f) {
+                return eveningPosition;
+            }
+            return nightPosition;
+        }
+
+        String getCurrentActivity(float timeOfDayHours) {
+            if (timeOfDayHours < 6f) {
+                return nightActivity;
+            }
+            if (timeOfDayHours < 9f) {
+                return morningActivity;
+            }
+            if (timeOfDayHours < 17f) {
+                return dayActivity;
+            }
+            if (timeOfDayHours < 20f) {
+                return eveningActivity;
+            }
+            return nightActivity;
         }
     }
 

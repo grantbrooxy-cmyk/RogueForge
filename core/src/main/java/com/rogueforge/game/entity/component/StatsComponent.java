@@ -3,7 +3,7 @@ package com.rogueforge.game.entity.component;
 /**
  * Common health and stat payload used across players, monsters, and robots.
  */
-public class StatsComponent {
+public class StatsComponent implements Component {
     public float currentHealth;
     public float maxHealth;
     public float speed;

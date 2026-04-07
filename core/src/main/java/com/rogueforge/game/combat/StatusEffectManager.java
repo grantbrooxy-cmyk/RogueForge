@@ -85,6 +85,24 @@ public class StatusEffectManager {
         return new ArrayList<>(activeEffects);
     }
 
+    public StatusEffectManager copy() {
+        StatusEffectManager copy = new StatusEffectManager();
+        copy.copyFrom(this);
+        return copy;
+    }
+
+    public void copyFrom(StatusEffectManager other) {
+        activeEffects.clear();
+        if (other == null) {
+            return;
+        }
+        for (ActiveStatusEffect effect : other.activeEffects) {
+            if (effect != null) {
+                activeEffects.add(effect.copy());
+            }
+        }
+    }
+
     /**
      * Applies all begin-of-turn effects (DoTs, HoTs) and returns log lines.
      *

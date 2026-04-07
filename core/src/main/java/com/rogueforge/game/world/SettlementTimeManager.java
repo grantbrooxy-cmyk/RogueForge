@@ -61,4 +61,11 @@ public class SettlementTimeManager {
         }
         return "Night";
     }
+
+    public boolean isWithinPhase(String requiredPhase) {
+        if (requiredPhase == null || requiredPhase.isEmpty()) {
+            return true;
+        }
+        return describePhase().equalsIgnoreCase(requiredPhase);
+    }
 }

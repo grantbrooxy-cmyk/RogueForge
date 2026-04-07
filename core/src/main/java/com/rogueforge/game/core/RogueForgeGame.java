@@ -23,6 +23,7 @@ public class RogueForgeGame implements ApplicationListener {
     private ScreenManager screenManager;
     private final EventBus eventBus;
     private GameContext context;
+    private GameEngineServices engineServices;
 
     public RogueForgeGame() {
         this(new EventBus());
@@ -38,16 +39,19 @@ public class RogueForgeGame implements ApplicationListener {
         assetManager.setLoader(TiledMap.class, new TmxMapLoader(new InternalFileHandleResolver()));
         screenManager = new ScreenManager();
         SettingsManager settingsManager = new SettingsManager();
-        settingsManager.load();
+        SaveManager saveManager = new SaveManager();
+        MetaProgressionManager metaProgressionManager = new MetaProgressionManager();
+        engineServices = new GameEngineServices(eventBus, settingsManager, saveManager, metaProgressionManager);
+        engineServices.initialize();
         context = new GameContext(
             this,
             assetManager,
             screenManager,
             eventBus,
-            new GameEngineServices(),
-            new SaveManager(),
+            engineServices,
+            saveManager,
             settingsManager,
-            new MetaProgressionManager()
+            metaProgressionManager
         );
         screenManager.push(new AssetLoadingScreen(context));
     }
@@ -84,6 +88,7 @@ public class RogueForgeGame implements ApplicationListener {
     @Override
     public void dispose() {
         if (screenManager != null) screenManager.dispose();
+        if (engineServices != null) engineServices.dispose();
         if (assetManager != null) assetManager.dispose();
     }
 

@@ -17,9 +17,6 @@ public class GameContext {
     private final ScreenManager screenManager;
     private final EventBus eventBus;
     private final GameEngineServices engineServices;
-    private final SaveManager saveManager;
-    private final SettingsManager settingsManager;
-    private final MetaProgressionManager metaProgressionManager;
 
     public GameContext(RogueForgeGame game, AssetManager assetManager, ScreenManager screenManager, EventBus eventBus,
                        GameEngineServices engineServices, SaveManager saveManager,
@@ -29,9 +26,6 @@ public class GameContext {
         this.screenManager = screenManager;
         this.eventBus = eventBus;
         this.engineServices = engineServices;
-        this.saveManager = saveManager;
-        this.settingsManager = settingsManager;
-        this.metaProgressionManager = metaProgressionManager;
     }
 
     public RogueForgeGame getGame() {
@@ -54,16 +48,20 @@ public class GameContext {
         return engineServices;
     }
 
+    public <T> T getService(Class<T> type) {
+        return engineServices.getService(type);
+    }
+
     public SaveManager getSaveManager() {
-        return saveManager;
+        return engineServices.getSaveManager();
     }
 
     public SettingsManager getSettingsManager() {
-        return settingsManager;
+        return engineServices.getSettingsManager();
     }
 
     public MetaProgressionManager getMetaProgressionManager() {
-        return metaProgressionManager;
+        return engineServices.getMetaProgressionManager();
     }
 
     public synchronized <T> void queueAsset(String path, Class<T> assetType) {

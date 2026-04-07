@@ -2,19 +2,29 @@ package com.rogueforge.game.world;
 
 import com.rogueforge.game.core.GameState;
 import com.rogueforge.game.data.DefinitionRegistries;
+import com.rogueforge.game.engine.ServiceLifecycle;
 
 /**
  * Manages global world-state flags that gate content and interactions.
  */
-public class WorldStateManager {
+public class WorldStateManager implements ServiceLifecycle {
     private WorldStateDefinition[] definitions;
 
     public WorldStateManager() {
         reloadDefinitions();
     }
 
+    @Override
+    public void initialize() {
+        reloadDefinitions();
+    }
+
     public void reloadDefinitions() {
-        definitions = DefinitionRegistries.WORLD_STATE.getAll().toArray(new WorldStateDefinition[0]);
+        try {
+            definitions = DefinitionRegistries.WORLD_STATE.getAll().toArray(new WorldStateDefinition[0]);
+        } catch (RuntimeException ignored) {
+            definitions = new WorldStateDefinition[0];
+        }
     }
 
     public void initialize(GameState state) {
