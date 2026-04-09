@@ -17,7 +17,7 @@ public class InfiniteDungeonLayoutGenerator {
     private static final float ROOM_HEIGHT = 260f;
     private static final float DOOR_SIZE = 72f;
 
-    public TmxWorldLoader.LoadedZone generate(TmxWorldLoader.LoadedZone template, int floor) {
+    public TmxWorldLoader.LoadedZone generate(TmxWorldLoader.LoadedZone template, int floor, boolean shardRunMode) {
         if (template == null) {
             throw new IllegalArgumentException("Template zone is required");
         }

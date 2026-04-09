@@ -46,6 +46,12 @@ public class GameState {
     private int infiniteDungeonBestFloor = 0;
     private int infiniteDungeonFloorsCleared = 0;
     private boolean infiniteDungeonRunActive = false;
+    private long forgeShards = 0;
+    private long spentForgeShards = 0;
+    private final List<String> legacyUnlocks = new ArrayList<>();
+    private int shardRunBestFloor = 0;
+    private int totalShardRuns = 0;
+    private boolean shardRunActive = false;
 
     // Equipment
     private final Map<String, String> playerEquipment = new HashMap<>();
@@ -124,6 +130,38 @@ public class GameState {
     public void setInfiniteDungeonFloorsCleared(int floorsCleared) { this.infiniteDungeonFloorsCleared = Math.max(0, floorsCleared); }
     public boolean isInfiniteDungeonRunActive() { return infiniteDungeonRunActive; }
     public void setInfiniteDungeonRunActive(boolean active) { this.infiniteDungeonRunActive = active; }
+
+    // --- Shard Run and Legacy accessors ---
+    public long getForgeShards() { return forgeShards; }
+    public void setForgeShards(long shards) { this.forgeShards = Math.max(0, shards); }
+    public void addForgeShards(long amount) { this.forgeShards = Math.max(0, this.forgeShards + amount); }
+    
+    public long getSpentForgeShards() { return spentForgeShards; }
+    public void setSpentForgeShards(long spent) { this.spentForgeShards = Math.max(0, spent); }
+    
+    public List<String> getLegacyUnlocks() { return new ArrayList<>(legacyUnlocks); }
+    public void setLegacyUnlocks(List<String> unlocks) {
+        this.legacyUnlocks.clear();
+        if (unlocks != null) this.legacyUnlocks.addAll(unlocks);
+    }
+    public void addLegacyUnlock(String unlockId) {
+        if (unlockId != null && !legacyUnlocks.contains(unlockId)) {
+            legacyUnlocks.add(unlockId);
+        }
+    }
+    public boolean hasLegacyUnlock(String unlockId) {
+        return unlockId != null && legacyUnlocks.contains(unlockId);
+    }
+
+    public int getShardRunBestFloor() { return shardRunBestFloor; }
+    public void setShardRunBestFloor(int floor) { this.shardRunBestFloor = Math.max(shardRunBestFloor, floor); }
+    
+    public int getTotalShardRuns() { return totalShardRuns; }
+    public void incrementTotalShardRuns() { this.totalShardRuns++; }
+    public void setTotalShardRuns(int count) { this.totalShardRuns = count; }
+
+    public boolean isShardRunActive() { return shardRunActive; }
+    public void setShardRunActive(boolean active) { this.shardRunActive = active; }
 
     // --- Experience and leveling ---
     public int getExperienceForNextLevel() {

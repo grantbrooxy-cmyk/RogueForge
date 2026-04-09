@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.rogueforge.game.combat.RegistryAndEvolutionIntegrationTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-04-07T22:23:19" hostname="Grants-MacBook-Pro.local" time="0.043">
+  <properties/>
+  <testcase name="masteryUnlocksPromoteAbilityAndPreserveProgressionState()" classname="com.rogueforge.game.combat.RegistryAndEvolutionIntegrationTest" time="0.041"/>
+  <testcase name="uniqueSkillIsNotDuplicatedAcrossParty()" classname="com.rogueforge.game.combat.RegistryAndEvolutionIntegrationTest" time="0.0"/>
+  <testcase name="abilityRegistryLoadsRealDefinitionsAndCreatesProgressedInstances()" classname="com.rogueforge.game.combat.RegistryAndEvolutionIntegrationTest" time="0.0"/>
+  <testcase name="uniqueSkillUnlocksWhenNoOtherPartyMemberHasIt()" classname="com.rogueforge.game.combat.RegistryAndEvolutionIntegrationTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

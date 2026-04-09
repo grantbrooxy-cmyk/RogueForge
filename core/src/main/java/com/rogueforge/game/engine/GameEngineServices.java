@@ -4,6 +4,7 @@ import com.rogueforge.game.core.EventBus;
 import com.rogueforge.game.engine.base.BaseBuildingEngine;
 import com.rogueforge.game.engine.base.BaseDefenseDirector;
 import com.rogueforge.game.engine.meta.CyberneticEnhancementEngine;
+import com.rogueforge.game.engine.meta.ForgeLegacyEngine;
 import com.rogueforge.game.engine.social.GuildPermissionsEngine;
 import com.rogueforge.game.engine.world.EnvironmentalInteractionSystem;
 import com.rogueforge.game.engine.world.FrontierZoneGenerator;
@@ -56,6 +57,12 @@ public class GameEngineServices implements ServiceLifecycle {
         registerService(SettlementManager.class, new SettlementManager());
         registerService(DynamicWorldEventSystem.class, new DynamicWorldEventSystem(eventBus));
         registerService(WarPhaseManager.class, new WarPhaseManager());
+        ForgeLegacyEngine legacyEngine = new ForgeLegacyEngine();
+        registerService(ForgeLegacyEngine.class, legacyEngine);
+        // Note: ShardRunManager requires GameState, which is initialized in GameScreen.
+        // We'll leave it as a lazy-registered service or register it with a placeholder.
+        // Actually, better to just keep it in GameScreen for now if GameState isn't here.
+        // Wait, EngineServices is shared across screens. GameState is per-save.
     }
 
     public final <T> void registerService(Class<T> type, T service) {
@@ -139,4 +146,6 @@ public class GameEngineServices implements ServiceLifecycle {
     public DynamicWorldEventSystem getDynamicWorldEventSystem() { return getService(DynamicWorldEventSystem.class); }
 
     public WarPhaseManager getWarPhaseManager() { return getService(WarPhaseManager.class); }
+
+    public ForgeLegacyEngine getForgeLegacyEngine() { return getService(ForgeLegacyEngine.class); }
 }

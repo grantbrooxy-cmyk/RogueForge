@@ -71,9 +71,7 @@ public class GameContext implements AssetContext, EventContext, ScreenContext, W
 
     @Override
     public synchronized <T> void queueAsset(String path, Class<T> assetType) {
-        if (!assetManager.isLoaded(path, assetType) && !assetManager.contains(path)) {
-            assetManager.load(path, assetType);
-        }
+        assetManager.load(path, assetType);
     }
 
     @Override
@@ -88,10 +86,8 @@ public class GameContext implements AssetContext, EventContext, ScreenContext, W
 
     @Override
     public synchronized <T> T loadAsset(String path, Class<T> assetType) {
-        if (!assetManager.isLoaded(path, assetType)) {
-            assetManager.load(path, assetType);
-            assetManager.finishLoadingAsset(path);
-        }
+        assetManager.load(path, assetType);
+        assetManager.finishLoadingAsset(path);
         return assetManager.get(path, assetType);
     }
 

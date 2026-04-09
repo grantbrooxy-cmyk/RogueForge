@@ -129,7 +129,7 @@ public class SaveManager implements ServiceLifecycle {
         saveFile.setPlayerEquipment(saveFile.getPlayerEquipment());
         saveFile.setRobotEquipment(saveFile.getRobotEquipment());
         saveFile.setCollectedRobotIds(saveFile.getCollectedRobotIds());
-        saveFile.setActiveRobotIds(saveFile.getActiveRobotIds());
+        saveFile.setLegacyUnlocks(saveFile.getLegacyUnlocks());
         if (saveFile.getCurrentZoneId() == null || saveFile.getCurrentZoneId().isEmpty()) {
             saveFile.setCurrentZoneId("town");
         }

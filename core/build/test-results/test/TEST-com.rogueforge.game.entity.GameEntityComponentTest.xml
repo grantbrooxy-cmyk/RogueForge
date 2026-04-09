@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.rogueforge.game.entity.GameEntityComponentTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-04-07T16:22:36" hostname="Grants-MacBook-Pro.local" time="0.012">
+<testsuite name="com.rogueforge.game.entity.GameEntityComponentTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-04-07T22:23:20" hostname="Grants-MacBook-Pro.local" time="0.004">
   <properties/>
-  <testcase name="transformComponentTracksFloatingOriginAwareWorldPosition()" classname="com.rogueforge.game.entity.GameEntityComponentTest" time="0.006"/>
-  <testcase name="gameEntitySupportsTypedComponentAddAndRemove()" classname="com.rogueforge.game.entity.GameEntityComponentTest" time="0.001"/>
+  <testcase name="transformComponentTracksFloatingOriginAwareWorldPosition()" classname="com.rogueforge.game.entity.GameEntityComponentTest" time="0.002"/>
+  <testcase name="gameEntitySupportsTypedComponentAddAndRemove()" classname="com.rogueforge.game.entity.GameEntityComponentTest" time="0.0"/>
   <testcase name="playerEntityExposesSharedPositionAndStatsComponents()" classname="com.rogueforge.game.entity.GameEntityComponentTest" time="0.001"/>
-  <testcase name="robotEntityRegistersRobotCoreComponent()" classname="com.rogueforge.game.entity.GameEntityComponentTest" time="0.003"/>
-  <testcase name="npcEntityExposesTransformAndProficiencyComponents()" classname="com.rogueforge.game.entity.GameEntityComponentTest" time="0.001"/>
+  <testcase name="robotEntityRegistersRobotCoreComponent()" classname="com.rogueforge.game.entity.GameEntityComponentTest" time="0.001"/>
+  <testcase name="npcEntityExposesTransformAndProficiencyComponents()" classname="com.rogueforge.game.entity.GameEntityComponentTest" time="0.0"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

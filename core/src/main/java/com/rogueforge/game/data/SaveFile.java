@@ -12,7 +12,7 @@ import java.util.Map;
  * Contains all player, robot, and progression data for a save game.
  */
 public class SaveFile {
-    public static final int CURRENT_VERSION = 9;
+    public static final int CURRENT_VERSION = 10;
 
     private int version = CURRENT_VERSION;
 
@@ -69,6 +69,11 @@ public class SaveFile {
     private String activeChallengeModifierId;
     private int hardModeSeedIndex;
     private int selectedChallengeModifierIndex;
+    private long forgeShards;
+    private long spentForgeShards;
+    private List<String> legacyUnlocks;
+    private int shardRunBestFloor;
+    private int totalShardRuns;
 
     // Robot data: robotId -> Map of equipped items (slotType -> equipmentId)
     private Map<String, Map<String, String>> robotEquipment;
@@ -132,6 +137,7 @@ public class SaveFile {
         this.activeSettlementCrisesByZoneId = new HashMap<>();
         this.playerQuestContracts = new ArrayList<>();
         this.playerCreatedNpcs = new ArrayList<>();
+        this.legacyUnlocks = new ArrayList<>();
     }
 
     public SaveFile(String playerName, int playerHp, int playerMaxHp, float playerX, float playerY,
@@ -172,6 +178,7 @@ public class SaveFile {
         this.activeRegionalIncidentsByZoneId = new HashMap<>();
         this.activeSettlementCrisesByZoneId = new HashMap<>();
         this.playerCreatedNpcs = new ArrayList<>();
+        this.legacyUnlocks = new ArrayList<>();
     }
 
     // Getters
@@ -523,6 +530,49 @@ public class SaveFile {
 
     public int getSaveSlot() {
         return saveSlot;
+    }
+
+    public long getForgeShards() {
+        return forgeShards;
+    }
+
+    public void setForgeShards(long forgeShards) {
+        this.forgeShards = Math.max(0, forgeShards);
+    }
+
+    public long getSpentForgeShards() {
+        return spentForgeShards;
+    }
+
+    public void setSpentForgeShards(long spentForgeShards) {
+        this.spentForgeShards = Math.max(0, spentForgeShards);
+    }
+
+    public List<String> getLegacyUnlocks() {
+        if (legacyUnlocks == null) {
+            legacyUnlocks = new ArrayList<>();
+        }
+        return legacyUnlocks;
+    }
+
+    public void setLegacyUnlocks(List<String> legacyUnlocks) {
+        this.legacyUnlocks = legacyUnlocks != null ? legacyUnlocks : new ArrayList<>();
+    }
+
+    public int getShardRunBestFloor() {
+        return Math.max(0, shardRunBestFloor);
+    }
+
+    public void setShardRunBestFloor(int shardRunBestFloor) {
+        this.shardRunBestFloor = Math.max(0, shardRunBestFloor);
+    }
+
+    public int getTotalShardRuns() {
+        return Math.max(0, totalShardRuns);
+    }
+
+    public void setTotalShardRuns(int totalShardRuns) {
+        this.totalShardRuns = Math.max(0, totalShardRuns);
     }
 
     // Setters

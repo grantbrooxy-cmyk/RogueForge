@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.rogueforge.game.world.ProgressionReachabilityTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-04-07T22:23:20" hostname="Grants-MacBook-Pro.local" time="0.044">
+  <properties/>
+  <testcase name="everyImplementedZoneIsReachableFromTownAndCanRouteBack()" classname="com.rogueforge.game.world.ProgressionReachabilityTest" time="0.032"/>
+  <testcase name="everyManualQuestStepHasADialogueResolver()" classname="com.rogueforge.game.world.ProgressionReachabilityTest" time="0.005"/>
+  <testcase name="everyZoneHasNarrativeOrMechanicalCoverageInCurrentContent()" classname="com.rogueforge.game.world.ProgressionReachabilityTest" time="0.003"/>
+  <testcase name="everyNonAutoStartQuestHasARealStartSource()" classname="com.rogueforge.game.world.ProgressionReachabilityTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

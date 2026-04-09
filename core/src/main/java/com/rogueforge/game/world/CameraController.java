@@ -25,7 +25,8 @@ public class CameraController {
         this.camera = camera;
         this.currentPosition = new Vector2(camera.position.x, camera.position.y);
         this.targetPosition = new Vector2(currentPosition);
-        this.mapBounds.set(0f, 0f, 100f, 100f);
+        // Initialize to a large enough area to prevent immediate clamping before first load
+        this.mapBounds.set(-100000f, -100000f, 200000f, 200000f);
         this.shakeIntensity = 0f;
         this.shakeDuration = 0f;
         this.shakeTimer = 0f;
@@ -33,6 +34,12 @@ public class CameraController {
 
     public void setTarget(Vector2 target) {
         targetPosition.set(target);
+    }
+
+    public void snapToTarget() {
+        currentPosition.set(targetPosition);
+        camera.position.set(currentPosition.x, currentPosition.y, 0f);
+        camera.update();
     }
 
     public void setMapBounds(float width, float height) {

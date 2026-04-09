@@ -30,8 +30,7 @@ public final class DefinitionRegistries {
         (definition, collector) -> {
             collector.requireText(definition.getName(), "name");
             collector.requireText(definition.getTilemapPath(), "tilemapPath");
-            collector.require(definition.getMonsterIds() != null && definition.getMonsterIds().length > 0,
-                "Expected at least one monsterId.");
+            collector.require(definition.getMonsterIds() != null, "monsterIds array cannot be null.");
         }
     );
 

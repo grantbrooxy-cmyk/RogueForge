@@ -2,7 +2,6 @@ package com.rogueforge.game.screen;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
-import com.badlogic.gdx.InputMultiplexer;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
@@ -10,7 +9,6 @@ import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.Texture.TextureFilter;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Rectangle;
@@ -18,7 +16,6 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.maps.tiled.TiledMap;
 import com.badlogic.gdx.maps.tiled.TiledMapTileLayer;
 import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer;
-import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
@@ -49,6 +46,7 @@ import com.rogueforge.game.engine.meta.ForgeLegacyBonuses;
 import com.rogueforge.game.engine.meta.ForgeLegacyEngine;
 import com.rogueforge.game.engine.meta.ForgeLegacyNodeDefinition;
 import com.rogueforge.game.engine.meta.RunOutcomeSummary;
+import com.rogueforge.game.engine.meta.ShardRunManager;
 import com.rogueforge.game.engine.social.GuildPermissionsEngine;
 import com.rogueforge.game.engine.social.GuildDefinition;
 import com.rogueforge.game.engine.social.GuildMembership;
@@ -285,6 +283,7 @@ public class GameScreen implements Screen {
     private final SettlementManager settlementManager;
     private final DynamicWorldEventSystem dynamicWorldEventSystem;
     private final WarPhaseManager warPhaseManager;
+    private final ShardRunManager shardRunManager;
     private final Map<String, Boolean> openedChestStates = new HashMap<>();
     private final List<String> harvestedFrontierFeatureIds = new ArrayList<>();
     private final List<String> claimedFrontierBaseSiteIds = new ArrayList<>();
@@ -486,6 +485,7 @@ public class GameScreen implements Screen {
         gameState.setPlayerExperience(playerExperience);
         gameState.setHealingPotions(healingPotions);
         gameState.setTotalGold(totalGold);
+        this.shardRunManager = new ShardRunManager(gameState, forgeLegacyEngine);
         worldStateManager.initialize(gameState);
         questManager.initialize(gameState);
 
@@ -770,10 +770,10 @@ public class GameScreen implements Screen {
         gameViewport.apply();
         cameraController.setTarget(playerPos);
         Vector2 worldShift = cameraController.update(delta);
-        if (!worldShift.isZero()) {
+        if (worldShift != null && !worldShift.isZero()) {
             applyFloatingOriginShift(worldShift);
             cameraController.setTarget(playerPos);
-            cameraController.update(0f);
+            cameraController.snapToTarget();
         }
         if (shouldUseFrontierStreaming() && currentZone != null) {
             frontierChunkManager.update(playerPos, currentZone.tileWidth, currentZone.tileHeight);
@@ -5808,6 +5808,9 @@ public class GameScreen implements Screen {
                     ? "Run sealed at floor " + floorReached + ". Legacy data archived."
                     : "Run collapse recorded at floor " + floorReached + ".");
         }
+        if (gameState.isShardRunActive()) {
+            shardRunManager.endShardRun(sealedExit);
+        }
         gameState.setInfiniteDungeonRunActive(false);
         gameState.setInfiniteDungeonCurrentFloor(INFINITE_DUNGEON_START_FLOOR);
         activeChallengeModifierId = null;
@@ -7866,6 +7869,12 @@ public class GameScreen implements Screen {
         }
 
         if (!hasLivingPartyMember()) {
+            if (gameState.isShardRunActive()) {
+                shardRunManager.endShardRun(false);
+                showStandaloneDialog("Bolt Simulation", "Critical failure. Run terminated. Forge Shards recorded.");
+                screenManager.pop();
+                return;
+            }
             screenManager.pop();
             transitionToGameOver();
             return;
@@ -8467,7 +8476,7 @@ public class GameScreen implements Screen {
         }
         handleInfiniteDungeonZoneLoad(previousZoneId, spawnId);
         if (isInfiniteDungeonZone()) {
-            currentZone = infiniteDungeonLayoutGenerator.generate(currentZone, getInfiniteDungeonCurrentFloor());
+            currentZone = infiniteDungeonLayoutGenerator.generate(currentZone, getInfiniteDungeonCurrentFloor(), gameState.isShardRunActive());
         }
         localWorldBounds.set(0f, 0f, currentZone.pixelWidth, currentZone.pixelHeight);
         cameraController.setMapBounds(localWorldBounds.x, localWorldBounds.y, localWorldBounds.width, localWorldBounds.height);
@@ -8513,6 +8522,8 @@ public class GameScreen implements Screen {
         if (resolvedSpawn != null) {
             playerPos.set(resolvedSpawn);
             positionRobotsBehindPlayer();
+            cameraController.setTarget(playerPos);
+            cameraController.snapToTarget();
         }
 
         syncCurrentZoneBaseDefenders();
@@ -8599,7 +8610,7 @@ public class GameScreen implements Screen {
             return;
         }
         currentZone = worldLoader.load(currentZoneDefinition);
-        currentZone = infiniteDungeonLayoutGenerator.generate(currentZone, getInfiniteDungeonCurrentFloor());
+        currentZone = infiniteDungeonLayoutGenerator.generate(currentZone, getInfiniteDungeonCurrentFloor(), gameState.isShardRunActive());
         houses.clear();
         npcs.clear();
         for (TmxWorldLoader.NpcData npcData : currentZone.npcs) {
@@ -10074,27 +10085,28 @@ public class GameScreen implements Screen {
             return false;
         }
         if ("coda".equals(npc.id)) {
-            ForgeLegacyNodeDefinition purchased = forgeLegacyEngine.getNextAffordableNode(metaProgressionState);
-            if (purchased != null && forgeLegacyEngine.purchaseNode(metaProgressionState, purchased.getId())) {
-                metaProgressionManager.save(metaProgressionState);
-                showStandaloneDialog("Coda", "Legacy Vault expenditure confirmed: " + purchased.getName()
-                    + " purchased for " + purchased.getCost() + " Forge Shards. Remaining balance: "
-                    + metaProgressionState.getForgeShards() + ".");
+            // Legacy Vault spending
+            ForgeLegacyNodeDefinition nextNode = forgeLegacyEngine.getNextLockedNode(metaProgressionState);
+            if (nextNode != null && metaProgressionState.getForgeShards() >= nextNode.getCost()) {
+                if (forgeLegacyEngine.purchaseNode(metaProgressionState, nextNode.getId())) {
+                    metaProgressionManager.save(metaProgressionState);
+                    showStandaloneDialog("Coda", "Legacy Vault: " + nextNode.getName() + " unlocked. Shards remaining: " + metaProgressionState.getForgeShards());
+                }
+            } else if (nextNode != null) {
+                showStandaloneDialog("Coda", "Next Legacy Unlock: " + nextNode.getName() + " (" + nextNode.getCost() + " Shards). Balance: " + metaProgressionState.getForgeShards());
             } else {
-                ForgeLegacyNodeDefinition nextNode = forgeLegacyEngine.getNextLockedNode(metaProgressionState);
-                String guidance = nextNode != null
-                    ? "Next node: " + nextNode.getName() + " (" + nextNode.getCost() + " Shards)."
-                    : "Every available legacy node has already been secured.";
-                showStandaloneDialog("Coda", "Forge Shards: " + metaProgressionState.getForgeShards()
-                    + ". " + guidance);
+                showStandaloneDialog("Coda", "All known Legacy nodes have been restored. Your potential is perfected.");
             }
             return true;
         }
         if ("bolt_simulation".equals(npc.id)) {
-            showStandaloneDialog("Bolt Simulation", "Best floor " + gameState.getInfiniteDungeonBestFloor()
-                + ". Challenge Runs " + (forgeLegacyEngine.areChallengeRunsUnlocked(gameState.getInfiniteDungeonBestFloor()) ? "ready" : "locked")
-                + ". Hard-mode seeds " + forgeLegacyEngine.getHardModeSeedsUnlocked(gameState.getInfiniteDungeonBestFloor())
-                + ". Current board profile: " + formatEndgameModeLabel(expeditionBoardMode) + ".");
+            if (gameState.isShardRunActive()) {
+                showStandaloneDialog("Bolt Simulation", "Active run detected. Level: " + gameState.getInfiniteDungeonCurrentFloor() + ". Continue to floor " + (gameState.getInfiniteDungeonCurrentFloor() + 1) + "?");
+            } else {
+                shardRunManager.startShardRun("scout_mk1");
+                showStandaloneDialog("Bolt Simulation", "Roguelike Shard Run initialized. Equipment purged. Core stats reset. Survival is the only objective. Routing to Floor 1...");
+                loadZone(INFINITE_DUNGEON_ZONE_ID, "from_hub", true);
+            }
             return true;
         }
         PlayerCreatedNpc createdNpc = getPlayerCreatedNpcById(npc.id);

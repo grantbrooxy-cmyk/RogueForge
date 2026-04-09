@@ -18,9 +18,12 @@ class InfiniteDungeonLayoutGeneratorTest {
         InfiniteDungeonLayoutGenerator generator = new InfiniteDungeonLayoutGenerator();
         TmxWorldLoader.LoadedZone template = templateZone();
 
-        TmxWorldLoader.LoadedZone floorThreeA = generator.generate(template, 3);
-        TmxWorldLoader.LoadedZone floorThreeB = generator.generate(template, 3);
-        TmxWorldLoader.LoadedZone floorFour = generator.generate(template, 4);
+        TmxWorldLoader.LoadedZone floorThreeA = generator.generate(template, 3, false);
+        TmxWorldLoader.LoadedZone floorThreeB = generator.generate(template, 3, false);
+        TmxWorldLoader.LoadedZone floorFour = generator.generate(template, 4, false);
+        TmxWorldLoader.LoadedZone shardRunFloor = generator.generate(template, 1, true);
+
+        assertNotEquals(0, shardRunFloor.pixelWidth);
 
         assertEquals(floorThreeA.features.size, floorThreeB.features.size);
         assertEquals(floorThreeA.chests.get(0).id, floorThreeB.chests.get(0).id);

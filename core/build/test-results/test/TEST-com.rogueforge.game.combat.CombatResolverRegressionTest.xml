@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.rogueforge.game.combat.CombatResolverRegressionTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-04-07T22:23:19" hostname="Grants-MacBook-Pro.local" time="0.015">
+  <properties/>
+  <testcase name="lethalDamageQueuesDamageBeforeKillOnce()" classname="com.rogueforge.game.combat.CombatResolverRegressionTest" time="0.013"/>
+  <testcase name="abilityDamageResultCanBeAppliedWithoutDroppingEventDispatch()" classname="com.rogueforge.game.combat.CombatResolverRegressionTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
